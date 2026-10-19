@@ -7,6 +7,7 @@ import { truncateHash } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/formatters";
 import { EXTERNAL_LINKS } from "@/lib/constants";
 import { PageTransition } from "@/components/shared/page-transition";
+import { NetworkHealthPanel } from "@/components/shared/network-health";
 
 const EASE_OUT: [number, number, number, number] = [0.165, 0.84, 0.44, 1];
 
@@ -119,6 +120,8 @@ export function HomePage() {
     return (
         <PageTransition>
             <div className="space-y-6">
+                <NetworkHealthPanel />
+
                 <ActivityPulseWrapper>
                     <ActivityFeed />
                 </ActivityPulseWrapper>

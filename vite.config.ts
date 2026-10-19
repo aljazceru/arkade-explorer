@@ -11,6 +11,8 @@ try {
 }
 
 export default defineConfig({
+    // Sub-path deploys (e.g. /ark/) set VITE_BASE_PATH; default stays "/".
+    base: process.env.VITE_BASE_PATH || "/",
     plugins: [react()],
     resolve: {
         alias: {

@@ -10,6 +10,24 @@ A modern blockchain explorer for the Arkade protocol, built with React and TypeS
 - **Batch & Tree Visualization**: Explore batched VTXOs and connector trees
 - **Real-time Activity**: Live stream of recent Arkade transactions
 - **Theming**: Light (Dawn) and Dark (Midnight) themes
+
+### Expiry monitoring (ark.observer additions)
+
+This fork ([aljazceru/arkade-explorer](https://github.com/aljazceru/arkade-explorer)) adds VTXO expiry
+monitoring on top of the upstream explorer by [ArkLabsHQ](https://github.com/ArkLabsHQ/arkade-explorer):
+
+- **Expiry countdown** on every VTXO row (table, cards and dense rows): blocks left and estimated
+  wall-clock time until batch expiry. Only active VTXOs get a countdown; settled/spent ones keep
+  their label. Blocks are estimated at 10 min/block when the server reports a timestamp.
+- **URGENT "needs exit" flag**: `unilateralExitDelay` is read from the operator's `/v1/info`. A VTXO
+  whose remaining lifetime is at or below that delay is flagged in red: renew it (settle) or exit
+  on-chain now. Values ≥ 512 are treated as seconds and smaller values as blocks (BIP68 convention).
+- **Network health panel** on the home page: version, signer pubkey, network, exit delays, VTXO and
+  boarding limits, dust, fees, deprecated signers — all straight from `/v1/info`.
+- **Watchlist** (`/watchlist`): add script pubkeys (hex) or Arkade addresses; they are kept in
+  `localStorage` and listed with their nearest expiry. No notifications yet.
+
+Sub-path deploys: build with `VITE_BASE_PATH=/ark/ pnpm build` (default base stays `/`).
 - **Responsive**: Fully responsive layout for mobile and desktop
 
 ## Tech Stack
@@ -127,7 +145,9 @@ src/
 | `/commitment-tx/:txid` | Commitment transaction detail |
 | `/address/:address` | Address VTXOs, balances, and assets |
 | `/asset/:assetId` | Asset detail |
+| `/watchlist` | Local watchlist of script pubkeys with nearest expiry |
 
 ## License
 
-MIT
+MIT. Originally built by [ArkLabsHQ](https://github.com/ArkLabsHQ/arkade-explorer); this fork keeps
+the upstream license and attribution.

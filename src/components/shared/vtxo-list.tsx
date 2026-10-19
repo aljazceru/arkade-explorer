@@ -1,7 +1,7 @@
 import { useCallback, useState, useRef, useLayoutEffect, createContext, useContext } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Link } from "react-router-dom";
-import { Copy, ExternalLink, Clock, ChevronDown, ChevronRight } from "lucide-react";
+import { Copy, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
 import * as btc from "@scure/btc-signer";
 import { hex } from "@scure/base";
 import type { VirtualCoin } from "@arkade-os/sdk";
@@ -13,12 +13,12 @@ import {
     deriveVtxoStatus,
     isRecoverable,
 } from "@/components/shared/badge-status";
-import { deriveExpiryKind, expiryKindLabel } from "@/lib/vtxo-display";
 import { CopyButton } from "@/components/shared/copy-button";
 import { truncateHash, copyToClipboard, formatTimestamp } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { constructArkAddress } from "@/lib/arkAddress";
 import { useServerInfo } from "@/providers/server-info-provider";
+import { ExpiryCountdown, useVtxoExpiry } from "@/components/shared/expiry-countdown";
 type ListStyle = "table" | "cards" | "dense-rows";
 
 const EMPTY_PENDING: ReadonlySet<string> = new Set<string>();
@@ -29,33 +29,6 @@ const PendingOutpointsContext = createContext<ReadonlySet<string>>(EMPTY_PENDING
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function formatExpiry(vtxo: VirtualCoin): string {
-    const expiry = vtxo.virtualStatus.batchExpiry;
-    if (!expiry) return "--";
-
-    const expiryDate = new Date(expiry);
-    const now = new Date();
-    const diff = expiryDate.getTime() - now.getTime();
-
-    if (diff <= 0) return "Expired";
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-
-    if (days > 0) return `${days}d ${hours % 24}h`;
-    if (hours > 0) return `${hours}h`;
-    const minutes = Math.floor(diff / (1000 * 60));
-    return `${minutes}m`;
-}
-
-/**
- * What to render in the expiry slot: a terminal status word ("Settled"/"Spent")
- * for a consumed VTXO, or the live batch-expiry countdown while it is active.
- */
-function expiryDisplay(vtxo: VirtualCoin): string {
-    return expiryKindLabel(deriveExpiryKind(vtxo)) ?? formatExpiry(vtxo);
-}
 
 /** Attempt to derive an Arkade address from the VTXO's script or PSBT. */
 function deriveAddress(
@@ -293,7 +266,7 @@ function VtxoTable({
                                 Status
                             </th>
                             <th className="text-right px-4 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Expiry
+                                Expiry (blocks · time left)
                             </th>
                         </tr>
                     </thead>
@@ -333,6 +306,8 @@ function VtxoTableRow({
     onCopyOutpoint: (txid: string, vout: number) => void;
 }) {
     const [expanded, setExpanded] = useState(false);
+    const { urgency } = useVtxoExpiry(vtxo);
+    const urgent = urgency === "urgent" || urgency === "expired";
 
     return (
         <>
@@ -340,6 +315,7 @@ function VtxoTableRow({
             <tr
                 className={cn(
                     "hover:bg-secondary/20 transition-colors duration-150",
+                    urgent && "bg-red-500/10 border-l-4 border-l-red-600",
                     expanded && "bg-secondary/10",
                     !expanded && "border-b border-border",
                 )}
@@ -396,9 +372,7 @@ function VtxoTableRow({
                     <StatusBadges vtxo={vtxo} />
                 </td>
                 <td className="px-4 py-3 text-right">
-                    <span className="text-xs text-muted-foreground font-mono">
-                        {expiryDisplay(vtxo)}
-                    </span>
+                    <ExpiryCountdown vtxo={vtxo} />
                 </td>
             </tr>
 
@@ -476,8 +450,15 @@ function VtxoCard({
     signerPubkey?: string;
     network?: string;
 }) {
+    const { urgency } = useVtxoExpiry(vtxo);
+    const urgent = urgency === "urgent" || urgency === "expired";
     return (
-        <div className="rounded-xl border border-border bg-card p-4 shadow-[0_0_0_1px_hsl(var(--border)),0_1px_2px_-1px_hsl(var(--border)/0.3),0_2px_4px_hsl(var(--border)/0.2)] hover:bg-secondary/20 transition-colors duration-200">
+        <div
+            className={cn(
+                "rounded-xl border bg-card p-4 shadow-[0_0_0_1px_hsl(var(--border)),0_1px_2px_-1px_hsl(var(--border)/0.3),0_2px_4px_hsl(var(--border)/0.2)] hover:bg-secondary/20 transition-colors duration-200",
+                urgent ? "border-red-600 border-2 bg-red-500/5" : "border-border",
+            )}
+        >
             {/* Header: outpoint + copy */}
             <div className="flex items-center justify-between gap-2 mb-3">
                 <Link
@@ -532,10 +513,7 @@ function VtxoCard({
             {/* Footer: status + expiry */}
             <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-border">
                 <StatusBadges vtxo={vtxo} />
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    <span className="font-mono">{expiryDisplay(vtxo)}</span>
-                </div>
+                <ExpiryCountdown vtxo={vtxo} compact />
             </div>
 
             {/* Debug toggle */}
@@ -713,9 +691,7 @@ function VtxoDenseRow({
                 <StatusBadges vtxo={vtxo} />
 
                 {/* Expiry */}
-                <span className="text-xs text-muted-foreground font-mono shrink-0 w-16 text-right">
-                    {expiryDisplay(vtxo)}
-                </span>
+                <ExpiryCountdown vtxo={vtxo} compact className="shrink-0 text-right" />
             </div>
 
             {/* Expanded details */}

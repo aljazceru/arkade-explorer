@@ -1,6 +1,14 @@
 import { describe, it, expect } from "vitest";
 import type { VirtualCoin } from "@arkade-os/sdk";
-import { deriveExpiryKind, expiryKindLabel } from "@/lib/vtxo-display";
+import {
+    deriveExpiryKind,
+    expiryKindLabel,
+    parseRelativeTimelock,
+    timelockToSecondsAndBlocks,
+    remainingLifetime,
+    deriveExpiryUrgency,
+    formatDuration,
+} from "@/lib/vtxo-display";
 
 function makeVtxo(p: Partial<VirtualCoin>): VirtualCoin {
     return {
@@ -56,5 +64,53 @@ describe("expiryKindLabel", () => {
         expect(expiryKindLabel("settled")).toBe("Settled");
         expect(expiryKindLabel("spent")).toBe("Spent");
         expect(expiryKindLabel("active")).toBeNull();
+    });
+});
+
+describe("expiry monitoring", () => {
+    const now = Date.UTC(2026, 9, 19, 12, 0, 0);
+    const DAY = 86400;
+    const exitDelay = parseRelativeTimelock(605184n); // ~7 days in seconds
+
+    it("parses timelocks with the BIP68 512 threshold", () => {
+        expect(parseRelativeTimelock(144n)).toEqual({ type: "blocks", value: 144 });
+        expect(parseRelativeTimelock("605184")).toEqual({ type: "seconds", value: 605184 });
+        expect(timelockToSecondsAndBlocks(exitDelay).blocks).toBe(1009);
+    });
+
+    it("computes remaining lifetime from expiresAt", () => {
+        const r = remainingLifetime(
+            makeVtxo({ expiresAt: new Date(now + 10 * DAY * 1000) } as Partial<VirtualCoin>),
+            now,
+        );
+        expect(r?.seconds).toBe(10 * DAY);
+        expect(r?.blocks).toBe(1440);
+        expect(r?.source).toBe("time");
+    });
+
+    it("computes remaining blocks from expiresAtHeight with a tip", () => {
+        const v = makeVtxo({ expiresAtHeight: 900_100 } as Partial<VirtualCoin>);
+        expect(remainingLifetime(v, now)).toBeNull();
+        expect(remainingLifetime(v, now, 900_000)?.blocks).toBe(100);
+    });
+
+    it("flags URGENT at or below the unilateral exit delay", () => {
+        const mk = (secs: number) =>
+            remainingLifetime(
+                makeVtxo({ expiresAt: new Date(now + secs * 1000) } as Partial<VirtualCoin>),
+                now,
+            );
+        expect(deriveExpiryUrgency(mk(10 * DAY), exitDelay)).toBe("ok");
+        expect(deriveExpiryUrgency(mk(605184), exitDelay)).toBe("urgent");
+        expect(deriveExpiryUrgency(mk(2 * DAY), exitDelay)).toBe("urgent");
+        expect(deriveExpiryUrgency(mk(-60), exitDelay)).toBe("expired");
+        expect(deriveExpiryUrgency(mk(2 * DAY), null)).toBe("unknown");
+        expect(deriveExpiryUrgency(null, exitDelay)).toBe("unknown");
+    });
+
+    it("formats durations", () => {
+        expect(formatDuration(7 * DAY + 3600)).toBe("7d 1h");
+        expect(formatDuration(3 * 3600 + 120)).toBe("3h 2m");
+        expect(formatDuration(-5)).toBe("0m");
     });
 });
