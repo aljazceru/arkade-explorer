@@ -4,8 +4,8 @@ Thank you for your interest in contributing to Arkade Explorer!
 
 ## Prerequisites
 
-- **Node.js 24.15.0** (see `.nvmrc`; e.g. `nvm use`)
-- **pnpm** — this project is **pnpm-only** (pinned to `pnpm@10.29.2`). Do not use `npm` or `yarn`.
+- **Node.js 24.22.0** (see `.nvmrc`; e.g. `nvm use`)
+- **pnpm** — this project is **pnpm-only** (pinned to `pnpm@10.34.7`). Do not use `npm` or `yarn`.
 
 ## Development Setup
 

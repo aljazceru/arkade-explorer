@@ -17,8 +17,8 @@ no monorepo. It consumes `@arkade-os/sdk`; it does not extend or vendor it.
 These conventions are shared with the `@arkade-os/sdk` monorepo (`../ts-sdk`) so tooling stays
 consistent across the Arkade ecosystem.
 
-- **Node**: `24.15.0` (see `.nvmrc`); `engines.node` is `>=24.15.0 <25`.
-- **Package manager**: **pnpm only**, pinned via `packageManager: pnpm@10.29.2` and `engines.pnpm`.
+- **Node**: `24.22.0` (see `.nvmrc`); `engines.node` is `>=24.22.0 <25`.
+- **Package manager**: **pnpm only**, pinned via `packageManager: pnpm@10.34.7` and `engines.pnpm`.
   Never use `npm` or `yarn`; `package-lock.json` is git-ignored and must not be committed. `.npmrc`
   sets `save-exact=true`, so add dependencies at exact versions.
 - **Formatting & lint**: **Prettier is the linter** (no ESLint). Config in `.prettierrc`: double

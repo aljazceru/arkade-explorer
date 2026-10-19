@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { describe, expect, it } from "vitest";
 import { hex } from "@scure/base";
 import * as btc from "@scure/btc-signer";
