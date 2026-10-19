@@ -122,6 +122,24 @@ export function HomePage() {
             <div className="space-y-6">
                 <NetworkHealthPanel />
 
+                <div className="rounded-xl border border-border bg-card px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <p className="text-sm font-medium text-foreground">
+                            Observation: Arkade | Second (bark)
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Side-by-side mainnet health, real VTXOs with expiry, and on-chain round
+                            activity.
+                        </p>
+                    </div>
+                    <Link
+                        to="/observe"
+                        className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium"
+                    >
+                        Open observation
+                    </Link>
+                </div>
+
                 <ActivityPulseWrapper>
                     <ActivityFeed />
                 </ActivityPulseWrapper>

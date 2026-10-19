@@ -1,0 +1,505 @@
+{
+  "fetched_at": "2026-10-19T16:18:31.889719+02:00",
+  "source": {
+    "grpc": "https://ark.second.tech/bark_server.ArkService",
+    "server_p2tr": "bc1pyj5t7f9afs2t2yyeld0fja3hswtzxwhdw3kgl0943azy02mx07fqzz2c9e",
+    "mempool": "https://mempool.space/api",
+    "docs": "https://second.tech/docs/connection-details"
+  },
+  "info": {
+    "network": "bitcoin",
+    "server_pubkey": "0375b2e4f6abe5b00736359de211c35d9e72b615e5fd424d8ad1e68a8b300b97b5",
+    "round_interval_secs": 3600,
+    "nb_round_nonces": 10,
+    "vtxo_exit_delta": 144,
+    "vtxo_expiry_delta": 4032,
+    "htlc_send_expiry_delta": 1008,
+    "htlc_expiry_delta": 12,
+    "max_vtxo_amount": 10000000,
+    "required_board_confirmations": 2,
+    "max_user_invoice_cltv_delta": 250,
+    "min_board_amount": 49000,
+    "mailbox_pubkey": "037bb26bfe7a819c2285f4cfdba63e1d806cb37d04915f17447c76140c34cf73a9",
+    "max_vtxo_exit_depth": 100,
+    "max_offboard_inputs": 100,
+    "vtxo_lifetime": 4032,
+    "tos_link": "https://second.tech/terms"
+  },
+  "next_round_unix": 1792420725,
+  "next_round_rome": "2026-10-19T16:38:45+02:00",
+  "last_round_event": {
+    "kind": "failed",
+    "raw_field": 5,
+    "round_seq": 51322613
+  },
+  "server_address_stats": {
+    "address": "bc1pyj5t7f9afs2t2yyeld0fja3hswtzxwhdw3kgl0943azy02mx07fqzz2c9e",
+    "chain_stats": {
+      "funded_txo_count": 297,
+      "funded_txo_sum": 424742,
+      "spent_txo_count": 231,
+      "spent_txo_sum": 348480,
+      "tx_count": 367
+    },
+    "mempool_stats": {
+      "funded_txo_count": 0,
+      "funded_txo_sum": 0,
+      "spent_txo_count": 0,
+      "spent_txo_sum": 0,
+      "tx_count": 0
+    }
+  },
+  "recent_server_txs": [
+    {
+      "txid": "2ea90e75e2ae79343ce15e3b2564e7f7a2e0db32d28c3e53c2ae9ce26ff42caa",
+      "block_height": 972157,
+      "block_time": 1792418599,
+      "block_time_rome": "2026-10-19T16:03:19+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 9697697,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/2ea90e75e2ae79343ce15e3b2564e7f7a2e0db32d28c3e53c2ae9ce26ff42caa"
+    },
+    {
+      "txid": "b06886090a267cbd4e18d6e5ab12fd3d676bf3cf6ea1eb6aa3458676022db4ba",
+      "block_height": 972153,
+      "block_time": 1792416420,
+      "block_time_rome": "2026-10-19T15:27:00+02:00",
+      "vin": 14,
+      "vout": 1,
+      "total_sats": 571955,
+      "direction": "from_server",
+      "mempool_url": "https://mempool.space/tx/b06886090a267cbd4e18d6e5ab12fd3d676bf3cf6ea1eb6aa3458676022db4ba"
+    },
+    {
+      "txid": "7c2a2f9d0df6ec429ec2dfd5c79dc12665a42f39634400cdb9c72f096caf70d9",
+      "block_height": 972150,
+      "block_time": 1792415675,
+      "block_time_rome": "2026-10-19T15:14:35+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 70231,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/7c2a2f9d0df6ec429ec2dfd5c79dc12665a42f39634400cdb9c72f096caf70d9"
+    },
+    {
+      "txid": "a52c66b36cf2cf3b49ced780702d047c515cef1c883e8647e419bb4348fbe7d9",
+      "block_height": 972145,
+      "block_time": 1792414168,
+      "block_time_rome": "2026-10-19T14:49:28+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 4806257,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/a52c66b36cf2cf3b49ced780702d047c515cef1c883e8647e419bb4348fbe7d9"
+    },
+    {
+      "txid": "19d37dad603fa764e6547b7131faed9a45e09f7903215cd9edb1c5d4dbc35007",
+      "block_height": 972110,
+      "block_time": 1792389241,
+      "block_time_rome": "2026-10-19T07:54:01+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 1213133,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/19d37dad603fa764e6547b7131faed9a45e09f7903215cd9edb1c5d4dbc35007"
+    },
+    {
+      "txid": "b7830885340e3b34c555db19d15c527f279106e9259c15887cbe7de91b35b5bb",
+      "block_height": 972106,
+      "block_time": 1792382976,
+      "block_time_rome": "2026-10-19T06:09:36+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 533147,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/b7830885340e3b34c555db19d15c527f279106e9259c15887cbe7de91b35b5bb"
+    },
+    {
+      "txid": "803269a184319f14930ab237beae28bdddde7c2b999e6d330e2d7f465b37ff2e",
+      "block_height": 972089,
+      "block_time": 1792373063,
+      "block_time_rome": "2026-10-19T03:24:23+02:00",
+      "vin": 4,
+      "vout": 1,
+      "total_sats": 373853,
+      "direction": "from_server",
+      "mempool_url": "https://mempool.space/tx/803269a184319f14930ab237beae28bdddde7c2b999e6d330e2d7f465b37ff2e"
+    },
+    {
+      "txid": "3402394e9bdca10e6d08cd54dbb23b60dc57b462587920a06b48d7e6f8dcb0c6",
+      "block_height": 972024,
+      "block_time": 1792341405,
+      "block_time_rome": "2026-10-18T18:36:45+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 8463962,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/3402394e9bdca10e6d08cd54dbb23b60dc57b462587920a06b48d7e6f8dcb0c6"
+    },
+    {
+      "txid": "00df73e9afff8c302aded72fc37fb54b0bfd52067675a5d561d6b55795177696",
+      "block_height": 971999,
+      "block_time": 1792329782,
+      "block_time_rome": "2026-10-18T15:23:02+02:00",
+      "vin": 15,
+      "vout": 1,
+      "total_sats": 1220805,
+      "direction": "from_server",
+      "mempool_url": "https://mempool.space/tx/00df73e9afff8c302aded72fc37fb54b0bfd52067675a5d561d6b55795177696"
+    },
+    {
+      "txid": "5dddb7fb72db8a2d4c68a512afd15d21679050fb22d160db288ee24eb8910cb0",
+      "block_height": 971903,
+      "block_time": 1792268206,
+      "block_time_rome": "2026-10-17T22:16:46+02:00",
+      "vin": 1,
+      "vout": 1,
+      "total_sats": 1861,
+      "direction": "from_server",
+      "mempool_url": "https://mempool.space/tx/5dddb7fb72db8a2d4c68a512afd15d21679050fb22d160db288ee24eb8910cb0"
+    },
+    {
+      "txid": "9acbbcdf239171133b645a95bb861911d1df8d3626a2da3814ac1e726a0eac11",
+      "block_height": 971902,
+      "block_time": 1792267375,
+      "block_time_rome": "2026-10-17T22:02:55+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 9765628,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/9acbbcdf239171133b645a95bb861911d1df8d3626a2da3814ac1e726a0eac11"
+    },
+    {
+      "txid": "d8ef8325afe465ece998970f1e97ea2602d75e6ee4ae630a3d4d32558db25477",
+      "block_height": 971878,
+      "block_time": 1792250039,
+      "block_time_rome": "2026-10-17T17:13:59+02:00",
+      "vin": 2,
+      "vout": 3,
+      "total_sats": 8588946,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/d8ef8325afe465ece998970f1e97ea2602d75e6ee4ae630a3d4d32558db25477"
+    },
+    {
+      "txid": "94fb15f4f2f00cd96d494f197bcf482326e09ac43dbd6695518afb5f69b15ebf",
+      "block_height": 971873,
+      "block_time": 1792247149,
+      "block_time_rome": "2026-10-17T16:25:49+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 5972051,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/94fb15f4f2f00cd96d494f197bcf482326e09ac43dbd6695518afb5f69b15ebf"
+    },
+    {
+      "txid": "c3e6de4e83c0ade580b30fcd30723e8e69d70cd668f388646935a036a3b619b0",
+      "block_height": 971858,
+      "block_time": 1792239603,
+      "block_time_rome": "2026-10-17T14:20:03+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 8590287,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/c3e6de4e83c0ade580b30fcd30723e8e69d70cd668f388646935a036a3b619b0"
+    },
+    {
+      "txid": "89df419abda49a16761a2a23c336877aad6e8f1a3274c0b4e7e127f4dd8ab45f",
+      "block_height": 971858,
+      "block_time": 1792239603,
+      "block_time_rome": "2026-10-17T14:20:03+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 5977484,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/89df419abda49a16761a2a23c336877aad6e8f1a3274c0b4e7e127f4dd8ab45f"
+    },
+    {
+      "txid": "ae2dd016c320d7ff242f261a9152432ce11785f34cd1e888a48171d94dfef37f",
+      "block_height": 971787,
+      "block_time": 1792200323,
+      "block_time_rome": "2026-10-17T03:25:23+02:00",
+      "vin": 4,
+      "vout": 1,
+      "total_sats": 10640,
+      "direction": "from_server",
+      "mempool_url": "https://mempool.space/tx/ae2dd016c320d7ff242f261a9152432ce11785f34cd1e888a48171d94dfef37f"
+    },
+    {
+      "txid": "affd8a138ac1307ae8ad94718bb1c146878df2dbe72d8d2cd54c19f8749ae596",
+      "block_height": 971769,
+      "block_time": 1792187728,
+      "block_time_rome": "2026-10-16T23:55:28+02:00",
+      "vin": 2,
+      "vout": 3,
+      "total_sats": 2672143,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/affd8a138ac1307ae8ad94718bb1c146878df2dbe72d8d2cd54c19f8749ae596"
+    },
+    {
+      "txid": "957325547e51af7dc51bc13d6d33cd68810da9b04cc8df37b148291681a9d46f",
+      "block_height": 971763,
+      "block_time": 1792182593,
+      "block_time_rome": "2026-10-16T22:29:53+02:00",
+      "vin": 2,
+      "vout": 3,
+      "total_sats": 175160,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/957325547e51af7dc51bc13d6d33cd68810da9b04cc8df37b148291681a9d46f"
+    },
+    {
+      "txid": "ee1033f42a865090343c4ec0541f15bd028007e86e0eb50e0f57b037919f8a20",
+      "block_height": 971762,
+      "block_time": 1792181682,
+      "block_time_rome": "2026-10-16T22:14:42+02:00",
+      "vin": 3,
+      "vout": 3,
+      "total_sats": 16047840,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/ee1033f42a865090343c4ec0541f15bd028007e86e0eb50e0f57b037919f8a20"
+    },
+    {
+      "txid": "0d89eb88b812a8a2e491c7a243ef0dcca9f077e5ebb0358fbe5ae4eab6bcdef2",
+      "block_height": 971759,
+      "block_time": 1792179563,
+      "block_time_rome": "2026-10-16T21:39:23+02:00",
+      "vin": 5,
+      "vout": 1,
+      "total_sats": 1900676,
+      "direction": "from_server",
+      "mempool_url": "https://mempool.space/tx/0d89eb88b812a8a2e491c7a243ef0dcca9f077e5ebb0358fbe5ae4eab6bcdef2"
+    },
+    {
+      "txid": "5a62ae2c9fb7e35fd0da280a0cabda3b4150c6f9f7e989d810e415ac8b0f09fb",
+      "block_height": 971756,
+      "block_time": 1792177269,
+      "block_time_rome": "2026-10-16T21:01:09+02:00",
+      "vin": 2,
+      "vout": 3,
+      "total_sats": 2804584,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/5a62ae2c9fb7e35fd0da280a0cabda3b4150c6f9f7e989d810e415ac8b0f09fb"
+    },
+    {
+      "txid": "4490258e013c7c7eb9c2e906e0cb7558c21036a3d539bae57516d7435903d44e",
+      "block_height": 971659,
+      "block_time": 1792122362,
+      "block_time_rome": "2026-10-16T05:46:02+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 2888393,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/4490258e013c7c7eb9c2e906e0cb7558c21036a3d539bae57516d7435903d44e"
+    },
+    {
+      "txid": "3f277f1e069674ce6fffa8215807a7b7f12e571df8a34590fc814be68dfe40db",
+      "block_height": 971652,
+      "block_time": 1792118319,
+      "block_time_rome": "2026-10-16T04:38:39+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 1771998,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/3f277f1e069674ce6fffa8215807a7b7f12e571df8a34590fc814be68dfe40db"
+    },
+    {
+      "txid": "976f10851725e1f460b1d7dc41e24470a77c837ee78334a199ba15cb7692d369",
+      "block_height": 971651,
+      "block_time": 1792116864,
+      "block_time_rome": "2026-10-16T04:14:24+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 295910,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/976f10851725e1f460b1d7dc41e24470a77c837ee78334a199ba15cb7692d369"
+    },
+    {
+      "txid": "23684196d7f2fc4780e63057ac2c7835c259a513ff2668ea6d5991558506acf5",
+      "block_height": 971631,
+      "block_time": 1792106398,
+      "block_time_rome": "2026-10-16T01:19:58+02:00",
+      "vin": 3,
+      "vout": 1,
+      "total_sats": 23481,
+      "direction": "from_server",
+      "mempool_url": "https://mempool.space/tx/23684196d7f2fc4780e63057ac2c7835c259a513ff2668ea6d5991558506acf5"
+    },
+    {
+      "txid": "2bb574c8d24c458d09f5ede258782e89ecccf2991ee8a06eb02a3979e683356e",
+      "block_height": 971627,
+      "block_time": 1792102436,
+      "block_time_rome": "2026-10-16T00:13:56+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 398297,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/2bb574c8d24c458d09f5ede258782e89ecccf2991ee8a06eb02a3979e683356e"
+    },
+    {
+      "txid": "fb2b201dfe11d842aebbf242cc30a27c59029465feab9927ffbdb578d9cc7c6d",
+      "block_height": 971627,
+      "block_time": 1792102436,
+      "block_time_rome": "2026-10-16T00:13:56+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 8603049,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/fb2b201dfe11d842aebbf242cc30a27c59029465feab9927ffbdb578d9cc7c6d"
+    },
+    {
+      "txid": "513db631b53bdbcae534db35f7000750529ff08d2847fbce61a81597def48b3e",
+      "block_height": 971626,
+      "block_time": 1792100287,
+      "block_time_rome": "2026-10-15T23:38:07+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 233492,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/513db631b53bdbcae534db35f7000750529ff08d2847fbce61a81597def48b3e"
+    },
+    {
+      "txid": "4e42044cb0255b5f3a9b8af3d91dd615a24ef6ce22fa06fd024b5aa0da6cecb6",
+      "block_height": 971584,
+      "block_time": 1792073537,
+      "block_time_rome": "2026-10-15T16:12:17+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 14312744,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/4e42044cb0255b5f3a9b8af3d91dd615a24ef6ce22fa06fd024b5aa0da6cecb6"
+    },
+    {
+      "txid": "f309809498852172d6d20ccf6a301fe84def1d417af42b84011a2d28817003ec",
+      "block_height": 971584,
+      "block_time": 1792073537,
+      "block_time_rome": "2026-10-15T16:12:17+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 2893074,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/f309809498852172d6d20ccf6a301fe84def1d417af42b84011a2d28817003ec"
+    },
+    {
+      "txid": "881c6f3c5eaebe0c17e920f24a1fe480ab0e4bdbb79e3548a48e8fefd7a5aee0",
+      "block_height": 971582,
+      "block_time": 1792072269,
+      "block_time_rome": "2026-10-15T15:51:09+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 138180,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/881c6f3c5eaebe0c17e920f24a1fe480ab0e4bdbb79e3548a48e8fefd7a5aee0"
+    },
+    {
+      "txid": "36533b431155f3728067f78a240305a6c14a154a54bff213f9c1b13a80619847",
+      "block_height": 971551,
+      "block_time": 1792059197,
+      "block_time_rome": "2026-10-15T12:13:17+02:00",
+      "vin": 2,
+      "vout": 1,
+      "total_sats": 62766,
+      "direction": "from_server",
+      "mempool_url": "https://mempool.space/tx/36533b431155f3728067f78a240305a6c14a154a54bff213f9c1b13a80619847"
+    },
+    {
+      "txid": "2a8c0371f2496a6ca2c0751d5f7e658af802879ae92abc09ffe7c6d0dca54492",
+      "block_height": 971456,
+      "block_time": 1792007199,
+      "block_time_rome": "2026-10-14T21:46:39+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 3192468,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/2a8c0371f2496a6ca2c0751d5f7e658af802879ae92abc09ffe7c6d0dca54492"
+    },
+    {
+      "txid": "e85da498c1b5e6962453e30d044991f78ad84145974e3e17d25ac04a73f37ff2",
+      "block_height": 971411,
+      "block_time": 1791986768,
+      "block_time_rome": "2026-10-14T16:06:08+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 3198275,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/e85da498c1b5e6962453e30d044991f78ad84145974e3e17d25ac04a73f37ff2"
+    },
+    {
+      "txid": "2873c333996a3d53e14c5608ec9f217edd1c5aa69cf1d6d6617dfb91ffc4afdc",
+      "block_height": 971411,
+      "block_time": 1791986768,
+      "block_time_rome": "2026-10-14T16:06:08+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 10576595,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/2873c333996a3d53e14c5608ec9f217edd1c5aa69cf1d6d6617dfb91ffc4afdc"
+    },
+    {
+      "txid": "1ec69d1b12d855112a9b5d0a70dc6fb476c6439bc32579c75f02769833af0f87",
+      "block_height": 971387,
+      "block_time": 1791972677,
+      "block_time_rome": "2026-10-14T12:11:17+02:00",
+      "vin": 7,
+      "vout": 1,
+      "total_sats": 23053,
+      "direction": "from_server",
+      "mempool_url": "https://mempool.space/tx/1ec69d1b12d855112a9b5d0a70dc6fb476c6439bc32579c75f02769833af0f87"
+    },
+    {
+      "txid": "8a0a0e612cb8803a378fe7728b1114ca801b7d2012d06625657c81c67b915034",
+      "block_height": 971369,
+      "block_time": 1791961748,
+      "block_time_rome": "2026-10-14T09:09:08+02:00",
+      "vin": 2,
+      "vout": 1,
+      "total_sats": 1627,
+      "direction": "from_server",
+      "mempool_url": "https://mempool.space/tx/8a0a0e612cb8803a378fe7728b1114ca801b7d2012d06625657c81c67b915034"
+    },
+    {
+      "txid": "722d879a9d986d0a91ad5db1e0c42d9490f713d3ed1f00e2993b989bcd08dc14",
+      "block_height": 971357,
+      "block_time": 1791956329,
+      "block_time_rome": "2026-10-14T07:38:49+02:00",
+      "vin": 2,
+      "vout": 3,
+      "total_sats": 556805,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/722d879a9d986d0a91ad5db1e0c42d9490f713d3ed1f00e2993b989bcd08dc14"
+    },
+    {
+      "txid": "690f15b9d73ee2dc150dc6316ee4a56bb7671363811bc4e82d466a8f4520a26e",
+      "block_height": 971351,
+      "block_time": 1791952915,
+      "block_time_rome": "2026-10-14T06:41:55+02:00",
+      "vin": 1,
+      "vout": 3,
+      "total_sats": 44886,
+      "direction": "to_server",
+      "mempool_url": "https://mempool.space/tx/690f15b9d73ee2dc150dc6316ee4a56bb7671363811bc4e82d466a8f4520a26e"
+    },
+    {
+      "txid": "fc7304283210fafa4e79f340f26e34b3132cec2d879b4acc31204a0e8d191bab",
+      "block_height": 971348,
+      "block_time": 1791951435,
+      "block_time_rome": "2026-10-14T06:17:15+02:00",
+      "vin": 2,
+      "vout": 1,
+      "total_sats": 1821527,
+      "direction": "from_server",
+      "mempool_url": "https://mempool.space/tx/fc7304283210fafa4e79f340f26e34b3132cec2d879b4acc31204a0e8d191bab"
+    }
+  ],
+  "stats_24h": {
+    "tx_count": 8,
+    "total_sats_out": 25730235,
+    "to_server": 6,
+    "from_server": 2
+  },
+  "notes": [
+    "GetArkInfo / NextRoundTime / LastRoundEvent via captaind gRPC-web (CORS open).",
+    "On-chain rows are transactions touching the server's published P2TR \u2014 boards/liquidity/round-related activity visible publicly; not a full VTXO index (Second does not expose one).",
+    "Credit: Second (bark/captaind)."
+  ]
+}

@@ -27,6 +27,8 @@ monitoring on top of the upstream explorer by [ArkLabsHQ](https://github.com/Ark
 - **Watchlist** (`/watchlist`): add script pubkeys (hex) or Arkade addresses; they are kept in
   `localStorage` and listed with their nearest expiry. No notifications yet.
 
+Observation snapshots: run `python3 scripts/observation-indexer.py` to refresh `public/observation/{arkade,bark,summary}.json` from live mainnet APIs (Arkade indexer, Blockonomics archive, captaind gRPC-web, mempool.space).
+
 Sub-path deploys: build with `VITE_BASE_PATH=/ark/ pnpm build` (default base stays `/`).
 - **Responsive**: Fully responsive layout for mobile and desktop
 
@@ -146,6 +148,7 @@ src/
 | `/address/:address` | Address VTXOs, balances, and assets |
 | `/asset/:assetId` | Asset detail |
 | `/watchlist` | Local watchlist of script pubkeys with nearest expiry |
+| `/observe` | Side-by-side Arkade vs Second (bark) mainnet observation |
 
 ## License
 

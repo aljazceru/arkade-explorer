@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Search, Eye } from "lucide-react";
+import { Search, Eye, Activity } from "lucide-react";
 import { EXTERNAL_LINKS } from "@/lib/constants";
 import { ArkadeLogo } from "@/components/shared/arkade-logo";
 import { SearchCommandPaletteOverlay } from "@/components/shared/search-bar";
@@ -62,6 +62,14 @@ export function TopNav() {
                 </button>
 
                 <div className="flex items-center gap-3 shrink-0">
+                    <Link
+                        to="/observe"
+                        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+                        aria-label="Observation"
+                    >
+                        <Activity className="h-4 w-4" aria-hidden="true" />
+                        <span className="hidden md:inline">Observe</span>
+                    </Link>
                     <Link
                         to="/watchlist"
                         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"

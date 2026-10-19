@@ -1,0 +1,672 @@
+{
+  "fetched_at": "2026-10-19T16:18:30.178843+02:00",
+  "source": {
+    "info": "https://arkade.computer/v1/info",
+    "activity": "https://arkexplorer.blockonomics.co/api/recent-transactions",
+    "stats": "https://arkexplorer.blockonomics.co/api/stats",
+    "indexer": "https://arkade.computer/v1/indexer"
+  },
+  "info": {
+    "version": "v0.9.22",
+    "signerPubkey": "038202bebddeb1f7442803897a85eaf3ce9254d07df0172fc3725ab5f0d097779c",
+    "forfeitPubkey": "03b43a8363118c084a04d4f6a50ebfa58e81957f8cceceb2aee0ab64c9fd2d9977",
+    "forfeitAddress": "bc1qzzdzp5c443vsetzatf2ra6hku322y7e5aq50rs",
+    "checkpointTapscript": "039e0440b27520b43a8363118c084a04d4f6a50ebfa58e81957f8cceceb2aee0ab64c9fd2d9977ac",
+    "network": "bitcoin",
+    "sessionDuration": "60",
+    "unilateralExitDelay": "605184",
+    "boardingExitDelay": "7776256",
+    "utxoMinAmount": "330",
+    "utxoMaxAmount": "50000000",
+    "vtxoMinAmount": "330",
+    "vtxoMaxAmount": "50000000",
+    "dust": "330",
+    "fees": {
+      "intentFee": {
+        "offchainInput": "",
+        "offchainOutput": "",
+        "onchainInput": "",
+        "onchainOutput": "200.0"
+      },
+      "txFeeRate": "0"
+    },
+    "scheduledSession": null,
+    "deprecatedSigners": [
+      {
+        "pubkey": "022b74c2011af089c849383ee527c72325de52df6a788428b68d49e9174053aaba",
+        "cutoffDate": "1783159200"
+      }
+    ],
+    "serviceStatus": {},
+    "digest": "c903f83696fce8c9b578a09f5a64be00c2493e3d0816e2aa6a6a8b2a6ecfad4e",
+    "maxTxWeight": "40000",
+    "maxOpReturnOutputs": "2"
+  },
+  "stats_24h": {
+    "networkLiquidity": 214.3039,
+    "offboardingVolume": 0,
+    "onboardingVolume": 0.1328,
+    "timeframe": "24h",
+    "timestamp": 1792419501000,
+    "txCountChange": 18.9,
+    "virtualTxCount": 44,
+    "virtualTxVolume": 0.0343,
+    "volumeChange": -16.3
+  },
+  "trends": [
+    {
+      "displayDate": "2026-10-18 23:00",
+      "onboardingVolume": 0,
+      "offboardingVolume": 0,
+      "virtualTxVolume": 0,
+      "virtualTxCount": 0
+    },
+    {
+      "displayDate": "2026-10-19 00:00",
+      "onboardingVolume": 0.0007,
+      "offboardingVolume": 0,
+      "virtualTxVolume": 0,
+      "virtualTxCount": 0
+    },
+    {
+      "displayDate": "2026-10-19 01:00",
+      "onboardingVolume": 0,
+      "offboardingVolume": 0,
+      "virtualTxVolume": 0,
+      "virtualTxCount": 0
+    },
+    {
+      "displayDate": "2026-10-19 06:00",
+      "onboardingVolume": 0,
+      "offboardingVolume": 0,
+      "virtualTxVolume": 0.0068,
+      "virtualTxCount": 6
+    },
+    {
+      "displayDate": "2026-10-19 07:00",
+      "onboardingVolume": 0.0003,
+      "offboardingVolume": 0,
+      "virtualTxVolume": 0,
+      "virtualTxCount": 0
+    },
+    {
+      "displayDate": "2026-10-19 08:00",
+      "onboardingVolume": 0,
+      "offboardingVolume": 0,
+      "virtualTxVolume": 0.0054,
+      "virtualTxCount": 6
+    },
+    {
+      "displayDate": "2026-10-19 09:00",
+      "onboardingVolume": 0.1282,
+      "offboardingVolume": 0,
+      "virtualTxVolume": 0,
+      "virtualTxCount": 0
+    },
+    {
+      "displayDate": "2026-10-19 10:00",
+      "onboardingVolume": 0.0006,
+      "offboardingVolume": 0,
+      "virtualTxVolume": 0,
+      "virtualTxCount": 0
+    },
+    {
+      "displayDate": "2026-10-19 11:00",
+      "onboardingVolume": 0,
+      "offboardingVolume": 0,
+      "virtualTxVolume": 0.0012,
+      "virtualTxCount": 3
+    },
+    {
+      "displayDate": "2026-10-19 12:00",
+      "onboardingVolume": 0,
+      "offboardingVolume": 0,
+      "virtualTxVolume": 0.0011,
+      "virtualTxCount": 3
+    },
+    {
+      "displayDate": "2026-10-19 13:00",
+      "onboardingVolume": 0,
+      "offboardingVolume": 0,
+      "virtualTxVolume": 0.0004,
+      "virtualTxCount": 4
+    },
+    {
+      "displayDate": "2026-10-19 14:00",
+      "onboardingVolume": 0,
+      "offboardingVolume": 0,
+      "virtualTxVolume": 0,
+      "virtualTxCount": 0
+    }
+  ],
+  "recent_activity": [
+    {
+      "txid": "cb0a7e81b953820e7418111a251ef3edbe9f4e29d5fb8df4d0a5d436007bdff7",
+      "createdAt": 1792418791,
+      "txType": "refresh"
+    },
+    {
+      "txid": "b9971111fc505e403d127b3a52cc1f46763d7dd0da142aa19946960e1e4cfb08",
+      "createdAt": 1792417263,
+      "txType": "virtual"
+    },
+    {
+      "txid": "e1f712b0cb465ded38a5f0bf6523174ee0c084981e787c9309023dcf4edcaded",
+      "createdAt": 1792417252,
+      "txType": "virtual"
+    },
+    {
+      "txid": "696b8440783b5fce7cae17a2b3ce4e4e52c6ca7d9620fe3d783f263773f6f5d1",
+      "createdAt": 1792417134,
+      "txType": "virtual"
+    },
+    {
+      "txid": "80db0cfa2e735ce709a04269b31b85352e98d3b67b806ac9696fb2cb34eeb4d1",
+      "createdAt": 1792412280,
+      "txType": "virtual"
+    },
+    {
+      "txid": "eef01e6af57910d25e1f4baafd7ef90fd149337d49f427e8b5f6e89538f37085",
+      "createdAt": 1792412271,
+      "txType": "virtual"
+    },
+    {
+      "txid": "035cee0fe43cdf5378c6af0544a2af56057721c009c28d8c9a1f693f6d1f784d",
+      "createdAt": 1792411059,
+      "txType": "virtual"
+    },
+    {
+      "txid": "4dcaed5988990b1c164010d0d97faedd201b25e33dc5df418b367bc084664169",
+      "createdAt": 1792411041,
+      "txType": "virtual"
+    },
+    {
+      "txid": "351732686a521bb88101c4a884ac891a45eaf7d6f3171743cdaf95bc9678a46f",
+      "createdAt": 1792406251,
+      "txType": "onboard"
+    },
+    {
+      "txid": "1e967251ce3d934dfc5652f931b51c556aa74dd8bfeb83524f6d6775e3d5217d",
+      "createdAt": 1792404407,
+      "txType": "onboard"
+    }
+  ],
+  "vtxos": [
+    {
+      "txType": "refresh",
+      "txid": "cb0a7e81b953820e7418111a251ef3edbe9f4e29d5fb8df4d0a5d436007bdff7",
+      "vout": 0,
+      "amount_sat": 10000,
+      "createdAt": "1792418789",
+      "expiresAt": "1795011045",
+      "expiresAt_unix": 1795011045,
+      "left_seconds": 2591541,
+      "urgent": false,
+      "expired": false,
+      "isSpent": false,
+      "spentBy": "",
+      "settledBy": "",
+      "commitmentTxids": [
+        "870a8215656f32909f75ff0f73a9f97b357eeaeeadd1427edf3b764312580724"
+      ],
+      "script": "5120e3d0fe075c0836dd1fe74e04aceaad52ce52e75bd5cf48403037be18647b998a"
+    },
+    {
+      "txType": "virtual",
+      "txid": "b9971111fc505e403d127b3a52cc1f46763d7dd0da142aa19946960e1e4cfb08",
+      "vout": 0,
+      "amount_sat": 13751,
+      "createdAt": "1792417263",
+      "expiresAt": "1794908422",
+      "expiresAt_unix": 1794908422,
+      "left_seconds": 2488917,
+      "urgent": false,
+      "expired": false,
+      "isSpent": false,
+      "spentBy": "",
+      "settledBy": "",
+      "commitmentTxids": [
+        "8841e8fcd67c6c9319b0e07cde20faf07e97b4f986d4a27bcb99ce92e39f0cd1"
+      ],
+      "script": "5120891ca8c55ddcbef6d7416148071c9690b59870c42507d52c76adfef0a9df3fa4"
+    },
+    {
+      "txType": "virtual",
+      "txid": "e1f712b0cb465ded38a5f0bf6523174ee0c084981e787c9309023dcf4edcaded",
+      "vout": 0,
+      "amount_sat": 13751,
+      "createdAt": "1792417252",
+      "expiresAt": "1794908422",
+      "expiresAt_unix": 1794908422,
+      "left_seconds": 2488916,
+      "urgent": false,
+      "expired": false,
+      "isSpent": true,
+      "spentBy": "62acdc1a3d4fd7011d7a4103ea48485ba417ac506425eafdb064c69d88438a8a",
+      "settledBy": "",
+      "commitmentTxids": [
+        "593f6dd75022b896027e540fd99ea921f68b2bf3bb803190ae5db50164bb09e9",
+        "8841e8fcd67c6c9319b0e07cde20faf07e97b4f986d4a27bcb99ce92e39f0cd1",
+        "a43297dcfe09277ae45748e59ee1b3626ed7b420d8d51d61b1ec59da913417a9"
+      ],
+      "script": "5120728d4e0c34bd5e00eca7adf97817b224f27cea0809f2848edfcb8774dd6d52ba"
+    },
+    {
+      "txType": "virtual",
+      "txid": "e1f712b0cb465ded38a5f0bf6523174ee0c084981e787c9309023dcf4edcaded",
+      "vout": 1,
+      "amount_sat": 1984,
+      "createdAt": "1792417252",
+      "expiresAt": "1794908422",
+      "expiresAt_unix": 1794908422,
+      "left_seconds": 2488916,
+      "urgent": false,
+      "expired": false,
+      "isSpent": false,
+      "spentBy": "",
+      "settledBy": "",
+      "commitmentTxids": [
+        "593f6dd75022b896027e540fd99ea921f68b2bf3bb803190ae5db50164bb09e9",
+        "8841e8fcd67c6c9319b0e07cde20faf07e97b4f986d4a27bcb99ce92e39f0cd1",
+        "a43297dcfe09277ae45748e59ee1b3626ed7b420d8d51d61b1ec59da913417a9"
+      ],
+      "script": "51208e5e1ed8b99b3b30b8313ef3baf4cc48e2baccafc4e409e90f4204237099ebe7"
+    },
+    {
+      "txType": "virtual",
+      "txid": "696b8440783b5fce7cae17a2b3ce4e4e52c6ca7d9620fe3d783f263773f6f5d1",
+      "vout": 0,
+      "amount_sat": 12848,
+      "createdAt": "1792417132",
+      "expiresAt": "1795009388",
+      "expiresAt_unix": 1795009388,
+      "left_seconds": 2589882,
+      "urgent": false,
+      "expired": false,
+      "isSpent": true,
+      "spentBy": "0bba47426c4bdbef656b84be85e8abfcf326de366c2623e19f675790a710b1e3",
+      "settledBy": "",
+      "commitmentTxids": [
+        "a43297dcfe09277ae45748e59ee1b3626ed7b420d8d51d61b1ec59da913417a9"
+      ],
+      "script": "51208e5e1ed8b99b3b30b8313ef3baf4cc48e2baccafc4e409e90f4204237099ebe7"
+    },
+    {
+      "txType": "virtual",
+      "txid": "80db0cfa2e735ce709a04269b31b85352e98d3b67b806ac9696fb2cb34eeb4d1",
+      "vout": 0,
+      "amount_sat": 549,
+      "createdAt": "1792412280",
+      "expiresAt": "1792757234",
+      "expiresAt_unix": 1792757234,
+      "left_seconds": 337727,
+      "urgent": true,
+      "expired": false,
+      "isSpent": false,
+      "spentBy": "",
+      "settledBy": "",
+      "commitmentTxids": [
+        "24a419f8dc44d15df05d554da600295ba1dad3720e047c52c546e3f0ebb43309"
+      ],
+      "script": "5120891ca8c55ddcbef6d7416148071c9690b59870c42507d52c76adfef0a9df3fa4"
+    },
+    {
+      "txType": "virtual",
+      "txid": "eef01e6af57910d25e1f4baafd7ef90fd149337d49f427e8b5f6e89538f37085",
+      "vout": 0,
+      "amount_sat": 549,
+      "createdAt": "1792412271",
+      "expiresAt": "1792757234",
+      "expiresAt_unix": 1792757234,
+      "left_seconds": 337727,
+      "urgent": true,
+      "expired": false,
+      "isSpent": true,
+      "spentBy": "5c9b61f0dc6e35bb534022a7f52990182dd692557d7a6b2cddb9e82e7b557caf",
+      "settledBy": "",
+      "commitmentTxids": [
+        "24a419f8dc44d15df05d554da600295ba1dad3720e047c52c546e3f0ebb43309"
+      ],
+      "script": "51201b6770dea01e22ff8022506081ceb9b6fcf6475c10b75826099b5d3038d746e4"
+    },
+    {
+      "txType": "virtual",
+      "txid": "eef01e6af57910d25e1f4baafd7ef90fd149337d49f427e8b5f6e89538f37085",
+      "vout": 1,
+      "amount_sat": 112074,
+      "createdAt": "1792412271",
+      "expiresAt": "1792757234",
+      "expiresAt_unix": 1792757234,
+      "left_seconds": 337727,
+      "urgent": true,
+      "expired": false,
+      "isSpent": false,
+      "spentBy": "",
+      "settledBy": "",
+      "commitmentTxids": [
+        "24a419f8dc44d15df05d554da600295ba1dad3720e047c52c546e3f0ebb43309"
+      ],
+      "script": "51203fdde01e6089d54af77bef310b4d517006530fdb8fc2a144989da929532169d8"
+    },
+    {
+      "txType": "virtual",
+      "txid": "035cee0fe43cdf5378c6af0544a2af56057721c009c28d8c9a1f693f6d1f784d",
+      "vout": 0,
+      "amount_sat": 20905,
+      "createdAt": "1792411059",
+      "expiresAt": "1794763750",
+      "expiresAt_unix": 1794763750,
+      "left_seconds": 2344242,
+      "urgent": false,
+      "expired": false,
+      "isSpent": false,
+      "spentBy": "",
+      "settledBy": "",
+      "commitmentTxids": [
+        "e4df305a81e3b7ba310829139ab0f926e26daa4e6e62d65f151af3aa12cec058"
+      ],
+      "script": "512008911090f30473c979f16b3c9a8ddabade84e91c5504cd9d71f7d4ee2e4a1d30"
+    },
+    {
+      "txType": "virtual",
+      "txid": "4dcaed5988990b1c164010d0d97faedd201b25e33dc5df418b367bc084664169",
+      "vout": 0,
+      "amount_sat": 20905,
+      "createdAt": "1792411041",
+      "expiresAt": "1794763750",
+      "expiresAt_unix": 1794763750,
+      "left_seconds": 2344242,
+      "urgent": false,
+      "expired": false,
+      "isSpent": true,
+      "spentBy": "8d000b6cffe3ff27461fbc0ab7f2063cdc32b222d2f41577ea6c6d67e807651a",
+      "settledBy": "",
+      "commitmentTxids": [
+        "82f428240b45c667ff270425158c3c2362f53fc00206b6078158ebd1fa27a512",
+        "e4df305a81e3b7ba310829139ab0f926e26daa4e6e62d65f151af3aa12cec058"
+      ],
+      "script": "51203b4da09e4359e2974b6529ff4a24ccecf4dbd0b179c09e85c66bc50ebb813711"
+    },
+    {
+      "txType": "virtual",
+      "txid": "4dcaed5988990b1c164010d0d97faedd201b25e33dc5df418b367bc084664169",
+      "vout": 1,
+      "amount_sat": 78807,
+      "createdAt": "1792411041",
+      "expiresAt": "1794763750",
+      "expiresAt_unix": 1794763750,
+      "left_seconds": 2344242,
+      "urgent": false,
+      "expired": false,
+      "isSpent": false,
+      "spentBy": "",
+      "settledBy": "",
+      "commitmentTxids": [
+        "82f428240b45c667ff270425158c3c2362f53fc00206b6078158ebd1fa27a512",
+        "e4df305a81e3b7ba310829139ab0f926e26daa4e6e62d65f151af3aa12cec058"
+      ],
+      "script": "5120891ca8c55ddcbef6d7416148071c9690b59870c42507d52c76adfef0a9df3fa4"
+    },
+    {
+      "txType": "onboard",
+      "txid": "351732686a521bb88101c4a884ac891a45eaf7d6f3171743cdaf95bc9678a46f",
+      "vout": 0,
+      "amount_sat": 37082,
+      "createdAt": "1792406249",
+      "expiresAt": "1794998505",
+      "expiresAt_unix": 1794998505,
+      "left_seconds": 2578996,
+      "urgent": false,
+      "expired": false,
+      "isSpent": false,
+      "spentBy": "",
+      "settledBy": "",
+      "commitmentTxids": [
+        "187a6e2f08f00981dbe191c5946978fdcda919d68b51510b99e63bfd5bb0762f"
+      ],
+      "script": "5120b2bf5e88b6eb5a861b677c0668d41736cf8e11c444e0f22a29493b75ce098f6b"
+    },
+    {
+      "txType": "onboard",
+      "txid": "1e967251ce3d934dfc5652f931b51c556aa74dd8bfeb83524f6d6775e3d5217d",
+      "vout": 0,
+      "amount_sat": 23083,
+      "createdAt": "1792404405",
+      "expiresAt": "1794996661",
+      "expiresAt_unix": 1794996661,
+      "left_seconds": 2577152,
+      "urgent": false,
+      "expired": false,
+      "isSpent": false,
+      "spentBy": "",
+      "settledBy": "",
+      "commitmentTxids": [
+        "c3517428ca3f3a4230ec2e14b4d38c449dcfd6ceaa09c8b6cc435a04139646e8"
+      ],
+      "script": "5120b88ef07f06c6af0af564c6c70fb8610ce48967163642db9bebd8df09231a31aa"
+    }
+  ],
+  "commitments": {
+    "870a8215656f32909f75ff0f73a9f97b357eeaeeadd1427edf3b764312580724": {
+      "startedAt": "1792418749",
+      "endedAt": "1792418789",
+      "batches": {
+        "0": {
+          "totalOutputAmount": "10000",
+          "totalOutputVtxos": 1,
+          "expiresAt": "1795011045",
+          "swept": false
+        }
+      },
+      "totalInputAmount": "10000",
+      "totalInputVtxos": 1,
+      "totalOutputAmount": "10000",
+      "totalOutputVtxos": 1,
+      "_onchain": {
+        "txid": "870a8215656f32909f75ff0f73a9f97b357eeaeeadd1427edf3b764312580724",
+        "block_height": 972158,
+        "block_time": 1792418965,
+        "vout_count": 2,
+        "total_sats": 1938406,
+        "mempool_url": "https://mempool.space/tx/870a8215656f32909f75ff0f73a9f97b357eeaeeadd1427edf3b764312580724"
+      }
+    },
+    "8841e8fcd67c6c9319b0e07cde20faf07e97b4f986d4a27bcb99ce92e39f0cd1": {
+      "startedAt": "1792316125",
+      "endedAt": "1792316166",
+      "batches": {
+        "0": {
+          "totalOutputAmount": "943",
+          "totalOutputVtxos": 1,
+          "expiresAt": "1794908422",
+          "swept": false
+        }
+      },
+      "totalInputAmount": "0",
+      "totalInputVtxos": 0,
+      "totalOutputAmount": "943",
+      "totalOutputVtxos": 1,
+      "_onchain": {
+        "txid": "8841e8fcd67c6c9319b0e07cde20faf07e97b4f986d4a27bcb99ce92e39f0cd1",
+        "block_height": 971969,
+        "block_time": 1792316338,
+        "vout_count": 2,
+        "total_sats": 9432655,
+        "mempool_url": "https://mempool.space/tx/8841e8fcd67c6c9319b0e07cde20faf07e97b4f986d4a27bcb99ce92e39f0cd1"
+      }
+    },
+    "593f6dd75022b896027e540fd99ea921f68b2bf3bb803190ae5db50164bb09e9": {
+      "startedAt": "1792316574",
+      "endedAt": "1792316615",
+      "batches": {
+        "0": {
+          "totalOutputAmount": "1944",
+          "totalOutputVtxos": 1,
+          "expiresAt": "1794908871",
+          "swept": false
+        }
+      },
+      "totalInputAmount": "0",
+      "totalInputVtxos": 0,
+      "totalOutputAmount": "1944",
+      "totalOutputVtxos": 1,
+      "_onchain": {
+        "txid": "593f6dd75022b896027e540fd99ea921f68b2bf3bb803190ae5db50164bb09e9",
+        "block_height": 971971,
+        "block_time": 1792316740,
+        "vout_count": 2,
+        "total_sats": 9433359,
+        "mempool_url": "https://mempool.space/tx/593f6dd75022b896027e540fd99ea921f68b2bf3bb803190ae5db50164bb09e9"
+      }
+    },
+    "a43297dcfe09277ae45748e59ee1b3626ed7b420d8d51d61b1ec59da913417a9": {
+      "startedAt": "1792417091",
+      "endedAt": "1792417132",
+      "batches": {
+        "0": {
+          "totalOutputAmount": "12848",
+          "totalOutputVtxos": 1,
+          "expiresAt": "1795009388",
+          "swept": false
+        }
+      },
+      "totalInputAmount": "0",
+      "totalInputVtxos": 0,
+      "totalOutputAmount": "12848",
+      "totalOutputVtxos": 1,
+      "_onchain": {
+        "txid": "a43297dcfe09277ae45748e59ee1b3626ed7b420d8d51d61b1ec59da913417a9",
+        "block_height": 972156,
+        "block_time": 1792418345,
+        "vout_count": 2,
+        "total_sats": 1114377,
+        "mempool_url": "https://mempool.space/tx/a43297dcfe09277ae45748e59ee1b3626ed7b420d8d51d61b1ec59da913417a9"
+      }
+    },
+    "24a419f8dc44d15df05d554da600295ba1dad3720e047c52c546e3f0ebb43309": {
+      "startedAt": "1790164939",
+      "endedAt": "1790164978",
+      "batches": {
+        "0": {
+          "totalOutputAmount": "120080",
+          "totalOutputVtxos": 1,
+          "expiresAt": "1792757234",
+          "swept": false
+        }
+      },
+      "totalInputAmount": "120080",
+      "totalInputVtxos": 1,
+      "totalOutputAmount": "120080",
+      "totalOutputVtxos": 1,
+      "_onchain": {
+        "txid": "24a419f8dc44d15df05d554da600295ba1dad3720e047c52c546e3f0ebb43309",
+        "block_height": 968272,
+        "block_time": 1790167119,
+        "vout_count": 3,
+        "total_sats": 1280129,
+        "mempool_url": "https://mempool.space/tx/24a419f8dc44d15df05d554da600295ba1dad3720e047c52c546e3f0ebb43309"
+      }
+    },
+    "e4df305a81e3b7ba310829139ab0f926e26daa4e6e62d65f151af3aa12cec058": {
+      "startedAt": "1792171451",
+      "endedAt": "1792171494",
+      "batches": {
+        "0": {
+          "totalOutputAmount": "1993924",
+          "totalOutputVtxos": 1,
+          "expiresAt": "1794763750",
+          "swept": false
+        }
+      },
+      "totalInputAmount": "0",
+      "totalInputVtxos": 0,
+      "totalOutputAmount": "1993924",
+      "totalOutputVtxos": 1,
+      "_onchain": {
+        "txid": "e4df305a81e3b7ba310829139ab0f926e26daa4e6e62d65f151af3aa12cec058",
+        "block_height": 971742,
+        "block_time": 1792171682,
+        "vout_count": 2,
+        "total_sats": 14297743,
+        "mempool_url": "https://mempool.space/tx/e4df305a81e3b7ba310829139ab0f926e26daa4e6e62d65f151af3aa12cec058"
+      }
+    },
+    "82f428240b45c667ff270425158c3c2362f53fc00206b6078158ebd1fa27a512": {
+      "startedAt": "1792335702",
+      "endedAt": "1792335743",
+      "batches": {
+        "0": {
+          "totalOutputAmount": "1009",
+          "totalOutputVtxos": 1,
+          "expiresAt": "1794927999",
+          "swept": false
+        }
+      },
+      "totalInputAmount": "1009",
+      "totalInputVtxos": 1,
+      "totalOutputAmount": "1009",
+      "totalOutputVtxos": 1,
+      "_onchain": {
+        "txid": "82f428240b45c667ff270425158c3c2362f53fc00206b6078158ebd1fa27a512",
+        "block_height": 972013,
+        "block_time": 1792335969,
+        "vout_count": 3,
+        "total_sats": 9375284,
+        "mempool_url": "https://mempool.space/tx/82f428240b45c667ff270425158c3c2362f53fc00206b6078158ebd1fa27a512"
+      }
+    },
+    "187a6e2f08f00981dbe191c5946978fdcda919d68b51510b99e63bfd5bb0762f": {
+      "startedAt": "1792406209",
+      "endedAt": "1792406249",
+      "batches": {
+        "0": {
+          "totalOutputAmount": "37082",
+          "totalOutputVtxos": 1,
+          "expiresAt": "1794998505",
+          "swept": false
+        }
+      },
+      "totalInputAmount": "37082",
+      "totalInputVtxos": 1,
+      "totalOutputAmount": "37082",
+      "totalOutputVtxos": 1,
+      "_onchain": {
+        "txid": "187a6e2f08f00981dbe191c5946978fdcda919d68b51510b99e63bfd5bb0762f",
+        "block_height": 972136,
+        "block_time": 1792408492,
+        "vout_count": 3,
+        "total_sats": 1975990,
+        "mempool_url": "https://mempool.space/tx/187a6e2f08f00981dbe191c5946978fdcda919d68b51510b99e63bfd5bb0762f"
+      }
+    },
+    "c3517428ca3f3a4230ec2e14b4d38c449dcfd6ceaa09c8b6cc435a04139646e8": {
+      "startedAt": "1792404365",
+      "endedAt": "1792404405",
+      "batches": {
+        "0": {
+          "totalOutputAmount": "23083",
+          "totalOutputVtxos": 1,
+          "expiresAt": "1794996661",
+          "swept": false
+        }
+      },
+      "totalInputAmount": "23083",
+      "totalInputVtxos": 1,
+      "totalOutputAmount": "23083",
+      "totalOutputVtxos": 1,
+      "_onchain": {
+        "txid": "c3517428ca3f3a4230ec2e14b4d38c449dcfd6ceaa09c8b6cc435a04139646e8",
+        "block_height": 972133,
+        "block_time": 1792405559,
+        "vout_count": 3,
+        "total_sats": 1999620,
+        "mempool_url": "https://mempool.space/tx/c3517428ca3f3a4230ec2e14b4d38c449dcfd6ceaa09c8b6cc435a04139646e8"
+      }
+    }
+  },
+  "notes": [
+    "Activity list from arkexplorer.blockonomics.co (consumes arkade.computer /v1/txs SSE).",
+    "VTXO bodies and commitment metadata from arkade.computer indexer.",
+    "URGENT = remaining lifetime <= unilateralExitDelay (605184 s \u2248 7d) from /v1/info."
+  ]
+}

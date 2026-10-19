@@ -9,6 +9,7 @@ import { AssetPage } from "@/pages/asset";
 import { UnilateralExitPage } from "@/pages/unilateral-exit";
 import { NotFoundPage } from "@/pages/not-found";
 import { WatchlistPage } from "@/pages/watchlist";
+import { ObservePage } from "@/pages/observe";
 
 export function App() {
     return (
@@ -23,6 +24,7 @@ export function App() {
                     {/* Dedicated, intentionally UNLINKED keyless exit executor. */}
                     <Route path="/unilateral-exit" element={<UnilateralExitPage />} />
                     <Route path="/watchlist" element={<WatchlistPage />} />
+                    <Route path="/observe" element={<ObservePage />} />
                     <Route path="*" element={<NotFoundPage />} />
                 </Routes>
             </DynamicLayout>
