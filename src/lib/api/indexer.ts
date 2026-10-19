@@ -1,7 +1,10 @@
 import { RestIndexerProvider, RestArkProvider } from "@arkade-os/sdk";
+import { resolveOperatorUrl } from "@/providers/operator-settings";
 
-export const INDEXER_URL = import.meta.env.VITE_INDEXER_URL || "https://arkade.computer";
-export const ARK_URL = import.meta.env.VITE_ARK_URL || INDEXER_URL;
+export const INDEXER_URL = resolveOperatorUrl() ?? "";
+export const ARK_URL =
+    (import.meta.env.VITE_ARK_URL && String(import.meta.env.VITE_ARK_URL)) || INDEXER_URL;
+export const OPERATOR_CONFIGURED = INDEXER_URL !== "";
 
 // ---------------------------------------------------------------------------
 // Asset metadata types (not yet exported from SDK top-level)

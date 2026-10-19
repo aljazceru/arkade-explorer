@@ -49,7 +49,7 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
     );
 }
 
-function ArkadePanel({ data }: { data: ArkadeObservation }) {
+function OperatorPanel({ data }: { data: ArkadeObservation }) {
     const info = data.info || {};
     const stats = data.stats_24h || {};
     const urgent = data.vtxos.filter((v) => v.urgent && !v.isSpent);
@@ -57,7 +57,10 @@ function ArkadePanel({ data }: { data: ArkadeObservation }) {
 
     return (
         <div className="space-y-4" data-testid="arkade-panel">
-            <Card title="Arkade — network health" subtitle="arkade.computer/v1/info">
+            <Card
+                title="Operator — network health"
+                subtitle={data.source?.info || "operator /v1/info"}
+            >
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     <Stat label="Version" value={String(info.version ?? "—")} />
                     <Stat label="Network" value={String(info.network ?? "—")} />
@@ -77,11 +80,11 @@ function ArkadePanel({ data }: { data: ArkadeObservation }) {
                 </div>
                 <p className="text-xs text-muted-foreground mt-3">
                     Snapshot {data.fetched_at}. Live operator params; activity enriched via public
-                    indexer + Blockonomics SSE archive.
+                    indexer and archived transaction data.
                 </p>
             </Card>
 
-            <Card title="24h network stats" subtitle="arkexplorer.blockonomics.co/api/stats">
+            <Card title="24h network stats" subtitle={data.source?.stats || "24h stats"}>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <Stat label="Virtual txs" value={String(stats.virtualTxCount ?? "—")} />
                     <Stat
@@ -95,7 +98,7 @@ function ArkadePanel({ data }: { data: ArkadeObservation }) {
 
             <Card
                 title={`Live VTXOs (${data.vtxos.length}) — ${urgent.length} URGENT`}
-                subtitle="arkade.computer/v1/indexer/vtxos"
+                subtitle={data.source?.indexer || "indexer"}
             >
                 {urgent.length > 0 && (
                     <div className="mb-3 flex items-start gap-2 rounded-lg bg-red-500/10 border border-red-600/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">
@@ -433,8 +436,8 @@ export function ObservationDashboard() {
                         <Activity className="h-5 w-5" /> Observation
                     </h1>
                     <p className="text-sm text-muted-foreground mt-1">
-                        Side-by-side mainnet view of Arkade and Second&apos;s bark/captaind — live
-                        public data only.
+                        Side-by-side mainnet view of two Ark implementations — live public data
+                        only.
                     </p>
                     {dataAsOf && (
                         <p className="text-xs text-muted-foreground mt-1" data-testid="data-as-of">
@@ -444,7 +447,7 @@ export function ObservationDashboard() {
                                 arkade.fetched_at !== bark.fetched_at && (
                                     <span className="text-muted-foreground">
                                         {" "}
-                                        (Arkade {arkade.fetched_at}; Second {bark.fetched_at})
+                                        (Operator {arkade.fetched_at}; Second {bark.fetched_at})
                                     </span>
                                 )}
                         </p>
@@ -464,7 +467,7 @@ export function ObservationDashboard() {
                             )}
                             data-testid={`tab-${t}`}
                         >
-                            {t === "both" ? "Both" : t === "arkade" ? "Arkade" : "Second (bark)"}
+                            {t === "both" ? "Both" : t === "arkade" ? "Operator" : "Second (bark)"}
                         </button>
                     ))}
                     <button
@@ -488,9 +491,9 @@ export function ObservationDashboard() {
                 {(tab === "arkade" || tab === "both") && (
                     <div>
                         {arkade ? (
-                            <ArkadePanel data={arkade} />
+                            <OperatorPanel data={arkade} />
                         ) : (
-                            <p className="text-sm">Loading Arkade…</p>
+                            <p className="text-sm">Loading operator…</p>
                         )}
                     </div>
                 )}

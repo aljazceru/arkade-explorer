@@ -5,22 +5,19 @@ import { PageTransition } from "@/components/shared/page-transition";
 
 /**
  * Self-contained, keyless unilateral-exit executor. Imports a pre-signed exit
- * package (from `@arkade-os/sdk`'s `UnilateralExit.prepare()`) and drives it
- * onchain with only an Esplora endpoint. Deliberately NOT linked from the rest
- * of the explorer — reachable directly at /unilateral-exit.
+ * package and drives it onchain with only an Esplora endpoint. Deliberately
+ * NOT linked from the rest of the explorer — reachable directly at
+ * /unilateral-exit.
  *
- * The flow itself lives in `@arkade-os/exit-ui`, shared with the standalone
- * tool at arkade-os.github.io/arkade-unilateral-exit so the two cannot drift
- * apart again. This page supplies only what is explorer-specific: the route
- * chrome, the page heading, and the Esplora override from Vite's env. Colours
- * come from the `--color-exit-*` aliases in `globals.css`, which follow the
- * active theme.
+ * This page provides the route chrome, page heading, and Esplora override
+ * from Vite's environment. Colours come from the `--color-exit-*` aliases
+ * in `globals.css`, which follow the active theme.
  */
 export function UnilateralExitPage() {
     useEffect(() => {
-        document.title = "Unilateral Exit | Arkade Explorer";
+        document.title = "Unilateral Exit | ark.observer";
         return () => {
-            document.title = "Arkade Explorer";
+            document.title = "ark.observer";
         };
     }, []);
 

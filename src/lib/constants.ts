@@ -1,9 +1,8 @@
-export const APP_NAME = "Arkade Explorer";
+export const APP_NAME = "ark.observer";
 
 export const EXTERNAL_LINKS = {
-    DOCS: "https://docs.arkadeos.com/",
-    GITHUB: "https://github.com/arkade-os",
-    ARKADE: import.meta.env.VITE_ARKADE_URL || "https://arkade.money",
+    DOCS: "https://github.com/aljazceru/arkade-explorer#readme",
+    GITHUB: "https://github.com/aljazceru/arkade-explorer",
 } as const;
 
 export const PAGINATION = {

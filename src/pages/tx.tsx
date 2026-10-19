@@ -17,9 +17,9 @@ export function TransactionPage() {
     const addedToRecentRef = useRef<string | null>(null);
 
     useEffect(() => {
-        document.title = txid ? `Tx ${txid.slice(0, 8)}... | Arkade Explorer` : "Arkade Explorer";
+        document.title = txid ? `Tx ${txid.slice(0, 8)}... | ark.observer` : "ark.observer";
         return () => {
-            document.title = "Arkade Explorer";
+            document.title = "ark.observer";
         };
     }, [txid]);
 

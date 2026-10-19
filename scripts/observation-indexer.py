@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Fetch public mainnet observation data for ark.observer (Arkade + Second/bark).
+"""Fetch public observation data for ark.observer.
 
 Writes JSON under public/observation/ (or OBSERVATION_OUT). No secrets.
-Blockonomics has no CORS, so the browser reads these static files; Arkade and
-Second endpoints that allow CORS are also hit live from the page.
+All operator and activity endpoints are supplied through ARK_OBS_* variables.
 """
 from __future__ import annotations
 
@@ -13,14 +12,14 @@ from zoneinfo import ZoneInfo
 
 ROME = ZoneInfo("Europe/Rome")
 OUT = Path(os.environ.get("OBSERVATION_OUT", Path(__file__).resolve().parents[1] / "public" / "observation"))
-ARKADE = "https://arkade.computer"
-BN = "https://arkexplorer.blockonomics.co"
-BARK = "https://ark.second.tech"
-MEMPOOL = "https://mempool.space/api"
-# Tweaked P2TR of Second mainnet server pubkey 0375b2e4… (derived via @scure/btc-signer)
+ARKADE = (os.environ.get("ARK_OBS_ARK_URL") or "").rstrip("/") or None
+BN = (os.environ.get("ARK_OBS_ACTIVITY_URL") or "").rstrip("/") or None
+BARK = (os.environ.get("ARK_OBS_BARK_URL") or "").rstrip("/") or None
+MEMPOOL = os.environ.get("ARK_OBS_MEMPOOL_URL", "https://mempool.space/api").rstrip("/")
+ORIGIN = os.environ.get("ARK_OBS_ORIGIN", "https://ark.observer")
+# Tweaked P2TR of the configured operator's public server key.
 BARK_SERVER_P2TR = "bc1pyj5t7f9afs2t2yyeld0fja3hswtzxwhdw3kgl0943azy02mx07fqzz2c9e"
-UNILATERAL_EXIT_SECS = 605184  # arkade /v1/info unilateralExitDelay (seconds)
-
+DEFAULT_EXIT_SECS = 605184
 
 def curl_json(url: str, timeout: int = 30):
     raw = subprocess.check_output(["curl", "-sS", "--max-time", str(timeout), url], text=True)
@@ -41,14 +40,14 @@ def now_iso():
     return datetime.datetime.now(tz=ROME).isoformat()
 
 
-def grpc_web(method: str, payload: bytes = b"", host: str = BARK) -> bytes:
+def grpc_web(host: str, method: str, payload: bytes = b"") -> bytes:
     body = b"\x00" + struct.pack(">I", len(payload)) + payload
     return curl_bin(
         f"{host}/bark_server.ArkService/{method}",
         data=body,
         headers=[
             "Content-Type: application/grpc-web+proto",
-            "Origin: https://ungovernable.exe.xyz",
+            f"Origin: {ORIGIN}",
             "x-grpc-web: 1",
         ],
         timeout=25,
@@ -137,24 +136,51 @@ def parse_arkinfo(msg: bytes) -> dict:
 
 
 def fetch_arkade():
-    info = curl_json(f"{ARKADE}/v1/info")
-    stats = curl_json(f"{BN}/api/stats")
-    recent = curl_json(f"{BN}/api/recent-transactions")
+    if not ARKADE:
+        return {
+            "fetched_at": now_iso(),
+            "source": {},
+            "info": None,
+            "stats_24h": None,
+            "trends": [],
+            "recent_activity": [],
+            "vtxos": [],
+            "commitments": {},
+            "notes": ["ARK_OBS_ARK_URL not set; operator section skipped"],
+        }
+
+    info_url = f"{ARKADE}/v1/info"
+    info = curl_json(info_url)
+    raw_exit_delay = info.get("unilateralExitDelay")
     try:
-        trends = curl_json(f"{BN}/api/trends")
-    except Exception:
-        trends = []
+        exit_delay = float(raw_exit_delay)
+        exit_secs = int(exit_delay if exit_delay >= 512 else exit_delay * 600)
+    except (TypeError, ValueError, OverflowError):
+        exit_secs = DEFAULT_EXIT_SECS
+
+    stats = None
+    recent = []
+    trends = []
+    if BN:
+        stats = curl_json(f"{BN}/api/stats")
+        recent = curl_json(f"{BN}/api/recent-transactions")
+        try:
+            trends = curl_json(f"{BN}/api/trends")
+        except Exception:
+            trends = []
 
     vtxos = []
     commitments = {}
     for t in recent:
         txid = t["txid"]
         try:
-            d = curl_json(f"{ARKADE}/v1/indexer/vtxos?outpoints={txid}:0&outpoints={txid}:1&outpoints={txid}:2")
-        except Exception as e:
-            vtxos.append({"txid": txid, "txType": t.get("txType"), "error": str(e)})
+            data = curl_json(
+                f"{ARKADE}/v1/indexer/vtxos?outpoints={txid}:0&outpoints={txid}:1&outpoints={txid}:2"
+            )
+        except Exception as error:
+            vtxos.append({"txid": txid, "txType": t.get("txType"), "error": str(error)})
             continue
-        for v in d.get("vtxos") or []:
+        for v in data.get("vtxos") or []:
             exp = v.get("expiresAt")
             try:
                 exp_i = int(exp)
@@ -174,7 +200,7 @@ def fetch_arkade():
                 "expiresAt": exp,
                 "expiresAt_unix": exp_i,
                 "left_seconds": left,
-                "urgent": left is not None and 0 < left <= UNILATERAL_EXIT_SECS,
+                "urgent": left is not None and 0 < left <= exit_secs,
                 "expired": left is not None and left <= 0,
                 "isSpent": bool(v.get("isSpent")),
                 "spentBy": v.get("spentBy") or "",
@@ -183,34 +209,48 @@ def fetch_arkade():
                 "script": v.get("script"),
             }
             vtxos.append(row)
-            for c in commits[:1]:
-                if c in commitments:
+            for commitment_txid in commits[:1]:
+                if commitment_txid in commitments:
                     continue
                 try:
-                    commitments[c] = curl_json(f"{ARKADE}/v1/indexer/commitmentTx/{c}")
-                    # on-chain check
+                    commitments[commitment_txid] = curl_json(
+                        f"{ARKADE}/v1/indexer/commitmentTx/{commitment_txid}"
+                    )
                     try:
-                        tx = curl_json(f"{MEMPOOL}/tx/{c}")
-                        commitments[c]["_onchain"] = {
-                            "txid": c,
+                        tx = curl_json(f"{MEMPOOL}/tx/{commitment_txid}")
+                        commitments[commitment_txid]["_onchain"] = {
+                            "txid": commitment_txid,
                             "block_height": tx.get("status", {}).get("block_height"),
                             "block_time": tx.get("status", {}).get("block_time"),
                             "vout_count": len(tx.get("vout") or []),
                             "total_sats": sum(o["value"] for o in tx.get("vout") or []),
-                            "mempool_url": f"https://mempool.space/tx/{c}",
+                            "mempool_url": f"{MEMPOOL.removesuffix('/api')}/tx/{commitment_txid}",
                         }
-                    except Exception as e:
-                        commitments[c]["_onchain_error"] = str(e)
-                except Exception as e:
-                    commitments[c] = {"error": str(e)}
+                    except Exception as error:
+                        commitments[commitment_txid]["_onchain_error"] = str(error)
+                except Exception as error:
+                    commitments[commitment_txid] = {"error": str(error)}
 
+    notes = [
+        f"Operator info and VTXO data from {info_url} and {ARKADE}/v1/indexer.",
+        f"URGENT = remaining lifetime <= {exit_secs} seconds from {info_url}.",
+    ]
+    if BN:
+        notes.append(
+            f"Activity and 24h statistics from {BN}/api/recent-transactions and {BN}/api/stats."
+        )
+        notes.append(f"Activity trends from {BN}/api/trends when available.")
+    else:
+        notes.append("ARK_OBS_ACTIVITY_URL not set; 24h stats and recent activity enrichment skipped.")
+    notes.append(f"Commitment transaction data from {MEMPOOL}/tx/<txid>.")
     return {
         "fetched_at": now_iso(),
         "source": {
-            "info": f"{ARKADE}/v1/info",
-            "activity": f"{BN}/api/recent-transactions",
-            "stats": f"{BN}/api/stats",
+            "info": info_url,
+            "activity": f"{BN}/api/recent-transactions" if BN else None,
+            "stats": f"{BN}/api/stats" if BN else None,
             "indexer": f"{ARKADE}/v1/indexer",
+            "mempool": MEMPOOL,
         },
         "info": info,
         "stats_24h": stats,
@@ -218,25 +258,34 @@ def fetch_arkade():
         "recent_activity": recent,
         "vtxos": vtxos,
         "commitments": commitments,
-        "notes": [
-            "Activity list from arkexplorer.blockonomics.co (consumes arkade.computer /v1/txs SSE).",
-            "VTXO bodies and commitment metadata from arkade.computer indexer.",
-            "URGENT = remaining lifetime <= unilateralExitDelay (605184 s ≈ 7d) from /v1/info.",
-        ],
+        "notes": notes,
     }
 
 
 def fetch_bark():
-    msgs, _ = frames(grpc_web("GetArkInfo"))
+    if not BARK:
+        return {
+            "fetched_at": now_iso(),
+            "source": {},
+            "info": {},
+            "next_round_unix": None,
+            "next_round_rome": None,
+            "last_round_event": None,
+            "server_address_stats": None,
+            "recent_server_txs": [],
+            "stats_24h": None,
+            "notes": ["ARK_OBS_BARK_URL not set; Second section skipped"],
+        }
+    msgs, _ = frames(grpc_web(BARK, "GetArkInfo"))
     info = parse_arkinfo(msgs[0]) if msgs else {}
-    msgs, _ = frames(grpc_web("NextRoundTime"))
+    msgs, _ = frames(grpc_web(BARK, "NextRoundTime"))
     next_ts = None
     if msgs:
         f = decode_fields(msgs[0])
         if 1 in f:
             next_ts = f[1][0][1]
     last = None
-    msgs, _ = frames(grpc_web("LastRoundEvent"))
+    msgs, _ = frames(grpc_web(BARK, "LastRoundEvent"))
     if msgs:
         f = decode_fields(msgs[0])
         kind = {1: "attempt", 2: "vtxo_proposal", 4: "finished", 5: "failed"}
@@ -273,18 +322,18 @@ def fetch_bark():
                 "vout": len(t.get("vout") or []),
                 "total_sats": sum(o["value"] for o in t.get("vout") or []),
                 "direction": "to_server" if pays_to and not spends_from else ("from_server" if spends_from else "other"),
-                "mempool_url": f"https://mempool.space/tx/{t['txid']}",
+                "mempool_url": f"{MEMPOOL.removesuffix('/api')}/tx/{t['txid']}",
             }
         )
     cut = time.time() - 86400
     day = [r for r in rows if r["block_time"] and r["block_time"] >= cut]
+    grpc_url = f"{BARK}/bark_server.ArkService"
     return {
         "fetched_at": now_iso(),
         "source": {
-            "grpc": f"{BARK}/bark_server.ArkService",
+            "grpc": grpc_url,
             "server_p2tr": BARK_SERVER_P2TR,
             "mempool": MEMPOOL,
-            "docs": "https://second.tech/docs/connection-details",
         },
         "info": info,
         "next_round_unix": next_ts,
@@ -299,9 +348,9 @@ def fetch_bark():
             "from_server": sum(1 for r in day if r["direction"] == "from_server"),
         },
         "notes": [
-            "GetArkInfo / NextRoundTime / LastRoundEvent via captaind gRPC-web (CORS open).",
-            "On-chain rows are transactions touching the server's published P2TR — boards/liquidity/round-related activity visible publicly; not a full VTXO index (Second does not expose one).",
-            "Credit: Second (bark/captaind).",
+            f"Round information from {grpc_url} via gRPC-web.",
+            f"On-chain activity fetched from {MEMPOOL}/address/{BARK_SERVER_P2TR}.",
+            "On-chain rows cover transactions touching the server address; they are not a full VTXO index.",
         ],
     }
 

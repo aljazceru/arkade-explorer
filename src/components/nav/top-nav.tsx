@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Search, Eye, Activity } from "lucide-react";
-import { EXTERNAL_LINKS } from "@/lib/constants";
-import { ArkadeLogo } from "@/components/shared/arkade-logo";
+import { useServerInfo } from "@/providers/server-info-provider";
 import { SearchCommandPaletteOverlay } from "@/components/shared/search-bar";
 export function TopNav() {
+    const { serverInfo, isLoading: isServerInfoLoading } = useServerInfo();
     const [isMac, setIsMac] = useState(true);
     const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
@@ -29,10 +29,35 @@ export function TopNav() {
             className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-sm"
             role="banner"
         >
-            <div className="max-w-7xl mx-auto flex items-center justify-between h-14 px-4">
-                <Link to="/" className="shrink-0" aria-label="Arkade Explorer home">
-                    <ArkadeLogo size="md" />
-                </Link>
+            <div className="max-w-[1480px] mx-auto flex items-center justify-between h-14 w-full px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center gap-3 shrink-0">
+                    <Link
+                        to="/"
+                        className="inline-flex shrink-0 items-center gap-2"
+                        aria-label="ark.observer home"
+                    >
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="shrink-0 text-muted-foreground"
+                            aria-hidden="true"
+                        >
+                            <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1" />
+                            <circle cx="8" cy="8" r="2.5" fill="currentColor" />
+                        </svg>
+                        <span className="font-semibold tracking-tight">ark.observer</span>
+                    </Link>
+                    {!isServerInfoLoading && serverInfo?.network && (
+                        <span className="hidden sm:inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground whitespace-nowrap">
+                            {serverInfo.network === "bitcoin"
+                                ? "Mainnet"
+                                : `${serverInfo.network.charAt(0).toUpperCase()}${serverInfo.network.slice(1)}`}
+                        </span>
+                    )}
+                </div>
 
                 {/* Mobile search icon */}
                 <button
@@ -51,7 +76,7 @@ export function TopNav() {
 
                 <button
                     onClick={() => setCommandPaletteOpen(true)}
-                    className="hidden sm:flex items-center flex-1 max-w-lg mx-6 h-9 px-3 rounded-lg bg-secondary border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors duration-200 cursor-text"
+                    className="hidden sm:flex items-center flex-1 max-w-xl mx-6 h-9 px-3 rounded-lg bg-secondary border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors duration-200 cursor-text"
                     aria-label="Open search (Cmd+K)"
                 >
                     <Search className="h-4 w-4 shrink-0 mr-2" aria-hidden="true" />
@@ -78,15 +103,6 @@ export function TopNav() {
                         <Eye className="h-4 w-4" aria-hidden="true" />
                         <span className="hidden md:inline">Watchlist</span>
                     </Link>
-                    <a
-                        href={EXTERNAL_LINKS.ARKADE}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors duration-200 active:scale-[0.97]"
-                        aria-label="Try Arkade (opens in new tab)"
-                    >
-                        Try Arkade
-                    </a>
                 </div>
             </div>
         </header>

@@ -1,0 +1,1705 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow" />
+        <title>C · Safety Desk — Arkade UX</title>
+        <style>
+            :root {
+                color-scheme: light;
+                --cream: #f7f1e3;
+                --paper: #fdfaf1;
+                --card: #fffdf6;
+                --ink: #2e2830;
+                --soft: #5c5360;
+                --faint: #8a8090;
+                --line: #e4d9c4;
+                --line-dark: #cbbd9f;
+                --indigo: #3d3a86;
+                --indigo-deep: #2c2a66;
+                --indigo-tint: #eceaf6;
+                --terra: #bd5227;
+                --terra-deep: #9c3f1b;
+                --terra-tint: #f9e9de;
+                --amber: #8a5a12;
+                --amber-tint: #f6ecd4;
+                --settle: #6f6a5e;
+                --serif:
+                    "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman",
+                    serif;
+                --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html {
+                scroll-behavior: smooth;
+            }
+            body {
+                margin: 0;
+                background: var(--cream);
+                color: var(--ink);
+                font: 15px/1.6 var(--sans);
+                background-image: radial-gradient(
+                    1200px 500px at 80% -10%,
+                    #f1e6cd 0%,
+                    transparent 60%
+                );
+            }
+            button,
+            input {
+                font: inherit;
+            }
+            button,
+            a,
+            input {
+                touch-action: manipulation;
+            }
+            a {
+                color: var(--indigo);
+            }
+            button {
+                cursor: pointer;
+                transition:
+                    background 0.15s,
+                    border-color 0.15s,
+                    color 0.15s;
+            }
+            :focus-visible {
+                outline: 3px solid var(--indigo);
+                outline-offset: 3px;
+                border-radius: 4px;
+            }
+            .sr {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                overflow: hidden;
+                clip: rect(0 0 0 0);
+                white-space: nowrap;
+            }
+            .skip {
+                position: absolute;
+                left: 16px;
+                top: -60px;
+                z-index: 20;
+                background: var(--ink);
+                color: var(--paper);
+                padding: 10px 18px;
+                border-radius: 0 0 10px 10px;
+                text-decoration: none;
+            }
+            .skip:focus {
+                top: 0;
+            }
+
+            /* persistent prototype notice */
+            .notice {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px 18px;
+                align-items: center;
+                justify-content: center;
+                background: var(--ink);
+                color: #f2ead8;
+                font-size: 12.5px;
+                letter-spacing: 0.4px;
+                padding: 9px 16px;
+                text-align: center;
+            }
+            .notice a {
+                color: #ffd9a8;
+                text-underline-offset: 3px;
+            }
+
+            /* masthead */
+            .masthead {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 12px 20px;
+                max-width: 1180px;
+                margin: 0 auto;
+                padding: 18px 24px;
+                border-bottom: 1px solid var(--line-dark);
+            }
+            .brand {
+                font-family: var(--serif);
+                font-size: 21px;
+                color: var(--ink);
+                text-decoration: none;
+                letter-spacing: -0.3px;
+            }
+            .brand em {
+                font-style: italic;
+                color: var(--terra);
+            }
+            .masthead nav {
+                display: flex;
+                gap: 4px;
+                margin-left: auto;
+            }
+            .masthead nav a {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 40px;
+                min-height: 36px;
+                border-radius: 999px;
+                text-decoration: none;
+                font-size: 13px;
+                font-weight: 650;
+                color: var(--soft);
+                border: 1px solid transparent;
+            }
+            .masthead nav a:hover {
+                border-color: var(--line-dark);
+            }
+            .masthead nav a[aria-current="page"] {
+                background: var(--indigo);
+                color: #fff;
+                border-color: var(--indigo);
+            }
+            .pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                font-size: 12px;
+                font-weight: 650;
+                letter-spacing: 0.3px;
+                color: var(--indigo-deep);
+                background: var(--indigo-tint);
+                border: 1px solid #d4d0ec;
+                border-radius: 999px;
+                padding: 6px 14px;
+            }
+            .pill::before {
+                content: "";
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: var(--indigo);
+            }
+
+            main {
+                max-width: 1180px;
+                margin: 0 auto;
+                padding: 0 24px 70px;
+            }
+
+            /* hero — editorial split */
+            .hero {
+                display: grid;
+                grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+                gap: 28px 56px;
+                padding: 52px 0 34px;
+                border-bottom: 1px solid var(--line-dark);
+            }
+            .eyebrow {
+                margin: 0 0 14px;
+                font-size: 11.5px;
+                font-weight: 750;
+                letter-spacing: 2.4px;
+                text-transform: uppercase;
+                color: var(--terra);
+            }
+            h1 {
+                font-family: var(--serif);
+                font-weight: 500;
+                font-size: clamp(40px, 6vw, 68px);
+                line-height: 1.04;
+                letter-spacing: -1.5px;
+                margin: 0;
+                color: var(--ink);
+            }
+            h1 em {
+                font-style: italic;
+                color: var(--indigo);
+            }
+            .hero-side {
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-end;
+                gap: 18px;
+                min-width: 0;
+            }
+            .lead {
+                margin: 0;
+                font-size: 16.5px;
+                color: var(--soft);
+                max-width: 44ch;
+            }
+            .lead strong {
+                color: var(--ink);
+            }
+            .snapshot {
+                background: var(--card);
+                border: 1px solid var(--line);
+                border-left: 4px solid var(--indigo);
+                border-radius: 10px;
+                padding: 14px 16px;
+                box-shadow: 0 1px 0 #efe5cd;
+            }
+            .snapshot .scope {
+                display: inline-flex;
+                gap: 0;
+                border: 1px solid var(--line-dark);
+                border-radius: 999px;
+                overflow: hidden;
+                margin-bottom: 10px;
+            }
+            .snapshot .scope button {
+                border: 0;
+                background: transparent;
+                color: var(--soft);
+                font-size: 12.5px;
+                font-weight: 650;
+                padding: 8px 14px;
+                min-height: 38px;
+            }
+            .snapshot .scope button[aria-pressed="true"] {
+                background: var(--indigo);
+                color: #fff;
+            }
+            .snapshot p {
+                margin: 0 0 4px;
+                font-size: 13px;
+                color: var(--soft);
+            }
+            .snapshot .age {
+                color: var(--ink);
+                font-weight: 650;
+            }
+            .snap-actions {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-top: 10px;
+            }
+            .snap-actions button {
+                background: transparent;
+                border: 1px solid var(--line-dark);
+                border-radius: 8px;
+                color: var(--indigo-deep);
+                font-weight: 650;
+                font-size: 13px;
+                padding: 8px 14px;
+                min-height: 40px;
+            }
+            .snap-actions button:hover {
+                background: var(--indigo-tint);
+            }
+            .snap-note {
+                font-size: 12px;
+                color: var(--faint);
+            }
+
+            /* verdict strip */
+            .verdict {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 0;
+                border-bottom: 1px solid var(--line-dark);
+            }
+            .verdict > div {
+                padding: 26px 22px 30px;
+                border-left: 1px solid var(--line);
+            }
+            .verdict > div:first-child {
+                border-left: 0;
+                padding-left: 0;
+            }
+            .verdict .num {
+                font-family: var(--serif);
+                font-size: clamp(34px, 4vw, 52px);
+                line-height: 1;
+                color: var(--ink);
+                letter-spacing: -1px;
+            }
+            .verdict .num.hot {
+                color: var(--terra);
+            }
+            .verdict .num.warn {
+                color: var(--amber);
+            }
+            .verdict .cap {
+                display: block;
+                margin-top: 8px;
+                font-size: 12.5px;
+                font-weight: 650;
+                letter-spacing: 0.6px;
+                text-transform: uppercase;
+                color: var(--soft);
+            }
+            .verdict .sub {
+                display: block;
+                margin-top: 3px;
+                font-size: 12.5px;
+                color: var(--faint);
+            }
+
+            /* explainer columns */
+            .explain {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 26px 40px;
+                padding: 38px 0;
+                border-bottom: 1px solid var(--line-dark);
+            }
+            .explain h2 {
+                font-family: var(--serif);
+                font-size: 20px;
+                font-weight: 600;
+                margin: 0 0 8px;
+                letter-spacing: -0.3px;
+            }
+            .explain h2 .dot {
+                display: inline-block;
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                margin-right: 9px;
+                vertical-align: 1px;
+            }
+            .explain .d-urgent {
+                background: var(--terra);
+            }
+            .explain .d-unknown {
+                background: repeating-linear-gradient(
+                    45deg,
+                    var(--amber) 0 2px,
+                    transparent 2px 5px
+                );
+                border: 1.5px solid var(--amber);
+            }
+            .explain .d-local {
+                background: var(--indigo);
+            }
+            .explain p {
+                margin: 0;
+                font-size: 14px;
+                color: var(--soft);
+            }
+            .explain p strong {
+                color: var(--ink);
+            }
+
+            /* watchlist strip */
+            .watchbar {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 10px 16px;
+                padding: 20px 0;
+                border-bottom: 1px solid var(--line-dark);
+            }
+            .watchbar h2 {
+                font-size: 12.5px;
+                font-weight: 750;
+                letter-spacing: 1.8px;
+                text-transform: uppercase;
+                color: var(--indigo-deep);
+                margin: 0;
+            }
+            .watchbar .local {
+                font-size: 12px;
+                color: var(--faint);
+            }
+            #watch-chips {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            #watch-chips .chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                border: 1px solid var(--indigo);
+                background: var(--indigo-tint);
+                color: var(--indigo-deep);
+                border-radius: 999px;
+                font-size: 13px;
+                font-weight: 600;
+                padding: 7px 14px;
+                min-height: 38px;
+            }
+            #watch-chips .chip:hover {
+                background: #e0dcf3;
+            }
+            #watch-chips .none {
+                border: 0;
+                background: transparent;
+                color: var(--faint);
+                font-size: 13px;
+                padding: 7px 0;
+                cursor: default;
+            }
+            #watch-chips .none:hover {
+                background: transparent;
+            }
+
+            /* queue */
+            .queue-head {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: flex-end;
+                justify-content: space-between;
+                gap: 18px;
+                padding: 44px 0 20px;
+            }
+            .queue-head h2 {
+                font-family: var(--serif);
+                font-weight: 500;
+                font-size: clamp(28px, 3.4vw, 40px);
+                letter-spacing: -1px;
+                margin: 0;
+            }
+            .queue-head .caption {
+                font-size: 13px;
+                color: var(--faint);
+                margin: 6px 0 0;
+            }
+            .controls {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 14px 22px;
+                align-items: center;
+                padding: 16px 0 22px;
+            }
+            .filters {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .filters button {
+                border: 1px solid var(--line-dark);
+                background: transparent;
+                border-radius: 999px;
+                padding: 9px 16px;
+                min-height: 42px;
+                font-size: 13.5px;
+                font-weight: 600;
+                color: var(--soft);
+            }
+            .filters button:hover {
+                background: #efe6d0;
+            }
+            .filters button[aria-pressed="true"] {
+                background: var(--ink);
+                border-color: var(--ink);
+                color: var(--paper);
+            }
+            .filters button .n {
+                opacity: 0.65;
+                font-weight: 500;
+                margin-left: 4px;
+            }
+            .searchbox {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-left: auto;
+                min-width: min(100%, 300px);
+                flex: 1;
+                max-width: 360px;
+            }
+            .searchbox input {
+                flex: 1;
+                min-width: 0;
+                border: 1px solid var(--line-dark);
+                border-radius: 10px;
+                background: var(--card);
+                padding: 11px 14px;
+                min-height: 44px;
+                color: var(--ink);
+            }
+            .searchbox input::placeholder {
+                color: var(--faint);
+            }
+            kbd {
+                font: 12px var(--sans);
+                border: 1px solid var(--line-dark);
+                border-bottom-width: 2px;
+                border-radius: 5px;
+                padding: 1px 6px;
+                color: var(--soft);
+                background: var(--paper);
+            }
+
+            /* ledger rows */
+            #queue {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                border-top: 1px solid var(--line-dark);
+            }
+            .item {
+                display: grid;
+                grid-template-columns: 44px minmax(0, 2.2fr) minmax(0, 1.3fr) minmax(0, 1.5fr) auto;
+                gap: 8px 20px;
+                align-items: center;
+                padding: 18px 10px;
+                border-bottom: 1px solid var(--line);
+                background: transparent;
+            }
+            .item:nth-child(odd) {
+                background: #fbf6ea;
+            }
+            .item:hover {
+                background: #f3ead6;
+            }
+            .item .idx {
+                font-family: var(--serif);
+                font-size: 20px;
+                color: var(--line-dark);
+                text-align: center;
+            }
+            .item .who {
+                min-width: 0;
+            }
+            .item .who .label {
+                display: block;
+                font-weight: 650;
+                font-size: 15.5px;
+                color: var(--ink);
+            }
+            .item .who .hash {
+                display: block;
+                font-size: 12px;
+                color: var(--faint);
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .item .who .watching-mark {
+                display: inline-block;
+                margin-left: 8px;
+                font-size: 11px;
+                font-weight: 750;
+                letter-spacing: 0.8px;
+                text-transform: uppercase;
+                color: var(--indigo);
+            }
+            .item .amount {
+                font-family: var(--serif);
+                font-size: 19px;
+                letter-spacing: -0.3px;
+                color: var(--ink);
+            }
+            .item .amount small {
+                display: block;
+                font-family: var(--sans);
+                font-size: 11.5px;
+                color: var(--faint);
+                letter-spacing: 0;
+            }
+            .badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 12.5px;
+                font-weight: 700;
+                letter-spacing: 0.4px;
+                border-radius: 999px;
+                padding: 6px 13px;
+                white-space: nowrap;
+            }
+            .badge .b-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                flex: none;
+            }
+            .b-urgent {
+                background: var(--terra-tint);
+                color: var(--terra-deep);
+                border: 1px solid #ecc4a6;
+            }
+            .b-urgent .b-dot {
+                background: var(--terra);
+            }
+            .b-unknown {
+                background: var(--amber-tint);
+                color: var(--amber);
+                border: 1.5px dashed var(--amber);
+            }
+            .b-unknown .b-dot {
+                background: repeating-linear-gradient(
+                    45deg,
+                    var(--amber) 0 2px,
+                    transparent 2px 3px
+                );
+                border: 1px solid var(--amber);
+            }
+            .b-ok {
+                background: var(--indigo-tint);
+                color: var(--indigo-deep);
+                border: 1px solid #d4d0ec;
+            }
+            .b-ok .b-dot {
+                background: var(--indigo);
+            }
+            .b-settled {
+                background: #efece4;
+                color: var(--settle);
+                border: 1px solid var(--line-dark);
+            }
+            .b-settled .b-dot {
+                background: var(--settle);
+            }
+            .item .meta {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                min-width: 0;
+            }
+            .item .expiry {
+                font-size: 13px;
+                color: var(--soft);
+            }
+            .item .actions {
+                display: flex;
+                gap: 8px;
+                flex: none;
+            }
+            .item .actions button {
+                border: 1px solid var(--line-dark);
+                background: var(--card);
+                border-radius: 8px;
+                min-height: 40px;
+                padding: 8px 13px;
+                font-size: 13px;
+                font-weight: 650;
+                color: var(--indigo-deep);
+            }
+            .item .actions button:hover {
+                background: var(--indigo-tint);
+            }
+            .item .actions .watch-btn[aria-pressed="true"] {
+                background: var(--indigo);
+                border-color: var(--indigo);
+                color: #fff;
+            }
+            .item .actions .details-btn {
+                background: var(--ink);
+                border-color: var(--ink);
+                color: var(--paper);
+            }
+            .item .actions .details-btn:hover {
+                background: #453c48;
+            }
+            .empty {
+                padding: 44px 10px;
+                text-align: center;
+                border-bottom: 1px solid var(--line);
+                color: var(--soft);
+            }
+            .empty strong {
+                display: block;
+                font-family: var(--serif);
+                font-size: 22px;
+                color: var(--ink);
+                margin-bottom: 6px;
+                font-weight: 500;
+            }
+            .empty button {
+                margin-top: 14px;
+                border: 1px solid var(--line-dark);
+                background: var(--card);
+                border-radius: 8px;
+                padding: 9px 16px;
+                min-height: 42px;
+                font-weight: 650;
+                color: var(--indigo-deep);
+            }
+
+            /* dialog */
+            dialog {
+                border: 0;
+                border-radius: 16px;
+                padding: 0;
+                max-width: min(560px, calc(100vw - 32px));
+                width: 560px;
+                background: var(--card);
+                color: var(--ink);
+                box-shadow: 0 24px 70px rgba(46, 40, 48, 0.35);
+            }
+            dialog::backdrop {
+                background: rgba(46, 40, 48, 0.45);
+                backdrop-filter: blur(2px);
+            }
+            .dialog-inner {
+                padding: 26px 28px 28px;
+            }
+            .dialog-top {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 16px;
+                margin-bottom: 6px;
+            }
+            .dialog-top h2 {
+                font-family: var(--serif);
+                font-weight: 500;
+                font-size: 27px;
+                letter-spacing: -0.5px;
+                margin: 0;
+                line-height: 1.15;
+            }
+            .dialog-top .close {
+                border: 1px solid var(--line-dark);
+                background: transparent;
+                border-radius: 8px;
+                padding: 8px 14px;
+                min-height: 40px;
+                font-weight: 650;
+                font-size: 13px;
+                color: var(--soft);
+            }
+            .dialog-top .close:hover {
+                background: #efe6d0;
+            }
+            .dialog-sub {
+                font-size: 12.5px;
+                color: var(--faint);
+                margin: 0 0 18px;
+            }
+            dialog dl {
+                margin: 0 0 18px;
+                border-top: 1px solid var(--line);
+            }
+            dialog dl > div {
+                display: grid;
+                grid-template-columns: 150px minmax(0, 1fr);
+                gap: 10px;
+                padding: 11px 2px;
+                border-bottom: 1px solid var(--line);
+            }
+            dialog dt {
+                font-size: 12.5px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                color: var(--faint);
+            }
+            dialog dd {
+                margin: 0;
+                font-size: 14px;
+                color: var(--ink);
+                overflow-wrap: anywhere;
+            }
+            dialog dd.mono {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 12px;
+            }
+            .detail-block {
+                border-radius: 10px;
+                padding: 14px 16px;
+                margin: 0 0 14px;
+                font-size: 14px;
+            }
+            .detail-block h3 {
+                margin: 0 0 6px;
+                font-size: 12px;
+                font-weight: 750;
+                letter-spacing: 1.4px;
+                text-transform: uppercase;
+            }
+            .detail-block p {
+                margin: 0;
+            }
+            .db-mean {
+                background: var(--indigo-tint);
+                color: var(--indigo-deep);
+            }
+            .db-next {
+                background: var(--terra-tint);
+                color: var(--terra-deep);
+            }
+            .db-next.calm {
+                background: #efece4;
+                color: var(--settle);
+            }
+            .dialog-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-top: 18px;
+            }
+            .dialog-actions button {
+                border-radius: 8px;
+                min-height: 44px;
+                padding: 10px 18px;
+                font-weight: 650;
+                font-size: 14px;
+            }
+            .dialog-actions .watch-lg {
+                border: 1px solid var(--indigo);
+                background: transparent;
+                color: var(--indigo-deep);
+            }
+            .dialog-actions .watch-lg[aria-pressed="true"] {
+                background: var(--indigo);
+                color: #fff;
+            }
+
+            footer {
+                max-width: 1180px;
+                margin: 0 auto;
+                padding: 26px 24px 44px;
+                border-top: 1px solid var(--line-dark);
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px 22px;
+                align-items: center;
+                font-size: 13px;
+                color: var(--faint);
+            }
+            footer a {
+                color: var(--indigo-deep);
+                text-underline-offset: 3px;
+            }
+            footer span {
+                margin-right: auto;
+            }
+
+            @media (max-width: 860px) {
+                .hero {
+                    grid-template-columns: 1fr;
+                    gap: 24px;
+                    padding-top: 38px;
+                }
+                .verdict {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+                .verdict > div {
+                    padding-left: 0;
+                    border-left: 0;
+                    border-top: 1px solid var(--line);
+                }
+                .verdict > div:nth-child(-n + 2) {
+                    border-top: 0;
+                }
+                .explain {
+                    grid-template-columns: 1fr;
+                    gap: 24px;
+                    padding: 30px 0;
+                }
+                .searchbox {
+                    margin-left: 0;
+                    max-width: none;
+                }
+                .item {
+                    grid-template-columns: minmax(0, 1fr) auto;
+                    grid-template-areas: "who actions" "meta actions" "amount actions";
+                    row-gap: 8px;
+                    padding: 16px 6px;
+                }
+                .item .idx {
+                    display: none;
+                }
+                .item .who {
+                    grid-area: who;
+                }
+                .item .meta {
+                    grid-area: meta;
+                }
+                .item .amount {
+                    grid-area: amount;
+                }
+                .item .actions {
+                    grid-area: actions;
+                    flex-direction: column;
+                    align-items: stretch;
+                    justify-content: center;
+                }
+            }
+            @media (max-width: 430px) {
+                main {
+                    padding: 0 16px 56px;
+                }
+                .masthead {
+                    padding: 14px 16px;
+                }
+                footer {
+                    padding: 22px 16px 38px;
+                }
+                .notice {
+                    justify-content: flex-start;
+                    text-align: left;
+                }
+                .item .actions {
+                    gap: 6px;
+                }
+                dialog dl > div {
+                    grid-template-columns: 1fr;
+                    gap: 2px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <a class="skip" href="#main">Skip to content</a>
+        <div class="notice" role="note">
+            <span>Design prototype · illustrative data · no wallet connected</span
+            ><a href="index.html">Compare all three directions →</a>
+        </div>
+
+        <header class="masthead">
+            <a class="brand" href="option-c.html">arkade <em>/ safety desk</em></a>
+            <nav aria-label="UX directions">
+                <a href="option-a.html">A</a>
+                <a href="option-b.html">B</a>
+                <a href="option-c.html" aria-current="page">C</a>
+            </nav>
+            <span class="pill">Browser-only · no notifications</span>
+        </header>
+
+        <main id="main">
+            <section class="hero" aria-labelledby="hero-title">
+                <div>
+                    <p class="eyebrow">C / Safety desk — personal monitoring</p>
+                    <h1 id="hero-title">What needs your<br />attention <em>today.</em></h1>
+                </div>
+                <div class="hero-side">
+                    <p class="lead">
+                        An expiry-first reading of the funds on your watchlist.
+                        <strong>Urgency comes before totals</strong> — a VTXO nearing the end of its
+                        exit window matters more than a large, healthy balance.
+                    </p>
+                    <div class="snapshot">
+                        <div class="scope" role="group" aria-label="Network scope">
+                            <button type="button" data-scope="arkade" aria-pressed="true">
+                                Mainnet · Arkade
+                            </button>
+                            <button type="button" data-scope="second" aria-pressed="false">
+                                Second · test sample
+                            </button>
+                        </div>
+                        <p>
+                            <span id="snap-source"
+                                >Source: illustrative operator + indexer fixture</span
+                            >
+                            <span class="age" id="snap-age" aria-live="polite"
+                                >· sample snapshot, taken 2 minutes ago</span
+                            >
+                        </p>
+                        <div class="snap-actions">
+                            <button type="button" id="recheck">Re-check snapshot</button>
+                            <span class="snap-note">Simulated — no live feed exists here.</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="verdict" aria-label="Current reading" id="verdict"></section>
+
+            <section class="explain" aria-label="How to read this desk">
+                <div>
+                    <h2>
+                        <span class="dot d-urgent" aria-hidden="true"></span>Urgent means expiring
+                    </h2>
+                    <p>
+                        An item is urgent when its estimated expiry falls inside the
+                        <strong>unilateral exit window</strong> — the period in which you should
+                        renew it or prepare an on-chain exit. Estimates are
+                        <strong>not guarantees</strong>.
+                    </p>
+                </div>
+                <div>
+                    <h2>
+                        <span class="dot d-unknown" aria-hidden="true"></span>Unknown never means
+                        safe
+                    </h2>
+                    <p>
+                        If expiry evidence is missing or the snapshot is stale, the item is marked
+                        unknown and <strong>kept near the top</strong> — never silently treated as
+                        healthy. Verify the source before relaxing.
+                    </p>
+                </div>
+                <div>
+                    <h2>
+                        <span class="dot d-local" aria-hidden="true"></span>Local only, by design
+                    </h2>
+                    <p>
+                        Your watchlist lives <strong>only in this browser tab</strong>. Nothing is
+                        sent anywhere, and this desk cannot notify you — set your own reminders and
+                        check back yourself.
+                    </p>
+                </div>
+            </section>
+
+            <div class="watchbar" aria-label="Your sample watchlist">
+                <h2>Watching <span id="watch-count">0</span></h2>
+                <div id="watch-chips"></div>
+                <span class="local"
+                    >Prototype pins · held in this tab's memory only — not real monitoring.</span
+                >
+            </div>
+
+            <section aria-labelledby="queue-title">
+                <div class="queue-head">
+                    <div>
+                        <h2 id="queue-title">The priority queue</h2>
+                        <p class="caption" id="queue-caption">
+                            Ordered by how soon a decision is due — urgent first, settled last.
+                        </p>
+                    </div>
+                </div>
+                <div class="controls">
+                    <div class="filters" role="group" aria-label="Filter by attention state">
+                        <button type="button" data-filter="all" aria-pressed="true">
+                            Everything
+                        </button>
+                        <button type="button" data-filter="urgent" aria-pressed="false">
+                            Needs review
+                        </button>
+                        <button type="button" data-filter="unknown" aria-pressed="false">
+                            Unknown
+                        </button>
+                        <button type="button" data-filter="ok" aria-pressed="false">Healthy</button>
+                        <button type="button" data-filter="settled" aria-pressed="false">
+                            Settled
+                        </button>
+                        <button type="button" data-filter="watching" aria-pressed="false">
+                            Watching
+                        </button>
+                    </div>
+                    <div class="searchbox">
+                        <label class="sr" for="q"
+                            >Search watched records by label, sample ID, or state</label
+                        >
+                        <input
+                            id="q"
+                            type="search"
+                            placeholder="Search label, ID, or state  ·  ⌘K"
+                            autocomplete="off"
+                        />
+                    </div>
+                </div>
+                <ol id="queue" aria-label="Watched records, ordered by urgency"></ol>
+                <div class="empty" id="empty" hidden>
+                    <strong>Nothing matches that view.</strong>
+                    Try a different state filter, or clear the search to see the full sample set.
+                    <br /><button type="button" id="reset">Clear search and filters</button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <span>C · Safety desk / expiry-first monitoring</span>
+            <a href="option-a.html">A · Clear Explorer</a>
+            <a href="option-b.html">B · Operator Console</a>
+            <a href="index.html">Back to comparison</a>
+        </footer>
+
+        <dialog id="detail" aria-labelledby="d-title">
+            <div class="dialog-inner">
+                <div class="dialog-top">
+                    <h2 id="d-title">Record</h2>
+                    <button type="button" class="close" id="d-close">Close · Esc</button>
+                </div>
+                <p class="dialog-sub">Illustrative record · not verified network data</p>
+                <div id="d-badge"></div>
+                <dl id="d-facts"></dl>
+                <div class="detail-block db-mean">
+                    <h3>What this means</h3>
+                    <p id="d-mean"></p>
+                </div>
+                <div class="detail-block db-next" id="d-next-block">
+                    <h3>Suggested next step</h3>
+                    <p id="d-next"></p>
+                </div>
+                <div class="dialog-actions">
+                    <button type="button" class="watch-lg" id="d-watch" aria-pressed="false">
+                        Add to watchlist
+                    </button>
+                </div>
+            </div>
+        </dialog>
+
+        <script>
+            "use strict";
+            /* ---- fixture data: explicitly illustrative ---- */
+            const RECORDS = [
+                {
+                    id: "a".repeat(64),
+                    label: "Treasury renewal",
+                    layer: "Virtual",
+                    amount: "112,074",
+                    expiry: "~2h 14m remaining",
+                    sort: 1,
+                    state: "urgent",
+                    scope: "arkade",
+                    mean: "Expiry is estimated inside the example unilateral exit window. This is the nearest deadline on the sample set at ~2h 14m — an estimate, not a guarantee.",
+                    next: "Open your wallet and renew this VTXO before the estimate passes. If the wallet is unavailable, review the on-chain exit requirements. This desk cannot renew or move funds.",
+                },
+                {
+                    id: "b".repeat(64),
+                    label: "Payroll batch refund",
+                    layer: "Virtual",
+                    amount: "8,412",
+                    expiry: "~5h 02m remaining",
+                    sort: 2,
+                    state: "urgent",
+                    scope: "arkade",
+                    mean: "Estimated expiry is within the exit window, so it outranks every healthy item regardless of size.",
+                    next: "Renew from your wallet while the estimate still leaves margin. Treat the countdown as approximate.",
+                },
+                {
+                    id: "c".repeat(64),
+                    label: "Channel rebalance",
+                    layer: "Virtual",
+                    amount: "46,900",
+                    expiry: "~9h 40m remaining",
+                    sort: 3,
+                    state: "urgent",
+                    scope: "arkade",
+                    mean: "Inside the example exit window — third nearest deadline on this snapshot.",
+                    next: "Schedule a renewal today; do not wait for the estimate to reach zero.",
+                },
+                {
+                    id: "d".repeat(64),
+                    label: "Savings receive",
+                    layer: "Virtual",
+                    amount: "20,905",
+                    expiry: "Unknown — evidence missing",
+                    sort: 4,
+                    state: "unknown",
+                    scope: "arkade",
+                    mean: "Funds are present, but this snapshot contains no expiry evidence. Unknown is never treated as safe — it sits directly below the urgent items.",
+                    next: "Re-check the indexer response and chain tip. Until verified, treat this record as if it were urgent.",
+                },
+                {
+                    id: "e".repeat(64),
+                    label: "Daily payment",
+                    layer: "Virtual",
+                    amount: "1,984",
+                    expiry: "~28d · estimated",
+                    sort: 5,
+                    state: "ok",
+                    scope: "arkade",
+                    mean: "Estimated expiry is comfortably outside the exit window.",
+                    next: "No action needed. Estimates drift — re-check after the next snapshot.",
+                },
+                {
+                    id: "f".repeat(64),
+                    label: "Invoice #1042",
+                    layer: "Virtual",
+                    amount: "6,300",
+                    expiry: "~21d · estimated",
+                    sort: 6,
+                    state: "ok",
+                    scope: "arkade",
+                    mean: "Estimated expiry is comfortably outside the exit window.",
+                    next: "No action needed.",
+                },
+                {
+                    id: "a1b2c3".repeat(10) + "a1b2",
+                    label: "Escrow deposit",
+                    layer: "Virtual",
+                    amount: "88,000",
+                    expiry: "~12d · estimated",
+                    sort: 7,
+                    state: "ok",
+                    scope: "arkade",
+                    mean: "Largest healthy sample balance — still below the urgent items in priority, because expiry, not size, orders this queue.",
+                    next: "No action needed. Note the estimate and check back.",
+                },
+                {
+                    id: "d4e5f6".repeat(10) + "d4e5",
+                    label: "DCA purchase",
+                    layer: "Virtual",
+                    amount: "15,750",
+                    expiry: "~19d · estimated",
+                    sort: 8,
+                    state: "ok",
+                    scope: "arkade",
+                    mean: "Estimated expiry is comfortably outside the exit window.",
+                    next: "No action needed.",
+                },
+                {
+                    id: "9f8e7d".repeat(10) + "9f8e",
+                    label: "Marketplace payout",
+                    layer: "Virtual",
+                    amount: "12,300",
+                    expiry: "~16d · estimated",
+                    sort: 9,
+                    state: "ok",
+                    scope: "arkade",
+                    mean: "Estimated expiry is comfortably outside the exit window.",
+                    next: "No action needed.",
+                },
+                {
+                    id: "1a2b3c".repeat(10) + "1a2b",
+                    label: "Gift to family",
+                    layer: "Virtual",
+                    amount: "500",
+                    expiry: "~34d · estimated",
+                    sort: 10,
+                    state: "ok",
+                    scope: "arkade",
+                    mean: "Estimated expiry is comfortably outside the exit window.",
+                    next: "No action needed.",
+                },
+                {
+                    id: "7c6b5a".repeat(10) + "7c6b",
+                    label: "Refund pending",
+                    layer: "Virtual",
+                    amount: "2,140",
+                    expiry: "~26d · estimated",
+                    sort: 11,
+                    state: "ok",
+                    scope: "arkade",
+                    mean: "Estimated expiry is comfortably outside the exit window.",
+                    next: "No action needed.",
+                },
+                {
+                    id: "3e4f5a".repeat(10) + "3e4f",
+                    label: "Allowance",
+                    layer: "Virtual",
+                    amount: "950",
+                    expiry: "~30d · estimated",
+                    sort: 12,
+                    state: "ok",
+                    scope: "arkade",
+                    mean: "Estimated expiry is comfortably outside the exit window.",
+                    next: "No action needed.",
+                },
+                {
+                    id: "0f0e0d".repeat(10) + "0f0e",
+                    label: "Old top-up",
+                    layer: "Commitment",
+                    amount: "4,020",
+                    expiry: "Settled on-chain",
+                    sort: 13,
+                    state: "settled",
+                    scope: "arkade",
+                    mean: "Already finalized on Bitcoin. This illustrative commitment anchors a batch; it belongs in an on-chain explorer, separately from virtual transaction lookup.",
+                    next: "Nothing to monitor. Kept for your records.",
+                },
+                /* Second test-network sample scope */
+                {
+                    id: "aa11bb".repeat(10) + "aa11",
+                    label: "Faucet top-up",
+                    layer: "Virtual",
+                    amount: "5,000",
+                    expiry: "~6h 30m remaining",
+                    sort: 1,
+                    state: "urgent",
+                    scope: "second",
+                    mean: "On the Second test sample, this item's estimated expiry is inside the exit window.",
+                    next: "Renew from a test wallet; timings on test samples are illustrative only.",
+                },
+                {
+                    id: "cc22dd".repeat(10) + "cc22",
+                    label: "Test swap leg",
+                    layer: "Virtual",
+                    amount: "1,250",
+                    expiry: "Unknown — evidence missing",
+                    sort: 2,
+                    state: "unknown",
+                    scope: "second",
+                    mean: "Expiry evidence is missing from this sample snapshot. Unknown is never treated as safe.",
+                    next: "Re-check the source before treating it as healthy.",
+                },
+                {
+                    id: "ee33ff".repeat(10) + "ee33",
+                    label: "Dev allowance",
+                    layer: "Virtual",
+                    amount: "750",
+                    expiry: "~40d · estimated",
+                    sort: 3,
+                    state: "ok",
+                    scope: "second",
+                    mean: "Estimated expiry is comfortably outside the exit window.",
+                    next: "No action needed.",
+                },
+                {
+                    id: "12345a".repeat(10) + "1234",
+                    label: "Genesis commitment",
+                    layer: "Commitment",
+                    amount: "10,000",
+                    expiry: "Settled on-chain",
+                    sort: 4,
+                    state: "settled",
+                    scope: "second",
+                    mean: "Finalized on-chain; kept for history.",
+                    next: "Nothing to monitor.",
+                },
+            ];
+            const STATE_META = {
+                urgent: { cls: "b-urgent", word: "Needs review", rank: 0 },
+                unknown: { cls: "b-unknown", word: "Unknown expiry", rank: 1 },
+                ok: { cls: "b-ok", word: "Healthy", rank: 2 },
+                settled: { cls: "b-settled", word: "Settled", rank: 3 },
+            };
+            const SCOPE_TOTALS = {
+                arkade: { vtxo: "13 observed VTXOs", batch: "9 batches" },
+                second: { vtxo: "4 sample records", batch: "test scope" },
+            };
+
+            /* ---- state ---- */
+            let scope = "arkade",
+                filter = "all",
+                term = "";
+            const watched = new Set();
+            let lastOpener = null;
+
+            /* ---- elements ---- */
+            const $ = (s) => document.querySelector(s);
+            const queueEl = $("#queue"),
+                emptyEl = $("#empty"),
+                q = $("#q"),
+                verdict = $("#verdict"),
+                dialog = $("#detail"),
+                chips = $("#watch-chips"),
+                watchCount = $("#watch-count");
+
+            const short = (id) => id.slice(0, 8) + "…" + id.slice(-6);
+            const scoped = () => RECORDS.filter((r) => r.scope === scope);
+
+            function matches(r) {
+                if (filter === "watching") {
+                    if (!watched.has(r.id)) return false;
+                } else if (filter !== "all" && r.state !== filter) return false;
+                if (term) {
+                    const hay =
+                        `${r.id} ${r.label} ${r.layer} ${STATE_META[r.state].word} ${r.state}`.toLowerCase();
+                    if (!hay.includes(term)) return false;
+                }
+                return true;
+            }
+
+            /* ---- verdict strip ---- */
+            function renderVerdict() {
+                const set = scoped();
+                const urgent = set.filter((r) => r.state === "urgent").length;
+                const unknown = set.filter((r) => r.state === "unknown").length;
+                const near = set
+                    .filter((r) => r.state === "urgent")
+                    .sort((a, b) => a.sort - b.sort)[0];
+                verdict.replaceChildren();
+                const cells = [
+                    {
+                        n: String(urgent),
+                        cls: urgent ? "hot" : "",
+                        cap: "need review",
+                        sub: urgent ? "inside the exit window" : "nothing inside the exit window",
+                    },
+                    {
+                        n: near ? near.expiry.replace(" remaining", "") : "—",
+                        cls: urgent ? "hot" : "",
+                        cap: "nearest expiry",
+                        sub: "estimated · not guaranteed",
+                    },
+                    {
+                        n: String(unknown),
+                        cls: unknown ? "warn" : "",
+                        cap: "unknown expiry",
+                        sub: unknown ? "never treated as safe" : "all evidence present",
+                    },
+                    {
+                        n: SCOPE_TOTALS[scope].vtxo.split(" ")[0],
+                        cls: "",
+                        cap: SCOPE_TOTALS[scope].vtxo.split(" ").slice(1).join(" "),
+                        sub: SCOPE_TOTALS[scope].batch,
+                    },
+                ];
+                for (const c of cells) {
+                    const d = document.createElement("div");
+                    const num = document.createElement("span");
+                    num.className = "num" + (c.cls ? " " + c.cls : "");
+                    num.textContent = c.n;
+                    const cap = document.createElement("span");
+                    cap.className = "cap";
+                    cap.textContent = c.cap;
+                    const sub = document.createElement("span");
+                    sub.className = "sub";
+                    sub.textContent = c.sub;
+                    d.append(num, cap, sub);
+                    verdict.append(d);
+                }
+            }
+
+            /* ---- watchlist ---- */
+            function renderWatch() {
+                watchCount.textContent = String(watched.size);
+                chips.replaceChildren();
+                if (!watched.size) {
+                    const s = document.createElement("span");
+                    s.className = "none";
+                    s.textContent = "Nothing pinned yet — use “Watch” on any record.";
+                    chips.append(s);
+                    return;
+                }
+                for (const id of watched) {
+                    const r = RECORDS.find((x) => x.id === id);
+                    if (!r) continue;
+                    const b = document.createElement("button");
+                    b.type = "button";
+                    b.className = "chip";
+                    b.textContent = r.label;
+                    b.setAttribute("aria-label", "Open details for watched " + r.label);
+                    b.addEventListener("click", (e) => openDetail(r, e.currentTarget));
+                    chips.append(b);
+                }
+            }
+            function toggleWatch(r, btn) {
+                if (watched.has(r.id)) watched.delete(r.id);
+                else watched.add(r.id);
+                renderWatch();
+                renderQueue();
+                const on = watched.has(r.id);
+                if (btn) {
+                    btn.setAttribute("aria-pressed", String(on));
+                    btn.textContent = on ? "Watching ✓" : "Add to watchlist";
+                }
+            }
+
+            /* ---- queue ---- */
+            function renderQueue() {
+                const found = scoped()
+                    .filter(matches)
+                    .sort(
+                        (a, b) =>
+                            STATE_META[a.state].rank - STATE_META[b.state].rank || a.sort - b.sort,
+                    );
+                queueEl.replaceChildren();
+                emptyEl.hidden = found.length > 0;
+                found.forEach((r, i) => {
+                    const li = document.createElement("li");
+                    li.className = "item";
+                    const idx = document.createElement("span");
+                    idx.className = "idx";
+                    idx.textContent = String(i + 1).padStart(2, "0");
+                    idx.setAttribute("aria-hidden", "true");
+
+                    const who = document.createElement("div");
+                    who.className = "who";
+                    const lab = document.createElement("span");
+                    lab.className = "label";
+                    lab.textContent = r.label;
+                    if (watched.has(r.id)) {
+                        const m = document.createElement("span");
+                        m.className = "watching-mark";
+                        m.textContent = "Watching";
+                        lab.append(m);
+                    }
+                    const h = document.createElement("span");
+                    h.className = "hash";
+                    h.textContent =
+                        short(r.id) + " · " + (r.layer === "Virtual" ? "virtual tx" : "commitment");
+                    who.append(lab, h);
+
+                    const amt = document.createElement("div");
+                    amt.className = "amount";
+                    amt.innerHTML = "";
+                    amt.append(document.createTextNode(r.amount));
+                    const sats = document.createElement("small");
+                    sats.textContent = "sats · sample";
+                    amt.append(sats);
+
+                    const meta = document.createElement("div");
+                    meta.className = "meta";
+                    const badge = document.createElement("span");
+                    badge.className = "badge " + STATE_META[r.state].cls;
+                    const dot = document.createElement("span");
+                    dot.className = "b-dot";
+                    dot.setAttribute("aria-hidden", "true");
+                    badge.append(dot, document.createTextNode(STATE_META[r.state].word));
+                    const ex = document.createElement("span");
+                    ex.className = "expiry";
+                    ex.textContent = r.expiry;
+                    meta.append(badge, ex);
+
+                    const actions = document.createElement("div");
+                    actions.className = "actions";
+                    const det = document.createElement("button");
+                    det.type = "button";
+                    det.className = "details-btn";
+                    det.textContent = "Details";
+                    det.setAttribute("aria-label", "Open details for " + r.label);
+                    det.addEventListener("click", (e) => openDetail(r, e.currentTarget));
+                    const wb = document.createElement("button");
+                    wb.type = "button";
+                    wb.className = "watch-btn";
+                    const on = watched.has(r.id);
+                    wb.setAttribute("aria-pressed", String(on));
+                    wb.textContent = on ? "Watching" : "Watch";
+                    wb.setAttribute(
+                        "aria-label",
+                        (on ? "Remove " : "Add ") + r.label + (on ? " from" : " to") + " watchlist",
+                    );
+                    wb.addEventListener("click", () => toggleWatch(r));
+                    actions.append(det, wb);
+
+                    li.append(idx, who, amt, meta, actions);
+                    queueEl.append(li);
+                });
+            }
+
+            /* ---- detail dialog ---- */
+            function openDetail(r, opener) {
+                lastOpener = opener || null;
+                $("#d-title").textContent = r.label;
+                const bd = $("#d-badge");
+                bd.replaceChildren();
+                const badge = document.createElement("span");
+                badge.className = "badge " + STATE_META[r.state].cls;
+                const dot = document.createElement("span");
+                dot.className = "b-dot";
+                dot.setAttribute("aria-hidden", "true");
+                badge.append(dot, document.createTextNode(STATE_META[r.state].word));
+                bd.append(badge);
+
+                const dl = $("#d-facts");
+                dl.replaceChildren();
+                const rows = [
+                    [
+                        "Transaction layer",
+                        r.layer === "Virtual"
+                            ? "Virtual — off-chain " +
+                              (r.scope === "arkade" ? "Arkade" : "Second") +
+                              " record; not an on-chain lookup"
+                            : "On-chain commitment — anchored on Bitcoin",
+                        false,
+                    ],
+                    ["Sample record ID", r.id, true],
+                    ["Amount", r.amount + " sats (illustrative)", false],
+                    ["Expiry reading", r.expiry + " — estimates are not guarantees", false],
+                    [
+                        "Network scope",
+                        r.scope === "arkade"
+                            ? "Bitcoin mainnet · Arkade (sample)"
+                            : "Second · test network (sample)",
+                        false,
+                    ],
+                ];
+                for (const [k, v, mono] of rows) {
+                    const wrap = document.createElement("div");
+                    const dt = document.createElement("dt");
+                    dt.textContent = k;
+                    const dd = document.createElement("dd");
+                    dd.textContent = v;
+                    if (mono) dd.className = "mono";
+                    wrap.append(dt, dd);
+                    dl.append(wrap);
+                }
+                $("#d-mean").textContent = r.mean;
+                $("#d-next").textContent = r.next;
+                $("#d-next-block").className =
+                    "detail-block db-next" +
+                    (r.state === "ok" || r.state === "settled" ? " calm" : "");
+
+                const wb = $("#d-watch");
+                const on = watched.has(r.id);
+                wb.setAttribute("aria-pressed", String(on));
+                wb.textContent = on ? "Watching ✓" : "Add to watchlist";
+                wb.onclick = () => toggleWatch(r, wb);
+
+                dialog.showModal();
+                $("#d-close").focus();
+            }
+            $("#d-close").addEventListener("click", () => dialog.close());
+            dialog.addEventListener("click", (e) => {
+                if (e.target === dialog) dialog.close();
+            });
+            dialog.addEventListener("close", () => {
+                renderQueue();
+                if (lastOpener && lastOpener.isConnected) {
+                    lastOpener.focus();
+                } else {
+                    $("#queue-title").setAttribute("tabindex", "-1");
+                    $("#queue-title").focus();
+                }
+            });
+
+            /* ---- controls ---- */
+            document.querySelectorAll("[data-filter]").forEach((b) => {
+                b.addEventListener("click", () => {
+                    filter = b.dataset.filter;
+                    document
+                        .querySelectorAll("[data-filter]")
+                        .forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+                    renderQueue();
+                });
+            });
+            document.querySelectorAll("[data-scope]").forEach((b) => {
+                b.addEventListener("click", () => {
+                    scope = b.dataset.scope;
+                    document
+                        .querySelectorAll("[data-scope]")
+                        .forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+                    $("#snap-source").textContent =
+                        scope === "arkade"
+                            ? "Source: illustrative operator + indexer fixture"
+                            : "Source: synthetic Second fixture — no public VTXO index";
+                    $("#snap-age").textContent = "· sample snapshot, taken 2 minutes ago";
+                    renderVerdict();
+                    renderQueue();
+                });
+            });
+            q.addEventListener("input", () => {
+                term = q.value.trim().toLowerCase();
+                renderQueue();
+            });
+            $("#reset").addEventListener("click", () => {
+                q.value = "";
+                term = "";
+                filter = "all";
+                document
+                    .querySelectorAll("[data-filter]")
+                    .forEach((x) =>
+                        x.setAttribute("aria-pressed", String(x.dataset.filter === "all")),
+                    );
+                renderQueue();
+                q.focus();
+            });
+            $("#recheck").addEventListener("click", () => {
+                $("#snap-age").textContent =
+                    "· sample snapshot, re-checked just now (still illustrative)";
+            });
+            document.addEventListener("keydown", (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+                    e.preventDefault();
+                    q.focus();
+                }
+            });
+
+            /* filter counts */
+            document.querySelectorAll("[data-filter]").forEach((b) => {
+                const f = b.dataset.filter;
+                if (f === "all" || f === "watching") return;
+                const n = scoped().filter((r) => r.state === f).length;
+                const s = document.createElement("span");
+                s.className = "n";
+                s.textContent = "· " + n;
+                b.append(s);
+            });
+            /* recount when scope changes */
+            function recountFilters() {
+                document.querySelectorAll("[data-filter]").forEach((b) => {
+                    const f = b.dataset.filter;
+                    const old = b.querySelector(".n");
+                    if (old) old.remove();
+                    if (f === "all" || f === "watching") return;
+                    const n = scoped().filter((r) => r.state === f).length;
+                    const s = document.createElement("span");
+                    s.className = "n";
+                    s.textContent = "· " + n;
+                    b.append(s);
+                });
+            }
+            document
+                .querySelectorAll("[data-scope]")
+                .forEach((b) => b.addEventListener("click", recountFilters));
+
+            renderVerdict();
+            renderWatch();
+            renderQueue();
+        </script>
+    </body>
+</html>

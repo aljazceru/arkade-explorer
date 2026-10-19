@@ -10,21 +10,10 @@ export function Footer() {
         <footer className="border-t border-border bg-card/40" role="contentinfo">
             <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-center sm:justify-between py-4 gap-2 sm:gap-0 px-4 text-xs text-muted-foreground">
                 <div className="flex items-center gap-3 text-center sm:text-left">
+                    <span className="text-foreground">ark.observer</span>
+                    <span className="text-border">|</span>
                     <span>
-                        Powered by{" "}
-                        <a
-                            href={EXTERNAL_LINKS.ARKADE}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:text-primary/80 transition-colors duration-200"
-                            aria-label="Arkade (opens in new tab)"
-                        >
-                            Arkade
-                        </a>
-                    </span>
-                    <span className="hidden sm:inline text-border">|</span>
-                    <span className="hidden sm:inline">
-                        Indexer:{" "}
+                        Operator:{" "}
                         <a
                             href={INDEXER_URL}
                             target="_blank"

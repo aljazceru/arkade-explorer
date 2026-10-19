@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Arkade Explorer · UX directions</title>
+        <meta name="robots" content="noindex, nofollow" />
+        <style>
+            :root {
+                color-scheme: light;
+                --ink: #192b2b;
+                --muted: #526562;
+                --line: #d6e0da;
+                --accent: #1a604a;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                background: #f4f6f1;
+                color: var(--ink);
+                font:
+                    15px/1.6 system-ui,
+                    -apple-system,
+                    sans-serif;
+            }
+            main {
+                max-width: 1220px;
+                margin: auto;
+                padding: 38px 32px 60px;
+            }
+            .top {
+                display: flex;
+                justify-content: space-between;
+                gap: 20px;
+                font-size: 12px;
+                color: var(--muted);
+                border-bottom: 1px solid var(--line);
+                padding-bottom: 20px;
+            }
+            .brand {
+                font-weight: 750;
+                color: var(--ink);
+                letter-spacing: -0.5px;
+                font-size: 17px;
+            }
+            .intro {
+                padding: 56px 0 30px;
+                max-width: 780px;
+            }
+            .eyebrow {
+                font-size: 11px;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                color: var(--accent);
+                font-weight: 750;
+            }
+            h1 {
+                font-size: clamp(36px, 5vw, 60px);
+                line-height: 1.08;
+                letter-spacing: -2.5px;
+                font-weight: 600;
+                margin: 16px 0 20px;
+            }
+            p {
+                color: var(--muted);
+            }
+            .intro p {
+                font-size: 17px;
+                max-width: 690px;
+            }
+            .choices {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 22px;
+            }
+            .choice {
+                border: 1px solid var(--line);
+                border-radius: 14px;
+                overflow: hidden;
+                background: #fff;
+                display: flex;
+                flex-direction: column;
+            }
+            .preview {
+                height: 280px;
+                padding: 21px;
+                background: #edf2ed;
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+                border-bottom: 1px solid var(--line);
+            }
+            .mini-nav {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 10px;
+                font-weight: 700;
+            }
+            .mini-pill {
+                border-radius: 20px;
+                background: #d9e8df;
+                padding: 3px 8px;
+                font-size: 8px;
+            }
+            .mini-title {
+                font-size: 24px;
+                font-weight: 650;
+                letter-spacing: -1px;
+                line-height: 1.1;
+                margin-top: 9px;
+            }
+            .mini-search {
+                font-size: 9px;
+                border: 1px solid #b6cdbb;
+                border-radius: 6px;
+                padding: 10px;
+                background: white;
+                color: #637a6a;
+            }
+            .mini-grid {
+                display: grid;
+                grid-template-columns: 2fr 1fr;
+                gap: 10px;
+                flex: 1;
+            }
+            .mini-lines {
+                border: 1px solid #d9e3db;
+                background: white;
+                border-radius: 4px;
+                padding: 8px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-around;
+                gap: 6px;
+            }
+            .mini-lines i {
+                display: block;
+                height: 5px;
+                background: #dce5df;
+                border-radius: 3px;
+            }
+            .mini-lines i:nth-child(2) {
+                width: 72%;
+            }
+            .mini-lines i:nth-child(3) {
+                width: 85%;
+            }
+            .mini-tile {
+                background: #dceadd;
+                border-radius: 5px;
+                font-size: 9px;
+                padding: 10px;
+            }
+            .mini-tile strong {
+                display: block;
+                font-size: 24px;
+            }
+            .b .preview {
+                background: #191b1e;
+                color: #eeeef0;
+            }
+            .b .mini-pill {
+                background: #303337;
+                color: #c7c9ce;
+            }
+            .b .mini-title {
+                font:
+                    600 20px system-ui,
+                    sans-serif;
+                letter-spacing: -0.6px;
+            }
+            .b .mini-search {
+                background: #1e2024;
+                border-color: #3b3e44;
+                color: #a0a3aa;
+            }
+            .b .mini-lines {
+                background: #1e2024;
+                border-color: #303337;
+            }
+            .b .mini-lines i {
+                background: #3b4049;
+            }
+            .b .mini-tile {
+                background: #272d35;
+                color: #adc4df;
+            }
+            .c .preview {
+                background: #f6eee2;
+                color: #332b3e;
+            }
+            .c .mini-pill {
+                background: #e8dfd0;
+                color: #654c39;
+            }
+            .c .mini-title {
+                font:
+                    26px/1.1 Georgia,
+                    serif;
+                letter-spacing: -0.8px;
+            }
+            .c .mini-search {
+                border-color: #ddc2b2;
+                background: #fffaf3;
+                color: #81553c;
+            }
+            .c .mini-lines {
+                background: #fffaf4;
+                border-color: #e4d2c2;
+            }
+            .c .mini-lines i {
+                background: #ddd0be;
+            }
+            .c .mini-tile {
+                background: #eac9b7;
+                color: #794631;
+            }
+            .content {
+                padding: 24px;
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+            }
+            .tag {
+                font-size: 10px;
+                letter-spacing: 1.2px;
+                font-weight: 750;
+                text-transform: uppercase;
+                color: var(--accent);
+            }
+            h2 {
+                margin: 9px 0;
+                font-size: 23px;
+                letter-spacing: -0.7px;
+            }
+            .content p {
+                font-size: 13px;
+                margin: 0 0 18px;
+            }
+            .content dl {
+                margin: 0 0 24px;
+                font-size: 12px;
+            }
+            .content dt {
+                font-weight: 700;
+                margin-bottom: 4px;
+            }
+            .content dd {
+                margin: 0 0 12px;
+                color: var(--muted);
+            }
+            .open {
+                display: block;
+                text-align: center;
+                background: var(--ink);
+                color: white;
+                border-radius: 7px;
+                padding: 12px;
+                text-decoration: none;
+                font-size: 13px;
+                font-weight: 600;
+                margin-top: auto;
+            }
+            .open:hover {
+                background: var(--accent);
+            }
+            a:focus-visible,
+            summary:focus-visible {
+                outline: 3px solid #287ab6;
+                outline-offset: 4px;
+            }
+            .recommendation {
+                display: grid;
+                grid-template-columns: 1fr 2fr;
+                gap: 32px;
+                margin-top: 32px;
+                border: 1px solid #bacdc0;
+                border-radius: 12px;
+                padding: 26px;
+                background: #eaf0e8;
+            }
+            .recommendation h2 {
+                font-size: 20px;
+                margin: 0;
+            }
+            .recommendation p {
+                font-size: 13px;
+                margin: 0;
+            }
+            .scope {
+                margin-top: 32px;
+                border-top: 1px solid var(--line);
+                padding-top: 22px;
+                font-size: 12px;
+            }
+            .scope summary {
+                cursor: pointer;
+                font-weight: 650;
+                min-height: 36px;
+            }
+            .scope ul {
+                max-width: 880px;
+                color: var(--muted);
+                padding-left: 18px;
+            }
+            .scope li {
+                margin: 8px 0;
+            }
+            footer {
+                margin-top: 32px;
+                font-size: 11px;
+                color: var(--muted);
+            }
+            @media (max-width: 950px) {
+                .choices {
+                    grid-template-columns: minmax(0, 1fr);
+                }
+                .choice {
+                    display: grid;
+                    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                }
+                .preview {
+                    height: 100%;
+                    min-height: 290px;
+                    border-bottom: 0;
+                    border-right: 1px solid var(--line);
+                }
+                .mini-title {
+                    font-size: 30px;
+                }
+                .recommendation {
+                    grid-template-columns: 1fr;
+                    gap: 12px;
+                }
+            }
+            @media (max-width: 550px) {
+                main {
+                    padding: 24px 20px 40px;
+                }
+                .intro {
+                    padding: 32px 0 22px;
+                }
+                .intro p {
+                    font-size: 15px;
+                }
+                h1 {
+                    letter-spacing: -1.5px;
+                }
+                .choice {
+                    display: flex;
+                }
+                .preview {
+                    min-height: 280px;
+                    height: 280px;
+                    border-right: 0;
+                    border-bottom: 1px solid var(--line);
+                }
+                .top {
+                    flex-direction: column;
+                    gap: 5px;
+                }
+                .recommendation {
+                    padding: 20px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <div class="top">
+                <span class="brand">arkade / explorer</span
+                ><span>UX study · three interactive HTML directions · October 2026</span>
+            </div>
+            <header class="intro">
+                <span class="eyebrow">Choose the experience, not just the palette</span>
+                <h1>Same protocol.<br />Three clearer ways in.</h1>
+                <p>
+                    Each direction reorganizes the explorer around a different job. Open the
+                    prototypes, try search and filters, and inspect a record on desktop or mobile.
+                </p>
+                <p style="font-size: 12px">
+                    All figures are illustrative. No live feeds, wallet connection, transactions, or
+                    changes to the production UI.
+                </p>
+            </header>
+            <section class="choices" aria-label="Three UX design choices">
+                <article class="choice a">
+                    <div class="preview" aria-hidden="true">
+                        <div class="mini-nav">
+                            arkade / explorer<span class="mini-pill">Mainnet</span>
+                        </div>
+                        <div class="mini-title">Follow the transaction.</div>
+                        <div class="mini-search">Search ID, address, or label →</div>
+                        <div class="mini-grid">
+                            <div class="mini-lines"><i></i><i></i><i></i><i></i></div>
+                            <div class="mini-tile">Attention<strong>3</strong>Review expiry</div>
+                        </div>
+                    </div>
+                    <div class="content">
+                        <span class="tag">A / Discover</span>
+                        <h2>Clear Explorer</h2>
+                        <p>
+                            A calm, search-first front door. Lead with the task; keep operator
+                            configuration out of the way.
+                        </p>
+                        <dl>
+                            <dt>Best for</dt>
+                            <dd>Everyday lookup, new visitors, broad adoption.</dd>
+                            <dt>Key tradeoff</dt>
+                            <dd>
+                                Less technical context above the fold; details expand on demand.
+                            </dd>
+                        </dl>
+                        <a class="open" href="option-a.html">Open Clear Explorer →</a>
+                    </div>
+                </article>
+                <article class="choice b">
+                    <div class="preview" aria-hidden="true">
+                        <div class="mini-nav">
+                            arkade / explorer<span class="mini-pill">Prototype</span>
+                        </div>
+                        <div class="mini-title">Network overview</div>
+                        <div class="mini-search">All records　 Virtual　 Commitments</div>
+                        <div class="mini-grid">
+                            <div class="mini-lines"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                            <div class="mini-tile">
+                                Record details<strong>2h 14m</strong>Review expiry
+                            </div>
+                        </div>
+                    </div>
+                    <div class="content">
+                        <span class="tag">B / Selected direction</span>
+                        <h2>Operator Console</h2>
+                        <p>
+                            A quieter operator workspace. Charcoal surfaces, precise tables, and
+                            contextual record details replace the terminal-style decoration.
+                        </p>
+                        <dl>
+                            <dt>Best for</dt>
+                            <dd>Operators, developers, cross-network investigation.</dd>
+                            <dt>Key tradeoff</dt>
+                            <dd>More information at once; a steeper first-visit learning curve.</dd>
+                        </dl>
+                        <a class="open" href="option-b.html">Open Operator Console →</a>
+                    </div>
+                </article>
+                <article class="choice c">
+                    <div class="preview" aria-hidden="true">
+                        <div class="mini-nav">
+                            arkade / safety desk<span class="mini-pill">Browser only</span>
+                        </div>
+                        <div class="mini-title">Know what needs<br />your attention.</div>
+                        <div class="mini-search">Needs review　 /　 Unknown　 /　 All</div>
+                        <div class="mini-grid">
+                            <div class="mini-lines"><i></i><i></i><i></i></div>
+                            <div class="mini-tile">Nearest expiry<strong>2h</strong>Estimated</div>
+                        </div>
+                    </div>
+                    <div class="content">
+                        <span class="tag">C / Monitor</span>
+                        <h2>Safety Desk</h2>
+                        <p>
+                            Expiry-first monitoring. Prioritize what needs review and explain what
+                            each state actually means.
+                        </p>
+                        <dl>
+                            <dt>Best for</dt>
+                            <dd>Watchlist users and recurring fund-health checks.</dd>
+                            <dt>Key tradeoff</dt>
+                            <dd>
+                                Personal monitoring takes priority over general network exploration.
+                            </dd>
+                        </dl>
+                        <a class="open" href="option-c.html">Open Safety Desk →</a>
+                    </div>
+                </article>
+            </section>
+            <section class="recommendation" aria-label="Recommendation">
+                <h2>Selected direction:<br />B — Operator Console.</h2>
+                <p>
+                    Refined around record inspection rather than terminal aesthetics: restrained
+                    color, readable typography, a persistent detail panel, and source evidence on
+                    demand. This is still a standalone design prototype; the production React UI has
+                    not been replaced.
+                </p>
+            </section>
+            <details class="scope">
+                <summary>What the prototypes demonstrate</summary>
+                <ul>
+                    <li>
+                        Three different information architectures, not three color themes. Layouts
+                        adapt to narrow screens; tables scroll within their own region.
+                    </li>
+                    <li>
+                        Working fixture search/filtering and record inspection. Prototype state does
+                        not affect your real watchlist or wallet.
+                    </li>
+                    <li>
+                        Explicit separation of virtual transactions, on-chain commitments, active
+                        expiry, settled records, unknown evidence, and stale snapshots.
+                    </li>
+                    <li>
+                        Future implementation must preserve full integer precision, validate
+                        metadata and stored state, and compute expiry from current evidence. A
+                        visual redesign alone does not fix these issues.
+                    </li>
+                </ul>
+            </details>
+            <footer>
+                Standalone files: open this index directly or serve /ux-options/ with the explorer.
+                Choose A, B, or C; production design is intentionally unchanged.
+            </footer>
+        </main>
+    </body>
+</html>

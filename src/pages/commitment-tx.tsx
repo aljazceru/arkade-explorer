@@ -15,10 +15,10 @@ export function CommitmentTxPage() {
 
     useEffect(() => {
         document.title = txid
-            ? `Commitment transaction ${txid.slice(0, 8)}... | Arkade Explorer`
-            : "Arkade Explorer";
+            ? `Commitment transaction ${txid.slice(0, 8)}... | ark.observer`
+            : "ark.observer";
         return () => {
-            document.title = "Arkade Explorer";
+            document.title = "ark.observer";
         };
     }, [txid]);
 

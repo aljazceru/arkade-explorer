@@ -1,160 +1,327 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { motion, useAnimationControls } from "framer-motion";
-import { Activity, ArrowUpRight } from "lucide-react";
-import { useActivityStream } from "@/providers/activity-stream-provider";
-import { truncateHash } from "@/lib/utils";
-import { formatRelativeTime } from "@/lib/formatters";
-import { EXTERNAL_LINKS } from "@/lib/constants";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { PageTransition } from "@/components/shared/page-transition";
-import { NetworkHealthPanel } from "@/components/shared/network-health";
+import { OverviewStats } from "@/components/overview/overview-stats";
+import { RecordDetail } from "@/components/overview/record-detail";
+import {
+    buildBarkdRecords,
+    buildOverviewRecords,
+    buildWatchlistRecords,
+    formatSnapshotLabel,
+    RecordsTable,
+    type NetworkScope,
+    type OverviewRecord,
+} from "@/components/overview/records-table";
+import { BarkdConnect } from "@/components/overview/barkd-connect";
+import { fetchAllPages } from "@/lib/api/fetchAllPages";
+import { indexerClient } from "@/lib/api/indexer";
+import { loadObservation, type ArkadeObservation } from "@/lib/observation";
+import { SourcesSection } from "@/components/overview/sources-section";
+import { useArkActivity } from "@/hooks/use-ark-activity";
+import { useBarkd } from "@/hooks/use-barkd";
+import { useWatchlist } from "@/hooks/use-watchlist";
+import { useLiveSecond } from "@/hooks/use-live-second";
+import {
+    AVG_BLOCK_SECONDS,
+    parseRelativeTimelock,
+    timelockToSecondsAndBlocks,
+} from "@/lib/vtxo-display";
+import { useServerInfo } from "@/providers/server-info-provider";
 
-const EASE_OUT: [number, number, number, number] = [0.165, 0.84, 0.44, 1];
-
-function ActivityPulseWrapper({ children }: { children: React.ReactNode }) {
-    const controls = useAnimationControls();
-    const { subscribeToNewActivity } = useActivityStream();
-
-    useEffect(() => {
-        const unsubscribe = subscribeToNewActivity(() => {
-            controls.start({
-                scale: [1, 1.01, 1],
-                transition: { duration: 0.2, ease: EASE_OUT },
-            });
-        });
-        return unsubscribe;
-    }, [controls, subscribeToNewActivity]);
-
-    return <motion.div animate={controls}>{children}</motion.div>;
-}
-
-function ActivityFeed() {
-    const { activities, isVisible } = useActivityStream();
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    if (!mounted || !isVisible || activities.length === 0) {
-        return (
-            <div
-                className="rounded-xl bg-card p-8 text-center"
-                style={{
-                    boxShadow:
-                        "0 0 0 1px rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04)",
-                }}
-            >
-                <Activity
-                    className="h-6 w-6 text-muted-foreground mx-auto mb-2"
-                    aria-hidden="true"
-                />
-                <p className="text-sm text-muted-foreground">
-                    No recent activity. Transactions will appear here in real time.
-                </p>
-            </div>
-        );
-    }
-
-    return (
-        <div
-            className="rounded-xl bg-card overflow-hidden"
-            style={{
-                boxShadow:
-                    "0 0 0 1px rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04)",
-            }}
-        >
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                <span className="text-sm font-medium text-foreground">Recent activity</span>
-                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
-                    </span>
-                    Live
-                </span>
-            </div>
-            <div className="divide-y divide-border max-h-[32rem] overflow-y-auto">
-                {activities.map((activity) => (
-                    <motion.div
-                        key={activity.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.2, ease: EASE_OUT }}
-                    >
-                        {activity.txid ? (
-                            <Link
-                                to={`/tx/${activity.txid}`}
-                                className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-secondary/40 transition-colors duration-200"
-                            >
-                                <div className="min-w-0">
-                                    <p className="text-sm text-foreground truncate">
-                                        {activity.description}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">
-                                        {truncateHash(activity.txid)}
-                                    </p>
-                                </div>
-                                <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
-                                    {formatRelativeTime(activity.timestamp)}
-                                </span>
-                            </Link>
-                        ) : (
-                            <div className="flex items-center justify-between gap-4 px-4 py-3">
-                                <p className="text-sm text-foreground truncate">
-                                    {activity.description}
-                                </p>
-                                <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
-                                    {formatRelativeTime(activity.timestamp)}
-                                </span>
-                            </div>
-                        )}
-                    </motion.div>
-                ))}
-            </div>
-        </div>
-    );
-}
+const MEMPOOL_BASE = "https://mempool.space/api";
 
 export function HomePage() {
+    const { items: watchlist } = useWatchlist();
+    const scripts = useMemo(() => watchlist.map((item) => item.script), [watchlist]);
+    const scriptsKey = scripts.join();
+    const arkadeSnapshotQuery = useQuery({
+        queryKey: ["observation", "arkade"],
+        queryFn: () => loadObservation<ArkadeObservation>("arkade"),
+        staleTime: 15 * 60_000,
+    });
+    const watchlistQuery = useQuery({
+        queryKey: ["live-vtxos", scriptsKey],
+        queryFn: () =>
+            fetchAllPages(
+                (opts) =>
+                    indexerClient.getVtxos({
+                        scripts,
+                        spendableOnly: false,
+                        ...opts,
+                    }),
+                "vtxos",
+            ),
+        enabled: scripts.length > 0,
+        staleTime: 30_000,
+        refetchInterval: 60_000,
+    });
+    const chainTipQuery = useQuery({
+        queryKey: ["chain-tip"],
+        queryFn: async ({ signal }) => {
+            const response = await fetch(`${MEMPOOL_BASE}/blocks/tip/height`, { signal });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const height = Number(await response.text());
+            if (!Number.isFinite(height)) throw new Error("Invalid Bitcoin chain tip height.");
+            return height;
+        },
+        enabled: scripts.length > 0,
+        staleTime: 60_000,
+        refetchInterval: 60_000,
+    });
+    const { serverInfo, isLoading: serverInfoLoading, error: serverInfoError } = useServerInfo();
+    const {
+        connected: barkdConnected,
+        vtxos: barkdVtxos,
+        tipHeight: barkdTipHeight,
+        isLoading: barkdLoading,
+        error: barkdError,
+    } = useBarkd();
+    const activity = useArkActivity();
+    const liveSecond = useLiveSecond();
+    const [scope, setScope] = useState<NetworkScope>("all");
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+
+    const exitSeconds = useMemo(() => {
+        if (serverInfoError) return null;
+        const raw = serverInfo?.unilateralExitDelay;
+        if (raw === undefined || raw === null) return null;
+        try {
+            return timelockToSecondsAndBlocks(parseRelativeTimelock(raw)).seconds;
+        } catch {
+            return null;
+        }
+    }, [serverInfo, serverInfoError]);
+    const secondExitSeconds = useMemo(() => {
+        const exitDelta = liveSecond.info?.exitDeltaBlocks;
+        return typeof exitDelta === "number" && Number.isFinite(exitDelta)
+            ? exitDelta * AVG_BLOCK_SECONDS
+            : null;
+    }, [liveSecond.info]);
+    const arkadeConfigured = scripts.length > 0 || activity.listening;
+    const arkadeIndexerError = watchlistQuery.error instanceof Error ? watchlistQuery.error : null;
+    const arkadeIndexerLoading = scripts.length > 0 && watchlistQuery.isLoading;
+    const arkadeError = arkadeIndexerError ?? serverInfoError;
+    const arkadeLoading = arkadeIndexerLoading || serverInfoLoading;
+    const secondConfigured = barkdConnected || liveSecond.serverAddress !== null;
+    const secondLoading =
+        (barkdConnected && barkdLoading) ||
+        (liveSecond.serverAddress !== null && liveSecond.isLoading);
+    const secondError =
+        (barkdConnected ? barkdError : null) ??
+        (liveSecond.serverAddress !== null && liveSecond.error instanceof Error
+            ? liveSecond.error
+            : null);
+    const records = useMemo(() => {
+        const watchlistRecords = buildWatchlistRecords(
+            watchlistQuery.data?.vtxos ?? [],
+            exitSeconds,
+            chainTipQuery.data ?? null,
+        );
+        const barkdRecords =
+            barkdConnected && barkdVtxos
+                ? buildBarkdRecords(barkdVtxos, barkdTipHeight, secondExitSeconds)
+                : [];
+        const snapshot = arkadeSnapshotQuery.data;
+        const snapshotRecords =
+            snapshot && !arkadeSnapshotQuery.isError
+                ? buildOverviewRecords(snapshot, null, exitSeconds).filter(
+                      (record) => record.network === "arkade",
+                  )
+                : [];
+        const secondRecords: OverviewRecord[] = (liveSecond.serverTxs ?? []).map(
+            (tx): OverviewRecord => {
+                const confirmed = tx.blockHeight !== null;
+                const label =
+                    tx.direction === "to_server"
+                        ? "To Second server"
+                        : tx.direction === "from_server"
+                          ? "From Second server"
+                          : "Second server";
+                return {
+                    id: `second-live:${tx.txid}`,
+                    txid: tx.txid,
+                    network: "second",
+                    kind: "onchain",
+                    typeLabel: "On-chain · live",
+                    label,
+                    amountSat: tx.totalSats,
+                    status: confirmed ? "confirmed" : "observed",
+                    statusLabel: confirmed ? "Confirmed" : "Observed",
+                    needsReview: false,
+                    leftSeconds: null,
+                    exitSeconds: null,
+                    createdAtSeconds: tx.blockTimeSeconds,
+                    expiresAtSeconds: null,
+                    recordedAt: tx.blockTimeSeconds,
+                    snapshotFetchedAt: new Date().toISOString(),
+                    sourceLabel: "mempool · live",
+                    commitmentTxids: [],
+                    blockHeight: tx.blockHeight,
+                    liveSource: true,
+                };
+            },
+        );
+        // Live sources win; the observation snapshot backfills Arkade rows between
+        // operator events, deduplicated by txid-outpoint.
+        const live = [...activity.records, ...watchlistRecords, ...barkdRecords];
+        const liveKeys = new Set(
+            live.map((record) => `${record.txid}:${record.id.match(/:(\d+)$/)?.[1] ?? "x"}`),
+        );
+        const backfill = snapshotRecords.filter(
+            (record) => !liveKeys.has(`${record.txid}:${record.id.match(/:(\d+)$/)?.[1] ?? "x"}`),
+        );
+        return [...live, ...backfill, ...secondRecords];
+    }, [
+        activity.records,
+        arkadeSnapshotQuery.data,
+        arkadeSnapshotQuery.isError,
+        barkdConnected,
+        barkdTipHeight,
+        barkdVtxos,
+        chainTipQuery.data,
+        exitSeconds,
+        liveSecond.serverTxs,
+        secondExitSeconds,
+        watchlistQuery.data?.vtxos,
+    ]);
+    const selectedRecord = selectedId
+        ? (records.find((record) => record.id === selectedId) ?? null)
+        : null;
+    const freshness = [
+        ...new Set(
+            [
+                scripts.length === 0
+                    ? "Arkade watchlist not configured"
+                    : arkadeIndexerError
+                      ? "operator indexer · unavailable"
+                      : arkadeIndexerLoading
+                        ? "operator indexer · loading"
+                        : "operator indexer · live",
+                activity.connected && activity.listening
+                    ? "operator stream · live"
+                    : !activity.connected
+                      ? "operator stream · reconnecting"
+                      : null,
+                serverInfoError
+                    ? "Arkade /v1/info · unavailable"
+                    : serverInfoLoading
+                      ? "Arkade /v1/info · loading"
+                      : serverInfo
+                        ? "Arkade /v1/info · live"
+                        : "Arkade /v1/info · unavailable",
+                scripts.length > 0
+                    ? chainTipQuery.error
+                        ? "chain tip · unavailable"
+                        : chainTipQuery.isLoading
+                          ? "chain tip · loading"
+                          : "mempool · live"
+                    : null,
+                liveSecond.serverAddress !== null
+                    ? liveSecond.error
+                        ? "mempool · unavailable"
+                        : liveSecond.isLoading
+                          ? "mempool · loading"
+                          : "mempool · live"
+                    : "Second on-chain source not configured",
+                arkadeSnapshotQuery.data
+                    ? `Arkade ${formatSnapshotLabel(arkadeSnapshotQuery.data.fetched_at)}`
+                    : null,
+                barkdConnected
+                    ? barkdError
+                        ? "barkd · unavailable"
+                        : barkdLoading
+                          ? "barkd · loading"
+                          : "barkd · live"
+                    : null,
+            ].filter((source): source is string => source !== null),
+        ),
+    ].join(" · ");
+    const serverInfoStatus = serverInfoError
+        ? "error"
+        : serverInfoLoading
+          ? "loading"
+          : serverInfo
+            ? "live"
+            : "error";
+
     return (
         <PageTransition>
             <div className="space-y-6">
-                <NetworkHealthPanel />
-
-                <div className="rounded-xl border border-border bg-card px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                        <p className="text-sm font-medium text-foreground">
-                            Observation: Arkade | Second (bark)
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                            Side-by-side mainnet health, real VTXOs with expiry, and on-chain round
-                            activity.
+                        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+                            Overview
+                        </h1>
+                        <p
+                            className="mt-2 text-sm text-muted-foreground"
+                            aria-label="Live data freshness"
+                        >
+                            {freshness}
                         </p>
                     </div>
-                    <Link
-                        to="/observe"
-                        className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium"
+                    <div
+                        className="inline-flex w-fit rounded-lg border border-border bg-card p-1"
+                        role="group"
+                        aria-label="Network scope"
                     >
-                        Open observation
-                    </Link>
-                </div>
+                        {(
+                            [
+                                ["all", "All networks"],
+                                ["arkade", "Arkade"],
+                                ["second", "Second"],
+                            ] as const
+                        ).map(([value, label]) => (
+                            <button
+                                key={value}
+                                type="button"
+                                aria-pressed={scope === value}
+                                onClick={() => setScope(value)}
+                                className={`rounded-md px-3 py-1.5 text-sm transition-colors ${scope === value ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                </header>
 
-                <ActivityPulseWrapper>
-                    <ActivityFeed />
-                </ActivityPulseWrapper>
+                <OverviewStats
+                    records={records}
+                    scope={scope}
+                    arkadeConfigured={arkadeConfigured}
+                    arkadeLoading={arkadeLoading}
+                    arkadeError={arkadeError}
+                    secondConfigured={secondConfigured}
+                    secondLoading={secondLoading}
+                    secondError={secondError}
+                />
 
-                <div className="text-center">
-                    <a
-                        href={EXTERNAL_LINKS.DOCS}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
-                    >
-                        Learn more about Arkade
-                        <ArrowUpRight className="h-3.5 w-3.5" />
-                    </a>
+                <div className="grid min-w-0 grid-cols-1 items-start gap-4 min-[1200px]:grid-cols-[minmax(0,1fr)_minmax(20rem,0.42fr)]">
+                    <RecordsTable
+                        records={records}
+                        scope={scope}
+                        selectedId={selectedId}
+                        onSelect={setSelectedId}
+                        arkadeConfigured={arkadeConfigured}
+                        arkadeLoading={arkadeIndexerLoading}
+                        arkadeError={arkadeIndexerError}
+                        secondConfigured={secondConfigured}
+                        secondLoading={secondLoading}
+                        secondError={secondError}
+                    />
+                    <RecordDetail record={selectedRecord} onClose={() => setSelectedId(null)} />
                 </div>
+                <BarkdConnect />
+
+                <SourcesSection
+                    arkadeConfigured={arkadeConfigured}
+                    arkadeLoading={arkadeIndexerLoading}
+                    arkadeError={arkadeIndexerError}
+                    secondConfigured={secondConfigured}
+                    secondLoading={secondLoading}
+                    secondError={secondError}
+                    serverInfoStatus={serverInfoStatus}
+                    serverInfoError={serverInfoError}
+                />
             </div>
         </PageTransition>
     );

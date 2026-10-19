@@ -122,10 +122,10 @@ function SearchHero({ className, placeholder }: { className?: string; placeholde
             className={cn("w-full max-w-2xl mx-auto", className)}
         >
             <h1 className="font-heading text-3xl sm:text-4xl font-bold text-foreground text-center mb-3 tracking-tight">
-                Arkade Explorer
+                ark.observer
             </h1>
             <p className="text-muted-foreground text-center mb-6 text-sm sm:text-base">
-                Explore transactions, VTXOs, and addresses on the Arkade protocol
+                Explore transactions, VTXOs, and addresses across Ark implementations
             </p>
             <form
                 onSubmit={handleSubmit}

@@ -2,6 +2,51 @@
 
 All notable changes to Arkade Explorer will be documented in this file.
 
+## Unreleased
+
+### Changed
+
+- Refresh direct registry dependencies to current stable releases, including React 19.3,
+  Vite 8, TypeScript 7, Vitest 5, Framer Motion 14, and Arkade SDK 0.4.79; pin exact versions.
+- Align local, CI, and container tooling on Node 24.22.0 and pnpm 10.34.7, retaining the
+  supported toolchain majors and Node 24 type definitions.
+- Use native ESM directory resolution in Vite and Vitest configuration.
+- Implement the selected Operator Console design as the production UI: wide workspace chrome
+  with brand mark and network pill; Overview home with snapshot-labeled stats, filterable and
+  searchable transaction table, and a record inspector (desktop side panel, responsive dialog)
+  with expiry-versus-exit-window meter, copyable IDs, and layer-aware links; Sources section
+  with live operator status and snapshot ages. Removes the home activity feed and its SSE
+  provider.
+
+### Added
+
+- Second "connect your barkd" mode: local-only barkd connection (URL + token in localStorage,
+  read-only REST endpoints) that replaces Second snapshot rows with the user's live wallet VTXOs,
+  computes expiry from the reported chain tip, and enriches the inspector with policy, exit
+  delta/depth, and chain-anchor links; adds a next-Second-round countdown and Copy JSON to the
+  detail panel. Second's mempool.second.tech Esplora has no human UI, so on-chain links stay on
+  mempool.space.
+
+- Independent number validation: `scripts/validate-numbers.ts` oracle recomputing all Overview
+  figures from raw snapshots with optional live upstream reconciliation, plus 19 unit tests for
+  the record/status builders (8 files / 79 tests total); Second-scope stats now compute from
+  live barkd data when connected and show honest placeholders with a connect hint otherwise,
+  replacing the blanket "Not indexed" row.
+
+### Changed (cont.)
+
+- Rebrand as ark.observer with marketing neutrality across both observed networks: no vendor
+  CTAs, attribution, or Arkade promotion; bundled default operator (arkade.computer) so the
+  service works out of the box, swappable via VITE_INDEXER_URL; vendor-free
+  scripts/middleware/validator (ARK_OBS_* env/flags); neutral chrome, titles, and OG cards.
+  Overview is live-first: watchlist-script VTXOs from the operator indexer, live Second
+  gRPC-web info plus Esplora on-chain server activity, live chain tip and exit window;
+  committed snapshots remain only on /observe. Deployed to https://ungovernable.exe.xyz/ark/.
+
+- Three standalone, interactive HTML UX proposals and a comparison page at `/ux-options/`;
+- Codebase review documenting expiry-state, stale-snapshot, metadata, integer-precision,
+  stored-state, mobile-layout, and transaction-navigation risks.
+
 ## [1.0.0] - 2025-11-24
 
 ### Added

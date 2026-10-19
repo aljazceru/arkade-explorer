@@ -1,0 +1,2433 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow" />
+        <title>Overview · Arkade Explorer</title>
+        <style>
+            @font-face {
+                font-family: "Geist";
+                src:
+                    url("../fonts/geist.woff2") format("woff2"),
+                    url("../fonts/GeistVF.ttf") format("truetype");
+                font-weight: 100 900;
+                font-display: swap;
+            }
+            :root {
+                color-scheme: dark;
+                --bg: #0a0a0f;
+                --panel: #111118;
+                --panel-2: #16161f;
+                --panel-3: #1e1e29;
+                --line: rgba(255, 255, 255, 0.07);
+                --line-2: rgba(255, 255, 255, 0.12);
+                --text: #ededf2;
+                --text-2: #a6a6b4;
+                --text-3: #7d7d8b;
+                --accent: #7f5af0;
+                --accent-text: #bba9ff;
+                --accent-bg: rgba(127, 90, 240, 0.13);
+                --amber: #f0b45b;
+                --amber-bg: rgba(240, 180, 91, 0.09);
+                --amber-line: rgba(240, 180, 91, 0.26);
+                --green: #5cc595;
+                --green-bg: rgba(92, 197, 149, 0.1);
+                --red: #f27a6f;
+                --red-bg: rgba(242, 122, 111, 0.09);
+                --red-line: rgba(242, 122, 111, 0.28);
+                --teal-text: #8fdbe6;
+                --teal-bg: rgba(90, 200, 216, 0.12);
+                --sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                --mono:
+                    "Geist Mono", "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Consolas,
+                    monospace;
+                --r: 10px;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html {
+                scroll-behavior: smooth;
+                scroll-padding-top: 84px;
+            }
+            body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--text);
+                font: 14px/1.5 var(--sans);
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                font-feature-settings: "tnum" 0;
+            }
+            button,
+            input {
+                font: inherit;
+                color: inherit;
+            }
+            button {
+                cursor: pointer;
+            }
+            a {
+                color: inherit;
+                text-decoration: none;
+            }
+            :focus-visible {
+                outline: 2px solid var(--accent);
+                outline-offset: 2px;
+                border-radius: 6px;
+            }
+            [hidden] {
+                display: none !important;
+            }
+            svg.i {
+                width: 16px;
+                height: 16px;
+                flex: none;
+                fill: none;
+                stroke: currentColor;
+                stroke-width: 1.5;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+            .sr {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0 0 0 0);
+                white-space: nowrap;
+                border: 0;
+            }
+            .skip {
+                position: fixed;
+                left: 16px;
+                top: -64px;
+                z-index: 200;
+                background: var(--text);
+                color: var(--bg);
+                padding: 9px 14px;
+                border-radius: 8px;
+                font-weight: 500;
+            }
+            .skip:focus {
+                top: 12px;
+            }
+            .num {
+                font-variant-numeric: tabular-nums;
+            }
+
+            /* Shell: a single page needs no sidebar; the top bar carries brand and scope. */
+            .app {
+                min-height: 100vh;
+            }
+            .brand {
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                height: 32px;
+                padding: 0 8px;
+                font-size: 15px;
+                letter-spacing: -0.01em;
+            }
+            .brand svg {
+                width: 18px;
+                height: 18px;
+                color: var(--accent);
+                flex: none;
+            }
+            .brand b {
+                font-weight: 600;
+            }
+            .brand span span {
+                color: var(--text-2);
+            }
+            .dot {
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                flex: none;
+                background: var(--green);
+                box-shadow: 0 0 0 3px rgba(92, 197, 149, 0.14);
+            }
+            .dot.amber {
+                background: var(--amber);
+                box-shadow: 0 0 0 3px rgba(240, 180, 91, 0.14);
+            }
+            .dot.red {
+                background: var(--red);
+                box-shadow: 0 0 0 3px rgba(242, 122, 111, 0.14);
+            }
+
+            .main {
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            .topbar {
+                position: sticky;
+                top: 0;
+                z-index: 40;
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                height: 60px;
+                padding: 0 max(32px, calc((100% - 1480px) / 2 + 32px));
+                border-bottom: 1px solid var(--line);
+                background: rgba(10, 10, 15, 0.82);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+            }
+            .net-pill {
+                display: inline-flex;
+                align-items: center;
+                height: 24px;
+                padding: 0 9px;
+                border-radius: 12px;
+                border: 1px solid var(--line-2);
+                font-size: 12px;
+                color: var(--text-2);
+                white-space: nowrap;
+            }
+            .topbar .search {
+                margin-left: 12px;
+            }
+            .freshness {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px 20px;
+                margin-top: 8px;
+                font-size: 13px;
+                color: var(--text-2);
+            }
+            .freshness span {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .freshness .age {
+                color: var(--text-3);
+            }
+            .freshness .age.amber {
+                color: var(--amber);
+            }
+            .freshness .age.red {
+                color: var(--red);
+            }
+            .freshness .out {
+                opacity: 0.4;
+            }
+            .stat-value .unit {
+                font-size: 14px;
+                font-weight: 500;
+                letter-spacing: 0;
+            }
+            .search {
+                position: relative;
+                flex: 1;
+                max-width: 520px;
+            }
+            .search svg.i {
+                position: absolute;
+                left: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: var(--text-3);
+                pointer-events: none;
+            }
+            .search input {
+                width: 100%;
+                height: 36px;
+                padding: 0 64px 0 38px;
+                border-radius: 8px;
+                border: 1px solid var(--line-2);
+                background: var(--panel);
+                font-size: 13.5px;
+                transition:
+                    border-color 0.12s,
+                    background 0.12s;
+            }
+            .search input::placeholder {
+                color: var(--text-3);
+            }
+            .search input:hover {
+                border-color: rgba(255, 255, 255, 0.16);
+            }
+            .search input:focus {
+                outline: none;
+                border-color: rgba(127, 90, 240, 0.7);
+                background: var(--panel-2);
+                box-shadow: 0 0 0 3px rgba(127, 90, 240, 0.18);
+            }
+            .search input::-webkit-search-cancel-button {
+                appearance: none;
+            }
+            .search-end {
+                position: absolute;
+                right: 8px;
+                top: 50%;
+                transform: translateY(-50%);
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            kbd {
+                font: 500 11.5px/1 var(--sans);
+                color: var(--text-3);
+                border: 1px solid var(--line-2);
+                border-radius: 5px;
+                padding: 4px 6px;
+                background: var(--panel-2);
+            }
+            .clear {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 24px;
+                height: 24px;
+                border: 0;
+                border-radius: 5px;
+                background: transparent;
+                color: var(--text-3);
+            }
+            .clear:hover {
+                color: var(--text);
+                background: rgba(255, 255, 255, 0.06);
+            }
+            .clear svg.i {
+                position: static;
+                transform: none;
+                width: 14px;
+                height: 14px;
+            }
+
+            /* Prototype menu: kept out of the product surface but always visible. */
+            .proto {
+                position: relative;
+                margin-left: auto;
+            }
+            .proto-trigger {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                height: 32px;
+                padding: 0 10px 0 12px;
+                border-radius: 8px;
+                border: 1px solid var(--line-2);
+                background: transparent;
+                font-size: 12.5px;
+                color: var(--text-2);
+            }
+            .proto-trigger:hover,
+            .proto-trigger[aria-expanded="true"] {
+                background: rgba(255, 255, 255, 0.04);
+                color: var(--text);
+            }
+            .proto-trigger .pdot {
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: var(--accent);
+            }
+            .proto-trigger svg.i {
+                width: 14px;
+                height: 14px;
+                color: var(--text-3);
+            }
+            .proto-panel {
+                position: absolute;
+                right: 0;
+                top: calc(100% + 8px);
+                width: 300px;
+                padding: 16px;
+                border-radius: 12px;
+                border: 1px solid var(--line-2);
+                background: #14141c;
+                box-shadow:
+                    0 24px 48px rgba(0, 0, 0, 0.5),
+                    0 2px 6px rgba(0, 0, 0, 0.4);
+            }
+            .proto-panel h2 {
+                margin: 0 0 4px;
+                font-size: 13.5px;
+                font-weight: 600;
+            }
+            .proto-panel p {
+                margin: 0 0 14px;
+                font-size: 12.5px;
+                line-height: 1.55;
+                color: var(--text-2);
+            }
+            .proto-panel fieldset {
+                border: 0;
+                margin: 0 0 12px;
+                padding: 12px 0 0;
+                border-top: 1px solid var(--line);
+            }
+            .proto-panel legend {
+                float: left;
+                width: 100%;
+                margin-bottom: 8px;
+                font-size: 12px;
+                color: var(--text-3);
+            }
+            .option {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                height: 32px;
+                padding: 0 8px;
+                border-radius: 6px;
+                font-size: 13px;
+                cursor: pointer;
+            }
+            .option:hover {
+                background: rgba(255, 255, 255, 0.04);
+            }
+            .option input {
+                accent-color: var(--accent);
+                margin: 0;
+            }
+            .proto-panel a {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding-top: 12px;
+                border-top: 1px solid var(--line);
+                font-size: 12.5px;
+                color: var(--accent-text);
+            }
+
+            .content {
+                width: 100%;
+                max-width: 1480px;
+                margin: 0 auto;
+                padding: 28px 32px 32px;
+            }
+            .page-head {
+                display: flex;
+                align-items: flex-end;
+                justify-content: space-between;
+                gap: 24px;
+            }
+            h1 {
+                margin: 0;
+                font-size: 22px;
+                line-height: 1.25;
+                font-weight: 600;
+                letter-spacing: -0.02em;
+            }
+            .page-head p {
+                margin: 4px 0 0;
+                font-size: 13.5px;
+                color: var(--text-2);
+            }
+            .segmented {
+                display: inline-flex;
+                padding: 3px;
+                gap: 2px;
+                border-radius: 9px;
+                border: 1px solid var(--line);
+                background: var(--panel);
+            }
+            .segmented button {
+                height: 28px;
+                padding: 0 12px;
+                border: 0;
+                border-radius: 6px;
+                background: transparent;
+                font-size: 13px;
+                color: var(--text-2);
+                white-space: nowrap;
+                transition:
+                    background 0.12s,
+                    color 0.12s;
+            }
+            .segmented button:hover {
+                color: var(--text);
+            }
+            .segmented button[aria-pressed="true"] {
+                background: var(--panel-3);
+                color: var(--text);
+                box-shadow:
+                    0 1px 2px rgba(0, 0, 0, 0.35),
+                    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+            }
+
+            .banner {
+                display: flex;
+                gap: 12px;
+                align-items: flex-start;
+                margin-top: 20px;
+                padding: 12px 16px;
+                border-radius: var(--r);
+                border: 1px solid var(--amber-line);
+                background: var(--amber-bg);
+                font-size: 13px;
+                color: #f1d3a3;
+            }
+            .banner.error {
+                border-color: var(--red-line);
+                background: var(--red-bg);
+                color: #f5c0ba;
+            }
+            .banner svg.i {
+                margin-top: 1px;
+            }
+            .banner b {
+                font-weight: 600;
+                color: var(--text);
+            }
+
+            .stats {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 1px;
+                margin-top: 20px;
+                border: 1px solid var(--line);
+                border-radius: var(--r);
+                overflow: hidden;
+                background: var(--line);
+            }
+            .stat {
+                padding: 16px 20px 18px;
+                background: var(--panel);
+            }
+            .stat-label {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 12.5px;
+                color: var(--text-2);
+            }
+            .stat-label svg.i {
+                width: 14px;
+                height: 14px;
+                color: var(--text-3);
+            }
+            .stat-value {
+                margin-top: 10px;
+                font-size: 26px;
+                line-height: 1.1;
+                font-weight: 600;
+                letter-spacing: -0.025em;
+                font-variant-numeric: tabular-nums;
+            }
+            .stat-value.amber {
+                color: var(--amber);
+            }
+            .stat-value.muted {
+                color: var(--text-2);
+            }
+            .stat-meta {
+                margin-top: 6px;
+                font-size: 12.5px;
+                color: var(--text-3);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .stat-meta.amber {
+                color: var(--amber);
+            }
+            .stat-meta.red {
+                color: var(--red);
+            }
+
+            .workspace {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 360px;
+                gap: 16px;
+                align-items: start;
+                margin-top: 16px;
+            }
+            .panel {
+                border: 1px solid var(--line);
+                border-radius: var(--r);
+                background: var(--panel);
+            }
+            .table-panel {
+                min-width: 0;
+                overflow: hidden;
+            }
+            .toolbar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 12px 12px 12px 14px;
+                border-bottom: 1px solid var(--line);
+            }
+            .tabs {
+                display: flex;
+                gap: 2px;
+            }
+            .tabs button {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                height: 30px;
+                padding: 0 10px;
+                border: 0;
+                border-radius: 6px;
+                background: transparent;
+                font-size: 13px;
+                color: var(--text-2);
+            }
+            .tabs button:hover {
+                color: var(--text);
+            }
+            .tabs button[aria-pressed="true"] {
+                background: rgba(255, 255, 255, 0.06);
+                color: var(--text);
+            }
+            .tabs .count {
+                font-size: 12px;
+                color: var(--text-3);
+                font-variant-numeric: tabular-nums;
+            }
+            .chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                height: 30px;
+                padding: 0 10px;
+                border-radius: 7px;
+                border: 1px solid var(--line-2);
+                background: transparent;
+                font-size: 13px;
+                color: var(--text-2);
+            }
+            .chip:hover {
+                color: var(--text);
+                border-color: rgba(255, 255, 255, 0.18);
+            }
+            .chip svg.i {
+                width: 14px;
+                height: 14px;
+                color: var(--amber);
+            }
+            .chip .count {
+                min-width: 18px;
+                height: 18px;
+                padding: 0 5px;
+                border-radius: 9px;
+                background: var(--amber-bg);
+                color: var(--amber);
+                font-size: 11.5px;
+                line-height: 18px;
+                text-align: center;
+                font-variant-numeric: tabular-nums;
+            }
+            .chip[aria-pressed="true"] {
+                border-color: var(--amber-line);
+                background: var(--amber-bg);
+                color: #f3d3a3;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            th {
+                padding: 10px 16px;
+                font-size: 12px;
+                font-weight: 500;
+                color: var(--text-3);
+                text-align: left;
+                white-space: nowrap;
+                border-bottom: 1px solid var(--line);
+            }
+            th.r,
+            td.r {
+                text-align: right;
+            }
+            .sort {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                border: 0;
+                padding: 2px 0;
+                background: none;
+                color: inherit;
+                font-size: 12px;
+                font-weight: 500;
+            }
+            .sort:hover {
+                color: var(--text);
+            }
+            .sort svg.i {
+                width: 13px;
+                height: 13px;
+            }
+            .sort .up,
+            .sort .down {
+                opacity: 0.45;
+            }
+            [aria-sort="ascending"] .sort .up,
+            [aria-sort="descending"] .sort .down {
+                opacity: 1;
+                color: var(--text);
+            }
+            td {
+                padding: 12px 16px;
+                border-bottom: 1px solid var(--line);
+                font-size: 13px;
+                vertical-align: middle;
+                white-space: nowrap;
+            }
+            tbody tr {
+                cursor: pointer;
+                transition: background 0.1s;
+            }
+            tbody tr:last-child td {
+                border-bottom: 0;
+            }
+            tbody tr:hover {
+                background: rgba(255, 255, 255, 0.022);
+            }
+            tbody tr.selected {
+                background: var(--accent-bg);
+            }
+            tbody tr.selected td:first-child {
+                box-shadow: inset 2px 0 0 var(--accent);
+            }
+            .row-btn {
+                display: block;
+                max-width: 100%;
+                padding: 0;
+                border: 0;
+                background: none;
+                text-align: left;
+            }
+            .tx-name {
+                display: block;
+                font-size: 13.5px;
+                font-weight: 500;
+                color: var(--text);
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .tx-id {
+                display: block;
+                margin-top: 2px;
+                font: 12px/1.4 var(--mono);
+                color: var(--text-3);
+            }
+            .net {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                color: var(--text-2);
+            }
+            .glyph {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 20px;
+                height: 20px;
+                border-radius: 6px;
+                font-size: 11px;
+                font-weight: 600;
+                flex: none;
+            }
+            .glyph.arkade {
+                background: var(--accent-bg);
+                color: var(--accent-text);
+            }
+            .glyph.second {
+                background: var(--teal-bg);
+                color: var(--teal-text);
+            }
+            .type {
+                color: var(--text-2);
+            }
+            .amt {
+                font-variant-numeric: tabular-nums;
+                color: var(--text);
+            }
+            .unit {
+                margin-left: 4px;
+                font-size: 12px;
+                color: var(--text-3);
+            }
+            .badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                height: 24px;
+                padding: 0 9px;
+                border-radius: 7px;
+                font-size: 12.5px;
+                font-weight: 500;
+                white-space: nowrap;
+            }
+            .badge i {
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: currentColor;
+                flex: none;
+            }
+            .badge.urgent {
+                color: var(--amber);
+                background: var(--amber-bg);
+            }
+            .badge.unknown {
+                color: #dcc9a5;
+                background: rgba(220, 201, 165, 0.08);
+            }
+            .badge.unknown i {
+                background: transparent;
+                border: 1.5px dashed #dcc9a5;
+                width: 8px;
+                height: 8px;
+            }
+            .badge.healthy {
+                color: var(--text-2);
+                background: rgba(255, 255, 255, 0.045);
+            }
+            .badge.healthy i {
+                background: var(--green);
+            }
+            .badge.confirmed {
+                color: var(--green);
+                background: var(--green-bg);
+            }
+            .badge.settled {
+                color: var(--text-3);
+                background: rgba(255, 255, 255, 0.04);
+            }
+            .badge.settled i {
+                background: var(--text-3);
+            }
+            .table-foot {
+                display: flex;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 11px 16px;
+                border-top: 1px solid var(--line);
+                font-size: 12.5px;
+                color: var(--text-3);
+            }
+            .empty {
+                padding: 48px 24px;
+                text-align: center;
+            }
+            .empty .ring {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                background: var(--panel-2);
+                border: 1px solid var(--line);
+                color: var(--text-3);
+                margin-bottom: 12px;
+            }
+            .empty h3 {
+                margin: 0 0 4px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            .empty p {
+                margin: 0 0 16px;
+                font-size: 13px;
+                color: var(--text-2);
+            }
+            .btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                height: 32px;
+                padding: 0 12px;
+                border-radius: 7px;
+                border: 1px solid var(--line-2);
+                background: var(--panel-3);
+                font-size: 13px;
+                color: var(--text);
+            }
+            .btn:hover {
+                background: #262633;
+            }
+
+            /* Inspector */
+            .inspector-slot {
+                position: sticky;
+                top: 76px;
+                min-width: 0;
+            }
+            .inspector {
+                display: flex;
+                flex-direction: column;
+                max-height: calc(100vh - 92px);
+                overflow: hidden;
+            }
+            .insp-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                height: 48px;
+                padding: 0 10px 0 18px;
+                border-bottom: 1px solid var(--line);
+                flex: none;
+            }
+            .insp-head h2 {
+                margin: 0;
+                font-size: 13px;
+                font-weight: 500;
+                color: var(--text-2);
+            }
+            .icon-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 30px;
+                height: 30px;
+                border: 0;
+                border-radius: 7px;
+                background: transparent;
+                color: var(--text-3);
+            }
+            .icon-btn:hover {
+                background: rgba(255, 255, 255, 0.06);
+                color: var(--text);
+            }
+            .insp-scroll {
+                overflow: auto;
+                flex: 1;
+            }
+            .insp-body {
+                padding: 18px 18px 20px;
+            }
+            .kicker {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 12.5px;
+                color: var(--text-2);
+            }
+            .insp-title {
+                margin: 12px 0 10px;
+                font-size: 18px;
+                line-height: 1.3;
+                font-weight: 600;
+                letter-spacing: -0.015em;
+            }
+            .big-amount {
+                margin-top: 18px;
+                font-size: 30px;
+                line-height: 1;
+                font-weight: 600;
+                letter-spacing: -0.03em;
+                font-variant-numeric: tabular-nums;
+            }
+            .big-amount span {
+                margin-left: 6px;
+                font-size: 14px;
+                font-weight: 500;
+                letter-spacing: 0;
+                color: var(--text-3);
+            }
+            .btc {
+                margin-top: 6px;
+                font-size: 12.5px;
+                color: var(--text-3);
+                font-variant-numeric: tabular-nums;
+            }
+            .section {
+                margin-top: 18px;
+                padding-top: 16px;
+                border-top: 1px solid var(--line);
+            }
+            .section-head {
+                display: flex;
+                align-items: baseline;
+                justify-content: space-between;
+                gap: 12px;
+                margin-bottom: 10px;
+            }
+            .section-head h4 {
+                margin: 0;
+                font-size: 12.5px;
+                font-weight: 500;
+                color: var(--text-2);
+            }
+            .section-head span {
+                font-size: 13px;
+                font-weight: 500;
+                font-variant-numeric: tabular-nums;
+            }
+            .section-head span.amber {
+                color: var(--amber);
+            }
+            .track {
+                position: relative;
+                height: 8px;
+                border-radius: 4px;
+                background: rgba(255, 255, 255, 0.06);
+                overflow: hidden;
+            }
+            .track .zone {
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                background: repeating-linear-gradient(
+                    -45deg,
+                    rgba(240, 180, 91, 0.22) 0 3px,
+                    rgba(240, 180, 91, 0.08) 3px 6px
+                );
+            }
+            .track .fill {
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                border-radius: 4px;
+                background: var(--text-2);
+            }
+            .track .fill.amber {
+                background: var(--amber);
+            }
+            .track.unknown {
+                background: repeating-linear-gradient(
+                    -45deg,
+                    rgba(255, 255, 255, 0.08) 0 3px,
+                    rgba(255, 255, 255, 0.03) 3px 6px
+                );
+            }
+            .track-legend {
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
+                margin-top: 8px;
+                font-size: 12px;
+                color: var(--text-3);
+            }
+            .track-legend .key {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .track-legend .swatch {
+                width: 10px;
+                height: 6px;
+                border-radius: 2px;
+                background: repeating-linear-gradient(
+                    -45deg,
+                    rgba(240, 180, 91, 0.5) 0 2px,
+                    rgba(240, 180, 91, 0.15) 2px 4px
+                );
+            }
+            .facts {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 9px 16px;
+                margin: 0;
+                font-size: 13px;
+            }
+            .facts dt {
+                color: var(--text-3);
+            }
+            .facts dd {
+                margin: 0;
+                text-align: right;
+                color: var(--text);
+            }
+            .idbox {
+                display: flex;
+                align-items: flex-start;
+                gap: 8px;
+                padding: 9px 6px 9px 12px;
+                border-radius: 8px;
+                border: 1px solid var(--line);
+                background: var(--bg);
+            }
+            .idbox code {
+                flex: 1;
+                min-width: 0;
+                font: 12px/1.6 var(--mono);
+                color: var(--text-2);
+                overflow-wrap: anywhere;
+            }
+            .idbox .icon-btn {
+                width: 28px;
+                height: 28px;
+            }
+            .idbox .icon-btn.done {
+                color: var(--green);
+            }
+            .callout {
+                display: flex;
+                gap: 10px;
+                padding: 12px 14px;
+                border-radius: 8px;
+                border: 1px solid var(--amber-line);
+                background: var(--amber-bg);
+            }
+            .callout svg.i {
+                margin-top: 2px;
+                color: var(--amber);
+            }
+            .callout.neutral {
+                border-color: var(--line);
+                background: var(--panel-2);
+            }
+            .callout.neutral svg.i {
+                color: var(--text-3);
+            }
+            .callout h5 {
+                margin: 0 0 3px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            .callout p {
+                margin: 0;
+                font-size: 13px;
+                line-height: 1.55;
+                color: var(--text-2);
+            }
+            .insp-foot {
+                flex: none;
+                padding: 11px 18px;
+                border-top: 1px solid var(--line);
+                font-size: 12px;
+                color: var(--text-3);
+            }
+            .insp-empty {
+                display: grid;
+                place-items: center;
+                text-align: center;
+                padding: 56px 28px;
+            }
+            .insp-empty .ring {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                background: var(--panel-2);
+                border: 1px solid var(--line);
+                color: var(--text-3);
+                margin-bottom: 12px;
+            }
+            .insp-empty h3 {
+                margin: 0 0 4px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            .insp-empty p {
+                margin: 0;
+                font-size: 13px;
+                color: var(--text-2);
+                max-width: 220px;
+            }
+
+            dialog.sheet {
+                position: fixed;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                left: auto;
+                margin: 0;
+                width: min(420px, 100vw);
+                height: 100dvh;
+                max-height: none;
+                max-width: none;
+                padding: 0;
+                border: 0;
+                border-left: 1px solid var(--line-2);
+                background: var(--panel);
+                color: var(--text);
+                overflow: hidden;
+            }
+            dialog.sheet::backdrop {
+                background: rgba(4, 4, 8, 0.62);
+                backdrop-filter: blur(2px);
+            }
+            dialog.sheet .inspector {
+                border: 0;
+                border-radius: 0;
+                max-height: 100dvh;
+                height: 100%;
+                background: transparent;
+            }
+
+            /* Sources */
+            .sources {
+                margin-top: 28px;
+            }
+            .sources > h2 {
+                margin: 0 0 4px;
+                font-size: 15px;
+                font-weight: 600;
+                letter-spacing: -0.01em;
+            }
+            .sources > p {
+                margin: 0 0 14px;
+                font-size: 13px;
+                color: var(--text-2);
+            }
+            .source-cards {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 16px;
+            }
+            .source-card {
+                padding: 18px 20px;
+            }
+            .source-card header {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 8px;
+            }
+            .source-card h3 {
+                margin: 0;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            .source-card .status {
+                margin-left: auto;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 12.5px;
+                color: var(--text-2);
+            }
+            .source-card p {
+                margin: 0;
+                font-size: 13px;
+                line-height: 1.6;
+                color: var(--text-2);
+            }
+            .source-card code {
+                font: 12px var(--mono);
+                color: var(--text);
+            }
+            .notes {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 16px 32px;
+                margin-top: 20px;
+                padding: 18px 4px 0;
+                border-top: 1px solid var(--line);
+            }
+            .notes h3 {
+                margin: 0 0 4px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            .notes p {
+                margin: 0;
+                font-size: 13px;
+                line-height: 1.6;
+                color: var(--text-2);
+            }
+            .foot {
+                display: flex;
+                justify-content: space-between;
+                gap: 16px;
+                flex-wrap: wrap;
+                margin-top: 28px;
+                padding-top: 16px;
+                border-top: 1px solid var(--line);
+                font-size: 12.5px;
+                color: var(--text-3);
+            }
+            .foot a:hover {
+                color: var(--text);
+            }
+
+            @media (max-width: 1200px) {
+                .workspace {
+                    grid-template-columns: minmax(0, 1fr);
+                }
+                .inspector-slot {
+                    display: none;
+                }
+            }
+            @media (max-width: 960px) {
+                .topbar {
+                    padding: 0 20px;
+                }
+                .topbar .search {
+                    margin-left: 4px;
+                }
+                .content {
+                    padding: 24px 20px 28px;
+                }
+                .stats {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+            }
+            @media (max-width: 640px) {
+                .brand span span {
+                    display: none;
+                }
+                .topbar {
+                    position: static;
+                    flex-wrap: wrap;
+                    height: auto;
+                    gap: 12px;
+                    padding: 12px 16px;
+                }
+                html {
+                    scroll-padding-top: 16px;
+                }
+                .stat-meta {
+                    white-space: normal;
+                }
+                .search {
+                    order: 3;
+                    flex-basis: 100%;
+                    max-width: none;
+                }
+                .search kbd {
+                    display: none;
+                }
+                .search input {
+                    height: 40px;
+                    font-size: 16px;
+                    padding-right: 40px;
+                }
+                .proto-trigger {
+                    height: 30px;
+                }
+                .proto-panel {
+                    width: min(300px, calc(100vw - 32px));
+                }
+                .content {
+                    padding: 20px 16px 24px;
+                }
+                .page-head {
+                    flex-direction: column;
+                    align-items: stretch;
+                    gap: 16px;
+                }
+                .segmented {
+                    display: flex;
+                }
+                .segmented button {
+                    flex: 1;
+                    height: 32px;
+                }
+                .stat {
+                    padding: 14px 16px 16px;
+                }
+                .stat-value {
+                    font-size: 22px;
+                }
+                .toolbar {
+                    flex-wrap: wrap;
+                    padding: 10px 12px;
+                }
+                .tabs {
+                    flex: 1;
+                }
+                .tabs button {
+                    padding: 0 8px;
+                }
+                thead {
+                    display: none;
+                }
+                table,
+                tbody {
+                    display: block;
+                }
+                tbody tr {
+                    display: grid;
+                    grid-template-columns: auto auto minmax(0, 1fr);
+                    grid-template-areas: "tx tx amt" "net type st";
+                    align-items: center;
+                    column-gap: 12px;
+                    row-gap: 8px;
+                    padding: 14px 16px;
+                    border-bottom: 1px solid var(--line);
+                }
+                tbody tr:last-child {
+                    border-bottom: 0;
+                }
+                tbody td {
+                    padding: 0;
+                    border: 0;
+                }
+                td.c-tx {
+                    grid-area: tx;
+                    min-width: 0;
+                }
+                td.c-amt {
+                    grid-area: amt;
+                }
+                td.c-net {
+                    grid-area: net;
+                }
+                td.c-type {
+                    grid-area: type;
+                    font-size: 12.5px;
+                }
+                td.c-st {
+                    grid-area: st;
+                    justify-self: end;
+                }
+                tbody tr.selected td:first-child {
+                    box-shadow: none;
+                }
+                tbody tr.selected {
+                    box-shadow: inset 2px 0 0 var(--accent);
+                }
+                .table-foot {
+                    flex-direction: column;
+                    gap: 2px;
+                }
+                dialog.sheet {
+                    top: auto;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    width: 100%;
+                    height: auto;
+                    max-height: 90dvh;
+                    border-left: 0;
+                    border-top: 1px solid var(--line-2);
+                    border-radius: 16px 16px 0 0;
+                }
+                dialog.sheet .inspector {
+                    height: auto;
+                    max-height: calc(90dvh - 1px);
+                }
+                .icon-btn {
+                    width: 40px;
+                    height: 40px;
+                }
+                .source-cards,
+                .notes {
+                    grid-template-columns: minmax(0, 1fr);
+                }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                html {
+                    scroll-behavior: auto;
+                }
+                * {
+                    transition: none !important;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <a class="skip" href="#records">Skip to transactions</a>
+        <div class="app">
+            <div class="main">
+                <header class="topbar">
+                    <a class="brand" href="option-b.html" aria-label="Arkade Explorer"
+                        ><svg viewBox="0 0 35 35" aria-hidden="true">
+                            <path
+                                fill="currentColor"
+                                d="M0 8.75 8.75 0h17.5L35 8.75v8.75h-8.75V8.75H8.75v8.75H0z"
+                            />
+                            <path
+                                fill="currentColor"
+                                d="M8.75 26.25V17.5h17.5v8.75zM8.75 26.25H0V35h8.75zM26.25 26.25V35H35v-8.75z"
+                            /></svg
+                        ><span><b>Arkade</b> <span>Explorer</span></span></a
+                    ><span class="net-pill">Mainnet</span>
+                    <form class="search" id="search" role="search">
+                        <svg class="i" viewBox="0 0 20 20" aria-hidden="true">
+                            <circle cx="9" cy="9" r="5.5" />
+                            <path d="m13.2 13.2 3.3 3.3" /></svg
+                        ><label class="sr" for="query"
+                            >Search transactions by label, ID, network, or status</label
+                        ><input
+                            id="query"
+                            type="search"
+                            autocomplete="off"
+                            spellcheck="false"
+                            placeholder="Search transactions, IDs, labels…"
+                        /><span class="search-end"
+                            ><button
+                                class="clear"
+                                type="button"
+                                id="clear"
+                                aria-label="Clear search"
+                                hidden
+                            >
+                                <svg class="i" viewBox="0 0 20 20" aria-hidden="true">
+                                    <path d="m6 6 8 8M14 6l-8 8" />
+                                </svg></button
+                            ><kbd id="kbd">Ctrl K</kbd></span
+                        >
+                    </form>
+                    <div class="proto">
+                        <button
+                            class="proto-trigger"
+                            id="proto-trigger"
+                            type="button"
+                            aria-expanded="false"
+                            aria-controls="proto-panel"
+                        >
+                            <span class="pdot" aria-hidden="true"></span>Prototype<svg
+                                class="i"
+                                viewBox="0 0 20 20"
+                                aria-hidden="true"
+                            >
+                                <path d="m6 8 4 4 4-4" />
+                            </svg>
+                        </button>
+                        <div class="proto-panel" id="proto-panel" hidden>
+                            <h2>Design prototype</h2>
+                            <p>
+                                Synthetic sample data. No wallet is connected, nothing is monitored,
+                                and no funds can be moved.
+                            </p>
+                            <fieldset>
+                                <legend>Preview source state</legend>
+                                <label class="option"
+                                    ><input
+                                        type="radio"
+                                        name="preview"
+                                        value="snapshot"
+                                        checked
+                                    />Current snapshot</label
+                                >
+                                <label class="option"
+                                    ><input type="radio" name="preview" value="stale" />Stale
+                                    snapshot</label
+                                >
+                                <label class="option"
+                                    ><input type="radio" name="preview" value="error" />Source
+                                    unavailable</label
+                                >
+                            </fieldset>
+                            <a href="index.html"
+                                >Compare design studies<svg
+                                    class="i"
+                                    viewBox="0 0 20 20"
+                                    aria-hidden="true"
+                                >
+                                    <path d="M7 13 13 7M8 7h5v5" /></svg
+                            ></a>
+                        </div>
+                    </div>
+                </header>
+
+                <main class="content" id="overview">
+                    <div class="page-head">
+                        <div>
+                            <h1>Overview</h1>
+                            <p class="freshness" id="freshness" aria-label="Source freshness"></p>
+                        </div>
+                        <div class="segmented" role="group" aria-label="Network">
+                            <button type="button" data-scope="both" aria-pressed="true">
+                                All networks</button
+                            ><button type="button" data-scope="arkade" aria-pressed="false">
+                                Arkade</button
+                            ><button type="button" data-scope="second" aria-pressed="false">
+                                Second
+                            </button>
+                        </div>
+                    </div>
+                    <div class="banner" id="banner" role="status" hidden></div>
+                    <section class="stats" aria-label="Summary for selected networks">
+                        <div class="stat">
+                            <div class="stat-label">
+                                <svg class="i" viewBox="0 0 20 20" aria-hidden="true">
+                                    <circle cx="10" cy="10" r="7.25" />
+                                    <path d="M10 6.5v4M10 13.5h.01" /></svg
+                                >Needs review
+                            </div>
+                            <div class="stat-value amber" id="s-review">3</div>
+                            <div class="stat-meta" id="s-review-meta">
+                                2 near expiry · 1 unknown
+                            </div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">
+                                <svg class="i" viewBox="0 0 20 20" aria-hidden="true">
+                                    <circle cx="10" cy="10" r="7.25" />
+                                    <path d="M10 6v4l2.5 1.5" /></svg
+                                >Nearest expiry
+                            </div>
+                            <div class="stat-value" id="s-expiry">2h 14m</div>
+                            <div class="stat-meta" id="s-expiry-meta">
+                                Treasury renewal · Arkade
+                            </div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">
+                                <svg class="i" viewBox="0 0 20 20" aria-hidden="true">
+                                    <path d="M4 7h11m-3-3 3 3-3 3M16 13H5m3-3-3 3 3 3" /></svg
+                                >Transactions
+                            </div>
+                            <div class="stat-value" id="s-count">10</div>
+                            <div class="stat-meta" id="s-count-meta">7 virtual · 3 commitments</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">
+                                <svg class="i" viewBox="0 0 20 20" aria-hidden="true">
+                                    <ellipse cx="8" cy="6" rx="5" ry="2.25" />
+                                    <path
+                                        d="M3 6v4c0 1.2 2.2 2.25 5 2.25M3 10v4c0 1.2 2.2 2.25 5 2.25"
+                                    />
+                                    <ellipse cx="13" cy="11" rx="4.5" ry="2" />
+                                    <path d="M8.5 11v3.5c0 1.1 2 2 4.5 2s4.5-.9 4.5-2V11" /></svg
+                                >Value needing review
+                            </div>
+                            <div class="stat-value" id="s-value">180,189</div>
+                            <div class="stat-meta" id="s-value-meta">Across 3 transactions</div>
+                        </div>
+                    </section>
+
+                    <div class="workspace">
+                        <section
+                            class="panel table-panel"
+                            id="records"
+                            aria-labelledby="records-title"
+                        >
+                            <h2 class="sr" id="records-title">Transactions</h2>
+                            <div class="toolbar">
+                                <div class="tabs" role="group" aria-label="Transaction type">
+                                    <button type="button" data-layer="all" aria-pressed="true">
+                                        All <span class="count" id="c-all">10</span></button
+                                    ><button
+                                        type="button"
+                                        data-layer="Virtual"
+                                        aria-pressed="false"
+                                    >
+                                        Virtual <span class="count" id="c-virtual">7</span></button
+                                    ><button
+                                        type="button"
+                                        data-layer="Commitment"
+                                        aria-pressed="false"
+                                    >
+                                        Commitments <span class="count" id="c-commit">3</span>
+                                    </button>
+                                </div>
+                                <button class="chip" id="review" type="button" aria-pressed="false">
+                                    <svg class="i" viewBox="0 0 20 20" aria-hidden="true">
+                                        <circle cx="10" cy="10" r="7.25" />
+                                        <path d="M10 6.5v4M10 13.5h.01" /></svg
+                                    >Needs review<span class="count" id="c-review">3</span>
+                                </button>
+                            </div>
+                            <table aria-label="Sample transactions. Select a row for details.">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Transaction</th>
+                                        <th scope="col">Network</th>
+                                        <th scope="col">Type</th>
+                                        <th scope="col" class="r" id="amount-th" aria-sort="none">
+                                            <button
+                                                class="sort"
+                                                id="sort"
+                                                type="button"
+                                                aria-label="Sort by amount"
+                                            >
+                                                Amount<svg
+                                                    class="i"
+                                                    viewBox="0 0 20 20"
+                                                    aria-hidden="true"
+                                                >
+                                                    <path class="up" d="m7 8 3-3 3 3" />
+                                                    <path class="down" d="m7 12 3 3 3-3" />
+                                                </svg>
+                                            </button>
+                                        </th>
+                                        <th scope="col">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rows"></tbody>
+                            </table>
+                            <div class="empty" id="empty" hidden>
+                                <span class="ring"
+                                    ><svg class="i" viewBox="0 0 20 20" aria-hidden="true">
+                                        <circle cx="9" cy="9" r="5.5" />
+                                        <path d="m13.2 13.2 3.3 3.3" /></svg
+                                ></span>
+                                <h3>No matching transactions</h3>
+                                <p>Try another search or clear the filters.</p>
+                                <button class="btn" id="reset" type="button">Clear filters</button>
+                            </div>
+                            <div class="table-foot">
+                                <span id="result">10 of 10 transactions</span
+                                ><span>Sample data · amounts in sats · times in UTC</span>
+                            </div>
+                        </section>
+                        <div class="inspector-slot" id="slot">
+                            <aside
+                                class="panel inspector"
+                                id="inspector"
+                                aria-label="Transaction details"
+                            >
+                                <div class="insp-head">
+                                    <h2>Details</h2>
+                                    <button
+                                        class="icon-btn"
+                                        id="close"
+                                        type="button"
+                                        aria-label="Close details"
+                                    >
+                                        <svg class="i" viewBox="0 0 20 20" aria-hidden="true">
+                                            <path d="m6 6 8 8M14 6l-8 8" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="insp-scroll" id="insp-content"></div>
+                                <div class="insp-foot">
+                                    Sample record · this explorer cannot move funds
+                                </div>
+                            </aside>
+                        </div>
+                    </div>
+
+                    <section class="sources" id="sources" aria-labelledby="sources-title">
+                        <h2 id="sources-title">Sources</h2>
+                        <p>
+                            Where each number on this page would come from, and what it cannot tell
+                            you.
+                        </p>
+                        <div class="source-cards">
+                            <article class="panel source-card">
+                                <header>
+                                    <span class="glyph arkade">A</span>
+                                    <h3>Arkade</h3>
+                                    <span class="status" id="status-arkade"></span>
+                                </header>
+                                <p>
+                                    Operator parameters from <code>/v1/info</code> and transactions
+                                    from the Arkade indexer. In production, time to expiry is
+                                    computed from absolute expiry and the current chain tip, never
+                                    from a stored countdown.
+                                </p>
+                            </article>
+                            <article class="panel source-card">
+                                <header>
+                                    <span class="glyph second">S</span>
+                                    <h3>Second</h3>
+                                    <span class="status" id="status-second"></span>
+                                </header>
+                                <p>
+                                    Second does not publish a VTXO-by-address index. Records here
+                                    are synthetic examples; public on-chain activity is the only
+                                    independent evidence available.
+                                </p>
+                            </article>
+                        </div>
+                        <div class="notes">
+                            <div>
+                                <h3>What “needs review” means</h3>
+                                <p>
+                                    Expiry falls inside the network’s exit window, or there is no
+                                    expiry evidence at all. Unknown never counts as safe.
+                                </p>
+                            </div>
+                            <div>
+                                <h3>Virtual vs. commitment</h3>
+                                <p>
+                                    Virtual transactions live in the protocol; commitments are
+                                    Bitcoin transactions anchoring a batch. A confirmed commitment
+                                    does not prove a virtual output is spendable.
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+                    <footer class="foot">
+                        <span>Design prototype · synthetic data · no wallet connected</span
+                        ><a href="index.html">Compare design studies</a>
+                    </footer>
+                </main>
+            </div>
+        </div>
+        <dialog class="sheet" id="sheet" aria-label="Transaction details">
+            <div id="sheet-slot"></div>
+        </dialog>
+
+        <script>
+            const NETWORKS = {
+                arkade: {
+                    name: "Arkade",
+                    glyph: "A",
+                    source: "Arkade indexer",
+                    lifetime: 43200,
+                    exit: 10080,
+                    lifeLabel: "30d",
+                    exitLabel: "7d",
+                },
+                second: {
+                    name: "Second",
+                    glyph: "S",
+                    source: "Second (sample)",
+                    lifetime: 40320,
+                    exit: 1440,
+                    lifeLabel: "28d",
+                    exitLabel: "1d",
+                },
+            };
+            const records = [
+                {
+                    id: "06f33470f9a5894073f9cf81ce13b4c8e9ec7c698c7af75bb4ec3b46db2deb86",
+                    net: "arkade",
+                    label: "Treasury renewal",
+                    type: "Virtual",
+                    amount: 112074,
+                    minutes: 134,
+                    state: "urgent",
+                    time: "14:22:08",
+                    note: "Expiry falls inside the 7-day exit window. Renew from your wallet; an on-chain exit has its own timing and fees and may not finish before expiry.",
+                },
+                {
+                    id: "ca792589594a2f9034aa816a925f82b80d2c88404e26c44554a4ab63086665aa",
+                    net: "arkade",
+                    label: "Savings receive",
+                    type: "Virtual",
+                    amount: 20905,
+                    minutes: null,
+                    state: "unknown",
+                    time: "14:20:41",
+                    note: "Funds are present but this snapshot has no usable expiry. That is not an empty balance and not a safe deadline. Check a fresh indexer response and chain tip.",
+                },
+                {
+                    id: "1e4b620345e05a22a27ef77a50f695c3469c7604ea44c10f9229570b584ec2e5",
+                    net: "arkade",
+                    label: "Daily payment",
+                    type: "Virtual",
+                    amount: 1984,
+                    minutes: 40320,
+                    state: "healthy",
+                    time: "14:18:22",
+                    note: "Expiry is well outside the exit window. This is an estimate from a snapshot, not a guarantee that funds are spendable now.",
+                },
+                {
+                    id: "cda7fc43e9eee680e1dbfed8fca26c7196327989193098506f0c4d1b2242d9ee",
+                    net: "arkade",
+                    label: "Batch 1842",
+                    type: "Commitment",
+                    amount: 120080,
+                    minutes: null,
+                    state: "confirmed",
+                    time: "14:16:09",
+                    note: "A Bitcoin transaction anchoring a batch of virtual outputs. Its confirmation is independent of any single output’s spendable state.",
+                },
+                {
+                    id: "d0a1e278083ea6ca2d73c41265fab555a3fbd2696dd432e845c65c51bf5d1ddf",
+                    net: "arkade",
+                    label: "Previous transfer",
+                    type: "Virtual",
+                    amount: 13751,
+                    minutes: null,
+                    state: "settled",
+                    time: "14:12:36",
+                    note: "Already spent or settled. Kept for context; it has no expiry and is excluded from review counts.",
+                },
+                {
+                    id: "2fea6230799f2b95d75c5bb7b6f7132fc3c54bfdeb26b9f943b760a6980b0c35",
+                    net: "arkade",
+                    label: "Batch 1839",
+                    type: "Commitment",
+                    amount: 96330,
+                    minutes: null,
+                    state: "confirmed",
+                    time: "14:09:51",
+                    note: "A Bitcoin transaction anchoring a batch. Use a Bitcoin explorer for commitments and the protocol explorer for virtual transactions.",
+                },
+                {
+                    id: "5a193ccb0dcc13fa1e81a68bcce5c7a7a6b62f1eac9703cb183f9128a14e6f8d",
+                    net: "second",
+                    label: "Failover renewal",
+                    type: "Virtual",
+                    amount: 47210,
+                    minutes: 182,
+                    state: "urgent",
+                    time: "13:39:10",
+                    note: "Inside the 1-day exit window, and the source is stale. Verify with your wallet before acting; there is no public Second index behind this record.",
+                },
+                {
+                    id: "faa4e94563ab274ed77e897c1ec183b94fd30c45312aab9a52ba4c635d9a6760",
+                    net: "second",
+                    label: "Channel close",
+                    type: "Virtual",
+                    amount: 8412,
+                    minutes: null,
+                    state: "settled",
+                    time: "13:34:28",
+                    note: "Already spent or settled. Kept for cross-network comparison; no expiry applies.",
+                },
+                {
+                    id: "eabb28b4d65676bbfe33d495ee0e16038d50648ebeed076cfc834c2ac48648aa",
+                    net: "second",
+                    label: "Round 51,322",
+                    type: "Commitment",
+                    amount: 55621,
+                    minutes: null,
+                    state: "confirmed",
+                    time: "13:31:04",
+                    note: "A synthetic round transaction on Bitcoin. Confirmation and the state of individual virtual outputs are separate evidence.",
+                },
+                {
+                    id: "f45a94e153564153a0d07ec0c24f79df79bcbd1d2072a603f5376559a40c0894",
+                    net: "second",
+                    label: "Operator payout",
+                    type: "Virtual",
+                    amount: 3780,
+                    minutes: 15840,
+                    state: "healthy",
+                    time: "13:26:19",
+                    note: "Outside the exit window, but from a stale source. Treat the estimate as historical until refreshed.",
+                },
+            ];
+            const $ = (s) => document.querySelector(s);
+            const wide = matchMedia("(min-width:1201px)");
+            const sheet = $("#sheet"),
+                inspector = $("#inspector");
+            let scope = "both",
+                layer = "all",
+                reviewOnly = false,
+                sortDir = 0,
+                selected = null,
+                lastId = null,
+                preview = "snapshot";
+
+            const ICONS = {
+                alert: '<circle cx="10" cy="10" r="7.25"/><path d="M10 6.5v4M10 13.5h.01"/>',
+                help: '<circle cx="10" cy="10" r="7.25"/><path d="M8.1 8.1a2 2 0 0 1 3.9.6c0 1.4-2 1.6-2 2.8M10 13.7h.01"/>',
+                info: '<circle cx="10" cy="10" r="7.25"/><path d="M10 9.2v4.3M10 6.6h.01"/>',
+                copy: '<rect x="7" y="7" width="9" height="9" rx="2"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7"/>',
+                check: '<path d="m5 10.5 3.2 3L15 6.5"/>',
+                pointer: '<path d="M5 3.5 15.5 8 11 9.6 9.5 14z"/><path d="m11 9.6 4 4"/>',
+            };
+            function icon(name) {
+                const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                s.setAttribute("viewBox", "0 0 20 20");
+                s.setAttribute("class", "i");
+                s.setAttribute("aria-hidden", "true");
+                s.innerHTML = ICONS[name];
+                return s;
+            }
+            function el(tag, cls, text) {
+                const e = document.createElement(tag);
+                if (cls) e.className = cls;
+                if (text != null) e.textContent = text;
+                return e;
+            }
+            const fmtTime = (m) =>
+                m < 1440
+                    ? Math.floor(m / 60) + "h " + String(m % 60).padStart(2, "0") + "m"
+                    : Math.round(m / 1440) + "d";
+            const fmtSats = (n) => n.toLocaleString("en-US");
+            const short = (id) => id.slice(0, 8) + "…" + id.slice(-6);
+            const needsReview = (r) => r.state === "urgent" || r.state === "unknown";
+            const inScope = () => records.filter((r) => scope === "both" || r.net === scope);
+            function statusText(r) {
+                return r.state === "urgent" || r.state === "healthy"
+                    ? fmtTime(r.minutes) + " left"
+                    : r.state === "unknown"
+                      ? "Expiry unknown"
+                      : r.state === "confirmed"
+                        ? "Confirmed"
+                        : "Settled";
+            }
+            function badge(r) {
+                const b = el("span", "badge " + r.state);
+                b.append(el("i"), document.createTextNode(statusText(r)));
+                return b;
+            }
+            function glyph(net) {
+                return el("span", "glyph " + net, NETWORKS[net].glyph);
+            }
+            function source(net) {
+                if (preview === "error")
+                    return { age: "Unavailable", tone: "red", label: "Unavailable" };
+                if (preview === "stale" || net === "second")
+                    return { age: "45m", tone: "amber", label: "Stale · 45m ago" };
+                return { age: "2m", tone: "", label: "Current · 2m ago" };
+            }
+            function visible() {
+                const q = $("#query").value.trim().toLowerCase();
+                const out = inScope().filter(
+                    (r) =>
+                        (layer === "all" || r.type === layer) &&
+                        (!reviewOnly || needsReview(r)) &&
+                        [
+                            r.label,
+                            r.id,
+                            NETWORKS[r.net].name,
+                            r.type,
+                            statusText(r),
+                            r.type === "Commitment" ? "on-chain bitcoin" : "virtual",
+                        ]
+                            .join(" ")
+                            .toLowerCase()
+                            .includes(q),
+                );
+                if (sortDir) out.sort((a, b) => sortDir * (a.amount - b.amount));
+                return out;
+            }
+
+            function renderSources() {
+                const fresh = $("#freshness");
+                fresh.replaceChildren();
+                for (const net of ["arkade", "second"]) {
+                    const s = source(net);
+                    const item = el("span", scope !== "both" && scope !== net ? "out" : "");
+                    item.append(
+                        el("span", "dot " + s.tone),
+                        document.createTextNode(NETWORKS[net].name),
+                        el("span", "age " + s.tone, s.label),
+                    );
+                    fresh.append(item);
+                    $("#status-" + net).replaceChildren(
+                        el("span", "dot " + s.tone),
+                        document.createTextNode(s.label),
+                    );
+                }
+            }
+            function renderStats() {
+                const set = inScope(),
+                    urgent = set.filter((r) => r.state === "urgent"),
+                    unknown = set.filter((r) => r.state === "unknown");
+                $("#s-review").textContent = urgent.length + unknown.length;
+                $("#s-review-meta").textContent =
+                    urgent.length + " near expiry · " + unknown.length + " unknown";
+                const nearest = set
+                    .filter((r) => r.minutes != null)
+                    .sort((a, b) => a.minutes - b.minutes)[0];
+                const ev = $("#s-expiry"),
+                    evm = $("#s-expiry-meta");
+                if (preview === "snapshot" && nearest) {
+                    ev.textContent = fmtTime(nearest.minutes);
+                    ev.className = "stat-value";
+                    evm.textContent = nearest.label + " · " + NETWORKS[nearest.net].name;
+                    evm.className = "stat-meta";
+                } else {
+                    ev.textContent = "Unverified";
+                    ev.className = "stat-value muted";
+                    evm.textContent =
+                        preview === "error"
+                            ? "Source unavailable"
+                            : nearest
+                              ? "Last known " + fmtTime(nearest.minutes)
+                              : "No expiry data";
+                    evm.className = "stat-meta " + (preview === "error" ? "red" : "amber");
+                }
+                const v = set.filter((r) => r.type === "Virtual").length;
+                $("#s-count").textContent = set.length;
+                $("#s-count-meta").textContent =
+                    v + " virtual · " + (set.length - v) + " commitments";
+                const review = urgent.concat(unknown),
+                    total = review.reduce((sum, r) => sum + r.amount, 0),
+                    value = $("#s-value");
+                value.replaceChildren(
+                    document.createTextNode(fmtSats(total)),
+                    el("span", "unit", " sats"),
+                );
+                value.className = "stat-value" + (total ? "" : " muted");
+                $("#s-value-meta").textContent = review.length
+                    ? "Across " +
+                      review.length +
+                      " transaction" +
+                      (review.length === 1 ? "" : "s") +
+                      (preview === "snapshot" ? "" : " · last known")
+                    : "Nothing to review";
+                $("#c-all").textContent = set.length;
+                $("#c-virtual").textContent = v;
+                $("#c-commit").textContent = set.length - v;
+                $("#c-review").textContent = urgent.length + unknown.length;
+                const banner = $("#banner");
+                banner.hidden = preview === "snapshot";
+                banner.className = "banner" + (preview === "error" ? " error" : "");
+                banner.replaceChildren();
+                if (preview !== "snapshot") {
+                    const t = el("div");
+                    const b = el(
+                        "b",
+                        null,
+                        preview === "stale"
+                            ? "Snapshot is 45 minutes old. "
+                            : "Sources are unavailable. ",
+                    );
+                    t.append(
+                        b,
+                        document.createTextNode(
+                            preview === "stale"
+                                ? "Showing last-known transactions. Expiry and spendability have not been re-verified."
+                                : "Showing last-known transactions for context. Current balances and expiry are unknown.",
+                        ),
+                    );
+                    banner.append(icon("alert"), t);
+                }
+            }
+            function renderRows() {
+                const focusId =
+                    document.activeElement && document.activeElement.dataset
+                        ? document.activeElement.dataset.id
+                        : null;
+                const list = visible(),
+                    tbody = $("#rows");
+                tbody.replaceChildren();
+                for (const r of list) {
+                    const tr = el("tr", r.id === selected ? "selected" : "");
+                    tr.dataset.row = r.id;
+                    const tx = el("td", "c-tx"),
+                        btn = el("button", "row-btn");
+                    btn.type = "button";
+                    btn.dataset.id = r.id;
+                    btn.setAttribute("aria-pressed", String(r.id === selected));
+                    btn.setAttribute(
+                        "aria-label",
+                        r.label + ", " + NETWORKS[r.net].name + ", " + statusText(r),
+                    );
+                    btn.append(el("span", "tx-name", r.label), el("span", "tx-id", short(r.id)));
+                    tx.append(btn);
+                    const net = el("td", "c-net"),
+                        n = el("span", "net");
+                    n.append(glyph(r.net), document.createTextNode(NETWORKS[r.net].name));
+                    net.append(n);
+                    const amt = el("td", "c-amt r"),
+                        a = el("span", "amt", fmtSats(r.amount));
+                    amt.append(a, el("span", "unit", "sats"));
+                    const st = el("td", "c-st");
+                    st.append(badge(r));
+                    tr.append(tx, net, el("td", "c-type type", r.type), amt, st);
+                    tbody.append(tr);
+                }
+                $("#empty").hidden = list.length > 0;
+                $("#result").textContent =
+                    list.length + " of " + inScope().length + " transactions";
+                $("#clear").hidden = !$("#query").value;
+                document
+                    .querySelectorAll("[data-scope]")
+                    .forEach((b) =>
+                        b.setAttribute("aria-pressed", String(b.dataset.scope === scope)),
+                    );
+                document
+                    .querySelectorAll("[data-layer]")
+                    .forEach((b) =>
+                        b.setAttribute("aria-pressed", String(b.dataset.layer === layer)),
+                    );
+                $("#review").setAttribute("aria-pressed", String(reviewOnly));
+                $("#amount-th").setAttribute(
+                    "aria-sort",
+                    sortDir === 0 ? "none" : sortDir === 1 ? "ascending" : "descending",
+                );
+                if (focusId) {
+                    const f = document.querySelector('[data-id="' + focusId + '"]');
+                    if (f) f.focus();
+                }
+                if (selected && !list.some((r) => r.id === selected)) {
+                    selected = null;
+                    if (sheet.open) sheet.close();
+                    renderDetail();
+                }
+            }
+            function meter(r) {
+                const p = NETWORKS[r.net],
+                    sec = el("div", "section"),
+                    head = el("div", "section-head");
+                head.append(
+                    el("h4", null, preview === "snapshot" ? "Time to expiry" : "Last-known expiry"),
+                );
+                if (r.minutes == null) {
+                    head.append(el("span", null, "Unknown"));
+                    const t = el("div", "track unknown");
+                    sec.append(head, t, el("div", "track-legend", null));
+                    sec.lastChild.append(el("span", null, "No expiry evidence in this snapshot"));
+                    return sec;
+                }
+                const inside = r.minutes <= p.exit;
+                head.append(el("span", inside ? "amber" : "", fmtTime(r.minutes)));
+                const t = el("div", "track"),
+                    zone = el("span", "zone"),
+                    fill = el("span", "fill" + (inside ? " amber" : ""));
+                zone.style.width = (p.exit / p.lifetime) * 100 + "%";
+                fill.style.width = Math.max(1.5, (r.minutes / p.lifetime) * 100) + "%";
+                t.append(zone, fill);
+                t.setAttribute("role", "img");
+                t.setAttribute(
+                    "aria-label",
+                    fmtTime(r.minutes) +
+                        " left of a " +
+                        p.lifeLabel +
+                        " lifetime; exit window " +
+                        p.exitLabel,
+                );
+                const leg = el("div", "track-legend"),
+                    k = el("span", "key");
+                k.append(
+                    el("span", "swatch"),
+                    document.createTextNode("Exit window · " + p.exitLabel),
+                );
+                leg.append(k, el("span", null, "Lifetime · " + p.lifeLabel));
+                sec.append(head, t, leg);
+                return sec;
+            }
+            function renderDetail() {
+                const root = $("#insp-content");
+                root.replaceChildren();
+                const r = records.find((x) => x.id === selected);
+                $("#close").hidden = !r;
+                if (!r) {
+                    const e = el("div", "insp-empty"),
+                        w = el("div"),
+                        ring = el("span", "ring");
+                    ring.append(icon("pointer"));
+                    w.append(
+                        ring,
+                        el("h3", null, "Select a transaction"),
+                        el("p", null, "Its status, expiry, and source evidence will appear here."),
+                    );
+                    e.append(w);
+                    root.append(e);
+                    return;
+                }
+                const body = el("div", "insp-body"),
+                    k = el("div", "kicker");
+                k.append(
+                    glyph(r.net),
+                    document.createTextNode(
+                        NETWORKS[r.net].name +
+                            " · " +
+                            (r.type === "Virtual" ? "Virtual transaction" : "Bitcoin commitment"),
+                    ),
+                );
+                const title = el("h3", "insp-title", r.label);
+                title.id = "detail-title";
+                const amount = el("div", "big-amount", fmtSats(r.amount));
+                amount.append(el("span", null, "sats"));
+                body.append(
+                    k,
+                    title,
+                    badge(r),
+                    amount,
+                    el("div", "btc", "≈ " + (r.amount / 1e8).toFixed(8) + " BTC"),
+                );
+                if (r.type === "Virtual" && r.state !== "settled") body.append(meter(r));
+                const facts = el("div", "section"),
+                    dl = el("dl", "facts"),
+                    s = source(r.net);
+                for (const [dt, dd] of [
+                    ["Recorded", r.time + " UTC"],
+                    ["Source", NETWORKS[r.net].source],
+                    ["Freshness", s.label],
+                    ["Data", "Synthetic sample"],
+                ]) {
+                    dl.append(el("dt", null, dt), el("dd", null, dd));
+                }
+                facts.append(dl);
+                body.append(facts);
+                const idSec = el("div", "section"),
+                    ih = el("div", "section-head");
+                ih.append(el("h4", null, "Transaction ID"));
+                const box = el("div", "idbox"),
+                    code = el("code", null, r.id),
+                    copy = el("button", "icon-btn");
+                copy.type = "button";
+                copy.id = "copy";
+                copy.setAttribute("aria-label", "Copy transaction ID");
+                copy.append(icon("copy"));
+                const live = el("span", "sr");
+                live.setAttribute("role", "status");
+                live.id = "copy-status";
+                copy.addEventListener("click", async () => {
+                    try {
+                        await navigator.clipboard.writeText(r.id);
+                        live.textContent = "Transaction ID copied";
+                    } catch {
+                        const range = document.createRange();
+                        range.selectNodeContents(code);
+                        const sel = getSelection();
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                        live.textContent = "Transaction ID selected";
+                    }
+                    copy.replaceChildren(icon("check"));
+                    copy.classList.add("done");
+                    setTimeout(() => {
+                        copy.replaceChildren(icon("copy"));
+                        copy.classList.remove("done");
+                    }, 1600);
+                });
+                box.append(code, copy);
+                idSec.append(ih, box, live);
+                body.append(idSec);
+                const warn = needsReview(r),
+                    c = el("div", "section"),
+                    call = el("div", "callout" + (warn ? "" : " neutral")),
+                    txt = el("div");
+                txt.append(
+                    el(
+                        "h5",
+                        null,
+                        r.state === "urgent"
+                            ? "Inside the exit window"
+                            : r.state === "unknown"
+                              ? "No expiry evidence"
+                              : r.state === "healthy"
+                                ? "Outside the exit window"
+                                : r.state === "confirmed"
+                                  ? "On-chain commitment"
+                                  : "Settled",
+                    ),
+                    el("p", null, r.note),
+                );
+                call.append(icon(warn ? (r.state === "unknown" ? "help" : "alert") : "info"), txt);
+                c.append(call);
+                body.append(c);
+                root.append(body);
+            }
+            function open(id) {
+                selected = id;
+                lastId = id;
+                renderRows();
+                renderDetail();
+                if (wide.matches) {
+                    $("#slot").append(inspector);
+                } else {
+                    $("#sheet-slot").append(inspector);
+                    if (!sheet.open) sheet.showModal();
+                    $("#close").focus();
+                }
+            }
+            function clearSelection(restore) {
+                selected = null;
+                renderRows();
+                renderDetail();
+                if (restore) {
+                    const b = document.querySelector('[data-id="' + lastId + '"]');
+                    if (b) b.focus();
+                }
+            }
+            $("#rows").addEventListener("click", (e) => {
+                const tr = e.target.closest("tr");
+                if (!tr) return;
+                const id = tr.dataset.row;
+                if (id === selected && wide.matches) return;
+                open(id);
+                const b = document.querySelector('[data-id="' + id + '"]');
+                if (b && wide.matches) b.focus();
+            });
+            $("#close").addEventListener("click", () => {
+                if (sheet.open) sheet.close();
+                else clearSelection(true);
+            });
+            sheet.addEventListener("close", () => {
+                $("#slot").append(inspector);
+                if (!wide.matches) clearSelection(true);
+            });
+            sheet.addEventListener("click", (e) => {
+                if (e.target === sheet) {
+                    const b = sheet.getBoundingClientRect();
+                    if (
+                        e.clientX < b.left ||
+                        e.clientX > b.right ||
+                        e.clientY < b.top ||
+                        e.clientY > b.bottom
+                    )
+                        sheet.close();
+                }
+            });
+            wide.addEventListener("change", () => {
+                if (wide.matches && sheet.open) sheet.close();
+                $("#slot").append(inspector);
+                renderDetail();
+            });
+
+            $("#query").addEventListener("input", renderRows);
+            $("#search").addEventListener("submit", (e) => {
+                e.preventDefault();
+                $("#records").scrollIntoView({ block: "start" });
+            });
+            $("#clear").addEventListener("click", () => {
+                $("#query").value = "";
+                renderRows();
+                $("#query").focus();
+            });
+            $("#reset").addEventListener("click", () => {
+                $("#query").value = "";
+                layer = "all";
+                reviewOnly = false;
+                renderRows();
+                $("#query").focus();
+            });
+            document.querySelectorAll("[data-scope]").forEach((b) =>
+                b.addEventListener("click", () => {
+                    scope = b.dataset.scope;
+                    renderAll();
+                }),
+            );
+            document.querySelectorAll("[data-layer]").forEach((b) =>
+                b.addEventListener("click", () => {
+                    layer = b.dataset.layer;
+                    renderRows();
+                }),
+            );
+            $("#review").addEventListener("click", () => {
+                reviewOnly = !reviewOnly;
+                renderRows();
+            });
+            $("#sort").addEventListener("click", () => {
+                sortDir = sortDir === -1 ? 1 : -1;
+                renderRows();
+            });
+
+            const trigger = $("#proto-trigger"),
+                panel = $("#proto-panel");
+            function setProto(open) {
+                panel.hidden = !open;
+                trigger.setAttribute("aria-expanded", String(open));
+            }
+            trigger.addEventListener("click", () => setProto(panel.hidden));
+            document.addEventListener("click", (e) => {
+                if (!panel.hidden && !e.target.closest(".proto")) setProto(false);
+            });
+            document.querySelectorAll('input[name="preview"]').forEach((r) =>
+                r.addEventListener("change", () => {
+                    preview = r.value;
+                    renderAll();
+                    renderDetail();
+                }),
+            );
+
+            document.addEventListener("keydown", (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+                    e.preventDefault();
+                    if (!sheet.open) $("#query").focus();
+                    return;
+                }
+                if (e.key === "Escape") {
+                    if (!panel.hidden) {
+                        setProto(false);
+                        trigger.focus();
+                        return;
+                    }
+                    if (
+                        !sheet.open &&
+                        selected &&
+                        wide.matches &&
+                        document.activeElement !== $("#query")
+                    )
+                        clearSelection(true);
+                }
+            });
+            if (/Mac|iPhone|iPad/.test(navigator.platform)) $("#kbd").textContent = "⌘K";
+
+            function renderAll() {
+                renderSources();
+                renderStats();
+                renderRows();
+            }
+            renderAll();
+            if (wide.matches) {
+                selected = records[0].id;
+                lastId = selected;
+                renderRows();
+            }
+            renderDetail();
+        </script>
+    </body>
+</html>

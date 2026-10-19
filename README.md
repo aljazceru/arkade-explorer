@@ -48,8 +48,8 @@ Sub-path deploys: build with `VITE_BASE_PATH=/ark/ pnpm build` (default base sta
 
 ### Prerequisites
 
-- Node.js 24.15.0 (see `.nvmrc`)
-- pnpm (this project is pnpm-only; pinned to `pnpm@10.29.2`)
+- Node.js 24.22.0 (see `.nvmrc`; supported major: 24)
+- pnpm (this project is pnpm-only; pinned to `pnpm@10.34.7`)
 
 ### Installation
 
@@ -149,6 +149,50 @@ src/
 | `/asset/:assetId` | Asset detail |
 | `/watchlist` | Local watchlist of script pubkeys with nearest expiry |
 | `/observe` | Side-by-side Arkade vs Second (bark) mainnet observation |
+
+## Overview UI
+
+The home route is **live-first** and implementation-independent:
+
+- **Operator**: bundled default (`arkade.computer`) so the site works out of the box; any Ark
+  implementation endpoint can be swapped in via `VITE_INDEXER_URL`. `/v1/info` parameters load
+  live from it.
+- **Records**: Arkade-scope VTXOs are fetched live from the operator indexer for the scripts on
+  your watchlist (operators publish no global browser-facing listing); Second shows live
+  on-chain server activity (Esplora) and live gRPC-web server info; barkd-connected wallets add
+  their own live VTXOs. The `/observe` page keeps the archived snapshot comparison.
+- **Inspector**: expiry versus the operator's live exit window with the live chain tip,
+  copyable IDs, source-appropriate wording, and layer-aware links.
+- **Sources** section states where each number comes from and what it cannot prove, with a live
+  next-Second-round countdown.
+
+### Second: connect your barkd
+Second publishes no public VTXO index, so Second records default to observed on-chain server
+activity. If you run [barkd](https://second.tech/docs/barkd/index.md) (Second's wallet daemon),
+the Overview's connect panel links the explorer to it directly: base URL plus auth token, stored
+only in this browser's `localStorage`, calling read-only endpoints (`/wallet/vtxos`,
+`/bitcoin/tip`, `/wallet/next-round-time`). While connected, the Second scope lists **your live
+wallet VTXOs** — amount, policy, exit delta/depth, chain anchor — with expiry computed from the
+reported tip height (`expiry_height − tip`, 10 min/block estimate), never from a stored countdown.
+The explorer never sends payments and never sees your seed.
+
+Validate displayed numbers independently: `node scripts/validate-numbers.ts` recomputes
+snapshot-derived figures (add `--indexer <url> --esplora <url>` or `ARK_OBS_INDEXER` for live
+reconciliation; no endpoints are bundled). Requires the pinned Node 24.
+
+Snapshot-derived figures are point-in-time and labeled as such; unknown expiry is never rendered
+as safe. The former home live-activity feed and its SSE provider were removed with this redesign.
+
+## UX design studies
+
+`/ux-options/` keeps the three interactive HTML studies (A, B, C) and the comparison page used to
+select the direction; B is now implemented as the production UI above. Study data is illustrative
+and no study connects to a wallet.
+
+See [CODEBASE_REVIEW.md](CODEBASE_REVIEW.md) for review findings, dependency decisions, and
+verification scope — including implementation verification of the Overview UI. Direct registry
+dependencies use exact stable pins; Node types remain on the supported Node 24 major, and exit UI
+follows its GitHub Release rather than npm.
 
 ## License
 
