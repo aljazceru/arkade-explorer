@@ -400,9 +400,29 @@ export function ObservationDashboard() {
         void reload();
     }, []);
 
-    const subtitle = useMemo(() => {
-        if (!arkade && !bark) return "";
-        return `Arkade ${arkade?.fetched_at ?? "—"} · Second ${bark?.fetched_at ?? "—"}`;
+    const dataAsOf = useMemo(() => {
+        const times = [arkade?.fetched_at, bark?.fetched_at].filter(Boolean) as string[];
+        if (!times.length) return null;
+        // Show the older snapshot so the user knows the stalest side
+        const sorted = [...times].sort();
+        const raw = sorted[0];
+        // fetched_at is already Europe/Rome ISO from the indexer
+        try {
+            const d = new Date(raw);
+            const label = d.toLocaleString("en-GB", {
+                timeZone: "Europe/Rome",
+                year: "numeric",
+                month: "short",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false,
+            });
+            return `${label} Rome`;
+        } catch {
+            return raw;
+        }
     }, [arkade, bark]);
 
     return (
@@ -416,7 +436,19 @@ export function ObservationDashboard() {
                         Side-by-side mainnet view of Arkade and Second&apos;s bark/captaind — live
                         public data only.
                     </p>
-                    <p className="text-[11px] text-muted-foreground font-mono mt-1">{subtitle}</p>
+                    {dataAsOf && (
+                        <p className="text-xs text-muted-foreground mt-1" data-testid="data-as-of">
+                            Data as of <span className="font-mono text-foreground">{dataAsOf}</span>
+                            {arkade?.fetched_at &&
+                                bark?.fetched_at &&
+                                arkade.fetched_at !== bark.fetched_at && (
+                                    <span className="text-muted-foreground">
+                                        {" "}
+                                        (Arkade {arkade.fetched_at}; Second {bark.fetched_at})
+                                    </span>
+                                )}
+                        </p>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     {(["arkade", "bark", "both"] as Tab[]).map((t) => (

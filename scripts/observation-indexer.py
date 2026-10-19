@@ -318,9 +318,14 @@ def main():
         "bark_next_round_rome": bark.get("next_round_rome"),
         "bark_server_txs": len(bark.get("recent_server_txs") or []),
     }
-    (OUT / "arkade.json").write_text(json.dumps(arkade, indent=2))
-    (OUT / "bark.json").write_text(json.dumps(bark, indent=2))
-    (OUT / "summary.json").write_text(json.dumps(summary, indent=2))
+    def atomic_write(path: Path, obj: dict) -> None:
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(json.dumps(obj, indent=2) + "\n")
+        tmp.replace(path)  # atomic on same filesystem
+
+    atomic_write(OUT / "arkade.json", arkade)
+    atomic_write(OUT / "bark.json", bark)
+    atomic_write(OUT / "summary.json", summary)
     print(json.dumps(summary, indent=2))
     return 0
 
