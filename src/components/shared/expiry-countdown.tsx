@@ -76,8 +76,10 @@ export function ExpiryCountdown({
             ? `. Unilateral exit delay: ${describeTimelock(unilateralExitDelay)}`
             : "");
 
+    const expired = remaining.seconds <= 0;
     const blocks = `${Math.max(0, remaining.blocks).toLocaleString("en-US")} blk`;
-    const time = remaining.seconds > 0 ? formatDuration(remaining.seconds) : "Expired";
+    const time = formatDuration(remaining.seconds);
+    const approx = remaining.source === "time" ? "~" : "";
 
     return (
         <span
@@ -91,13 +93,14 @@ export function ExpiryCountdown({
             data-expiry-urgency={urgency ?? undefined}
         >
             {urgent && <NeedsExitBadge expired={urgency === "expired"} />}
-            <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                {!urgent && <Clock className="h-3 w-3" aria-hidden="true" />}
-                {remaining.source === "time" ? "~" : ""}
-                {blocks}
-                <span className="opacity-60">·</span>
-                {remaining.seconds > 0 ? `~${time}` : time}
-            </span>
+            {!expired && (
+                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                    {!urgent && <Clock className="h-3 w-3" aria-hidden="true" />}
+                    {approx}
+                    {blocks}
+                    <span className="opacity-60">·</span>~{time}
+                </span>
+            )}
         </span>
     );
 }

@@ -615,6 +615,8 @@ function VtxoDenseRow({
     network?: string;
 }) {
     const [expanded, setExpanded] = useState(false);
+    const { urgency } = useVtxoExpiry(vtxo);
+    const urgent = urgency === "urgent" || urgency === "expired";
 
     return (
         <div
@@ -622,6 +624,7 @@ function VtxoDenseRow({
                 "transition-colors duration-150",
                 index % 2 === 0 && "bg-secondary/30",
                 "hover:bg-secondary/50",
+                urgent && "bg-red-500/10 border-l-4 border-l-red-600",
             )}
         >
             {/* Main dense row */}
