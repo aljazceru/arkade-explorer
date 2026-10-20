@@ -24,7 +24,7 @@ choice below: **SQLite, one process, no Redis, no clusters**.
 ```
                 ┌─────────────────────────────── ark-observerd (Bun/TS, one process) ──────────────────────────────┐
  upstream       │  ingest                                                                                     │  serve       │
- arkade.computer│   • SSE recorder  (holds ONE upstream /v1/txs connection, 24/7, resume from cursor)             │  GET /api/v1 │
+ arkade.computer│   • SSE recorder  (holds ONE upstream /v1/txs connection, 24/7; cursor detects gaps)  │  GET /api/v1 │
    /v1/txs  ────┼──▶• param poller   (/v1/info → operator_params history)                                        │  …activity   │
    /v1/info ────┼──▶• outpoint poller(stream outpoints + watch scripts → indexer vtxos → state deltas)            │  …vtxos      │
    /indexer ────┼──▶• round confirmer(commitment txids → Esplora block height)                                    │  …rounds     │
@@ -71,15 +71,20 @@ operator_params(operator_id, effective_from, exit_delay_secs, exit_delta_blocks,
 ```sql
 -- ONE MONTHLY TABLE per month, created on demand:
 events_YYYYMM(
-  id INTEGER PK,                -- monotonic within file, keyset cursor
+  id TEXT PK,                    -- global ULID (time-ordered): keyset cursor works across months
   operator_id TEXT NOT NULL,
   received_at INTEGER NOT NULL,
-  event_type TEXT NOT NULL,     -- commitment_tx|ark_tx|vtxo|round|sweep_tx|heartbeat|poll_snapshot|...
-  dedupe_key TEXT NOT NULL,     -- e.g. "commitment_tx:<txid>"; UNIQUE index → idempotent ingest
+  event_type TEXT NOT NULL,     -- commitment_tx|ark_tx|vtxo|round|sweep_tx|heartbeat|gap|poll_snapshot|...
+  dedupe_key TEXT NOT NULL,     -- e.g. "commitment_tx:<txid>"
   txid TEXT,
   payload_json TEXT NOT NULL)   -- verbatim upstream notification: future re-derivation
-CREATE UNIQUE INDEX ix_eYYYYMM_dedupe ON events_YYYYMM(operator_id, dedupe_key);
--- plus a UNION ALL view `events` over all months for cross-month queries.
+CREATE UNIQUE INDEX ix_eYYYYMM_dedupe ON events_YYYYMM(operator_id, dedupe_key) -- fast path
+
+-- GLOBAL dedupe scope (the per-month UNIQUE above only covers one month):
+event_keys(operator_id, dedupe_key, event_id,
+           PRIMARY KEY(operator_id, dedupe_key))
+-- insert-or-ignore both atomically → reconnect overlap or a poll_snapshot recurring
+-- across a month boundary can never double-store.
 ```
 
 Partitioning rationale: SQLite has no native partitioning; monthly tables give the same wins —
@@ -117,7 +122,9 @@ CREATE INDEX ix_vtxos_script ON vtxos(operator_id, script);
 -- append-only lifecycle detail (one row per observed transition)
 vtxo_events(operator_id, txid, vout, at, event_type,  -- created|spent|settled|expired_detected|refreshed
             via_txid, round_txid,
-            PRIMARY KEY(operator_id, txid, vout, at, event_type))
+            PRIMARY KEY(operator_id, txid, vout, event_type, via_txid))
+-- keyed on the logical transition, not observation time: a poller re-seeing the same
+-- "spent" state must not add a second row; `at` = first_observed_at.
 
 -- on-chain activity touching operator-published addresses (Second server P2TR today)
 operator_chain_txs(operator_id, txid, direction,  -- to_server|from_server|other
@@ -136,6 +143,7 @@ stats_daily(operator_id, day,               -- unix midnight UTC
             rounds, round_value_sats BIGINT,
             ark_txs, sweep_txs,
             median_lifetime_before_spend_secs INTEGER,
+            partial INTEGER DEFAULT 0,        -- set for days containing gap events
             PRIMARY KEY(operator_id, day))
 -- computed like mempool.space's hashrates: skip already-materialized days,
 -- recompute a day only when invalidated (stale round / reorg / backfill) by
@@ -159,6 +167,20 @@ notifications(id, rule_id, sent_at, event_type, payload_json)
 state(key TEXT PK, value TEXT)              -- schema_version, ingest cursors per source
 ingestion_state(source TEXT PK, cursor TEXT, last_event_id INTEGER, updated_at, last_error)
 ```
+
+## Gap repair (the stream has no replay)
+
+The operator stream cannot replay missed events, so the recorder treats a disconnect as a
+detected gap, not a silent hole:
+
+1. On disconnect it writes a `gap` event (closed_at, reopened_at) into `events_YYYYMM`.
+2. On reconnect it reconciles what it can: polls `/v1/indexer/vtxos` for every known outpoint
+   (state deltas become `vtxo_events`), confirms pending rounds via Esplora, and for Second
+   re-walks the server P2TR address (fully enumerable on-chain).
+3. Truly unseen Arkade activity inside the gap is unrecoverable by anyone; later events that
+   reference unknown txids trigger lazy backfill (`virtualTx` by txid, vtxos by outpoint), so
+   gaps heal partially as the graph is referenced again.
+4. `stats_daily` marks gap days `partial` so charts never present a hole as a zero.
 
 ## Partitioning, retention, reorgs
 
