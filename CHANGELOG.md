@@ -4,6 +4,10 @@ All notable changes to Arkade Explorer will be documented in this file.
 
 ## Unreleased
 
+### Added
+
+- Add the supplied Plausible analytics script and initialization to the application entrypoint.
+
 ### Fixed
 
 - Improve Atlas readability with larger supporting labels, natural-width numeric text, and
