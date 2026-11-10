@@ -594,11 +594,20 @@ export function ArkLayerCanvas({
         railLabelX.current = -1e9;
     }, [layout]);
 
-    const renderStub = (stub: ArkLayerLayout["stubs"][number]) => {
+    const renderStub = (stub: ArkLayerLayout["stubs"][number], index: number) => {
         const opacity = dimFor(stub.rels, 0.8);
         const y = stub.row === 0 ? layout.laneArkY - 21 : layout.laneCommitY - 16;
+        // Nearby anchors can share the same annotation; keep every arrow, not overlapping copies.
+        const showLabel =
+            layout.stubs.findIndex(
+                (other) =>
+                    other.row === stub.row &&
+                    other.text === stub.text &&
+                    Math.abs(other.x - stub.x) < 120,
+            ) === index;
         return (
             <g key={`${stub.x}-${stub.row}`} opacity={opacity}>
+                <title>{stub.text}</title>
                 <line
                     x1={stub.dir < 0 ? stub.x + 12 : stub.x - 12}
                     y1={stub.row === 0 ? layout.laneArkY : layout.laneCommitY - 4}
@@ -609,18 +618,20 @@ export function ArkLayerCanvas({
                     opacity={0.7}
                     markerEnd="url(#atlas-arr-virt)"
                 />
-                <text
-                    x={stub.x}
-                    y={y}
-                    textAnchor="middle"
-                    className="fill-faint"
-                    fontSize={12}
-                    stroke="var(--canvas)"
-                    strokeWidth={4}
-                    paintOrder="stroke"
-                >
-                    {stub.text}
-                </text>
+                {showLabel && (
+                    <text
+                        x={stub.x}
+                        y={y}
+                        textAnchor="middle"
+                        className="fill-faint"
+                        fontSize={12}
+                        stroke="var(--canvas)"
+                        strokeWidth={4}
+                        paintOrder="stroke"
+                    >
+                        {stub.text}
+                    </text>
+                )}
             </g>
         );
     };
