@@ -10,6 +10,9 @@ All notable changes to Arkade Explorer will be documented in this file.
 
 ### Fixed
 
+- Correct the footer attribution to “Operated by Aljaz”; the Arkade API is a data source,
+  not the operator of this website.
+
 - Improve Atlas readability with larger supporting labels, natural-width numeric text, and
   clearer panel headings. Rebalance ink/day surfaces and semantic accents; all 70 text/surface
   token combinations per theme exceed WCAG AA's 4.5:1 normal-text threshold. Input, focus, and
