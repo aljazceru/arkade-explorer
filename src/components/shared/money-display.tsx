@@ -63,7 +63,7 @@ export function MoneyDisplay({
     sats,
     className = "",
     valueClassName = "",
-    unitClassName = "",
+    unitClassName = "text-faint",
     showUnit = true,
     layout = "inline",
 }: MoneyDisplayProps) {
@@ -79,7 +79,7 @@ export function MoneyDisplay({
             return (
                 <div className={`min-w-0 ${className}`}>
                     <div className={`tabular-nums ${valueClassName}`}>
-                        {leadingZeros && <span className="opacity-30">{leadingZeros}</span>}
+                        {leadingZeros && <span className="opacity-40">{leadingZeros}</span>}
                         {significantPart}
                     </div>
                     {showUnit && <div className={unitClassName}>{unitLabel}</div>}
@@ -90,7 +90,7 @@ export function MoneyDisplay({
         return (
             <span className={className}>
                 <span className={`tabular-nums ${valueClassName}`}>
-                    {leadingZeros && <span className="opacity-30">{leadingZeros}</span>}
+                    {leadingZeros && <span className="opacity-40">{leadingZeros}</span>}
                     {significantPart}
                 </span>
                 {showUnit && <span className={unitClassName}> {unitLabel}</span>}

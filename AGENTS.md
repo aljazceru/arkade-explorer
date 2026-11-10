@@ -17,8 +17,8 @@ no monorepo. It consumes `@arkade-os/sdk`; it does not extend or vendor it.
 These conventions are shared with the `@arkade-os/sdk` monorepo (`../ts-sdk`) so tooling stays
 consistent across the Arkade ecosystem.
 
-- **Node**: `24.22.0` (see `.nvmrc`); `engines.node` is `>=24.22.0 <25`.
-- **Package manager**: **pnpm only**, pinned via `packageManager: pnpm@10.34.7` and `engines.pnpm`.
+- **Node**: `24.22.2` (see `.nvmrc`); `engines.node` is `>=24.22.2 <25`.
+- **Package manager**: **pnpm only**, pinned via `packageManager: pnpm@10.34.9` and `engines.pnpm`.
   Never use `npm` or `yarn`; `package-lock.json` is git-ignored and must not be committed. `.npmrc`
   sets `save-exact=true`, so add dependencies at exact versions.
 - **Formatting & lint**: **Prettier is the linter** (no ESLint). Config in `.prettierrc`: double
@@ -54,14 +54,16 @@ styling via Tailwind CSS v4 (PostCSS) with Radix UI primitives.
 src/
   pages/          # Route-level views (transactions, address, asset, batch, ...)
   components/
+    atlas/        # Atlas design kit (glyph, panel, tag, legend, term, hash, ...) and page views
     nav/          # Navigation / layout chrome
     shared/       # Reusable presentational components (vtxo-list, asset-amount-display, ...)
   hooks/          # Data hooks (e.g. use-asset-details) — usually TanStack Query wrappers
   providers/      # React context providers (app-wide state, query client, theme)
   lib/
-    api/          # Arkade indexer client (indexer.ts) built on @arkade-os/sdk
+    api/          # Arkade indexer client (indexer.ts) and page draining (fetchAllPages.ts)
+    atlas/        # Pure Atlas logic: canvas layout, address clusters, display VTXO state, glossary
     *.ts          # Pure domain helpers (e.g. vtxo-aggregation) — prefer unit tests here
-  themes/         # Light (Dawn) / Dark (Midnight) theme definitions
+  themes/         # Atlas ink (midnight.css, dark, default) / Atlas day (dawn.css, light) tokens
 ```
 
 Key conventions:
@@ -73,6 +75,13 @@ Key conventions:
   with Vitest. Add tests here rather than in components.
 - **Config** is environment-driven (`VITE_*` vars, see `README.md`); there are sensible defaults so
   the app runs with no `.env`.
+- **UI** follows the Atlas design (reference prototype: `public/redesign/atlas.html`). Build from the
+  kit in `src/components/atlas/` and the theme tokens (`chain`, `virt`, `cp`, `alert`, `ok`,
+  `faint`, `line-strong`, `canvas`, `grid`) rather than ad-hoc colours; one display state per VTXO
+  comes from `atlasVtxoState` in `src/lib/atlas/vtxo-state.ts`.
+- **Indexer paging**: pages are 1-based and capped at 100 items whatever size is requested; drain
+  with `fetchAllPages` / `hasMorePages`, which follow the `current`/`next`/`total` metadata. Never
+  infer the last page from a short page.
 
 ## `@arkade-os/exit-ui` (the unilateral exit route)
 

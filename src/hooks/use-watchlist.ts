@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "ark-observer:watchlist";
+/** Same-window change event: `storage` only fires in *other* tabs. */
+const CHANGE_EVENT = "ark-observer:watchlist-change";
 
 export type WatchedScript = { script: string; label?: string; addedAt: number };
 
@@ -22,8 +24,13 @@ export function useWatchlist() {
         const onStorage = (e: StorageEvent) => {
             if (e.key === STORAGE_KEY) setItems(read());
         };
+        const onChange = () => setItems(read());
         window.addEventListener("storage", onStorage);
-        return () => window.removeEventListener("storage", onStorage);
+        window.addEventListener(CHANGE_EVENT, onChange);
+        return () => {
+            window.removeEventListener("storage", onStorage);
+            window.removeEventListener(CHANGE_EVENT, onChange);
+        };
     }, []);
 
     const persist = useCallback((next: WatchedScript[]) => {
@@ -33,6 +40,7 @@ export function useWatchlist() {
         } catch {
             // storage full/blocked: keep in memory only
         }
+        window.dispatchEvent(new Event(CHANGE_EVENT));
     }, []);
 
     const add = useCallback(
@@ -47,9 +55,14 @@ export function useWatchlist() {
     );
 
     const remove = useCallback(
-        (script: string) => persist(read().filter((w) => w.script !== script)),
+        (script: string) => persist(read().filter((w) => w.script !== script.toLowerCase())),
         [persist],
     );
 
-    return { items, add, remove };
+    const has = useCallback(
+        (script: string) => items.some((w) => w.script === script.toLowerCase()),
+        [items],
+    );
+
+    return { items, add, remove, has };
 }

@@ -16,6 +16,12 @@ export function useLiveSecond(): {
     nextRoundAt: number | null;
     serverAddress: string | null;
     serverTxs: SecondServerTx[] | null;
+    /**
+     * Timestamp (ms epoch) of the last successful server-tx fetch — use this
+     * for "as of" labels instead of Date.now(), which would claim false
+     * freshness on every render.
+     */
+    updatedAt: number;
     isLoading: boolean;
     error: Error | null;
 } {
@@ -44,6 +50,7 @@ export function useLiveSecond(): {
         nextRoundAt: nextRoundQuery.data ?? null,
         serverAddress: SERVER_P2TR || null,
         serverTxs: serverTxsQuery.data ?? null,
+        updatedAt: serverTxsQuery.dataUpdatedAt,
         isLoading:
             infoQuery.isLoading ||
             nextRoundQuery.isLoading ||

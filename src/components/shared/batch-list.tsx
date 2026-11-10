@@ -1,31 +1,34 @@
-import { useState, useCallback, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Layers, Leaf, TreePine } from "lucide-react";
 import { MoneyDisplay } from "@/components/shared/money-display";
-import {
-    BadgeStatus,
-    BadgeRecoverable,
-    deriveVtxoStatus,
-    isRecoverable,
-} from "@/components/shared/badge-status";
-import { CopyButton } from "@/components/shared/copy-button";
+import { BadgeStatus, BadgeRecoverable } from "@/components/shared/badge-status";
+import { deriveVtxoStatus, isRecoverable } from "@/lib/vtxo-status";
 import { VtxoList } from "@/components/shared/vtxo-list";
-import { truncateHash, formatTimestamp } from "@/lib/utils";
+import { truncateHash, formatTimestamp, cn } from "@/lib/utils";
 import { indexerClient } from "@/lib/api/indexer";
 import { fetchAllPages } from "@/lib/api/fetchAllPages";
+import { Panel, MicroLabel } from "@/components/atlas/panel";
+import { Tag } from "@/components/atlas/tag";
+import { Glyph } from "@/components/atlas/glyph";
+import { Hash } from "@/components/atlas/hash";
 import type { BatchInfo, Outpoint, VirtualCoin } from "@arkade-os/sdk";
+import { useNow } from "@/hooks/use-expiry";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 interface BatchEntry {
-    outpoint: string; // "txid:vout" key from batches record
+    /** Key from metadata.batches — bare vout string (e.g. "0", "1") or "txid:vout". */
+    outpoint: string;
     info: BatchInfo;
 }
 
 interface BatchListProps {
     batches: BatchEntry[];
+    /** Commitment transaction id — used to resolve bare vout keys to full outpoints. */
+    commitmentTxid: string;
 }
 
 interface TreeNode {
@@ -45,339 +48,333 @@ interface LeafVtxo {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function parseOutpointKey(key: string): Outpoint | null {
-    const parts = key.split(":");
-    if (parts.length !== 2) return null;
-    const txid = parts[0];
-    const vout = parseInt(parts[1], 10);
+/** Resolve a batch key to a full outpoint. Bare "0" → {txid: commitmentTxid, vout: 0}. */
+function resolveOutpoint(key: string, commitmentTxid: string): Outpoint | null {
+    // Already "txid:vout"
+    if (key.includes(":")) {
+        const parts = key.split(":");
+        if (parts.length !== 2) return null;
+        const vout = parseInt(parts[1], 10);
+        if (isNaN(vout)) return null;
+        return { txid: parts[0], vout };
+    }
+    // Bare vout index
+    const vout = parseInt(key, 10);
     if (isNaN(vout)) return null;
-    return { txid, vout };
+    return { txid: commitmentTxid, vout };
+}
+
+/** Extract the batch index for anchor ids. */
+function batchIndexFromKey(key: string): string {
+    return key.includes(":") ? key.split(":")[1] : key;
+}
+
+/** Format a future timestamp as relative time (e.g. "in 30d"). */
+function formatFutureTime(timestamp: number, now: number): string {
+    const diff = timestamp - now;
+    if (diff <= 0) return "now";
+    const seconds = Math.floor(diff / 1000);
+    if (seconds < 60) return "in <1m";
+    if (seconds < 3600) return `in ${Math.floor(seconds / 60)}m`;
+    if (seconds < 86400) return `in ${Math.floor(seconds / 3600)}h`;
+    if (seconds < 604800) return `in ${Math.floor(seconds / 86400)}d`;
+    return `in ${Math.floor(seconds / 604800)}w`;
 }
 
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function TreeNodeView({ node, depth }: { node: TreeNode; depth: number }) {
-    const [expanded, setExpanded] = useState(false);
-    const childEntries = Object.entries(node.children);
-    const hasChildren = childEntries.length > 0;
-
+function TreeNodeView({ node }: { node: TreeNode; depth: number }) {
+    const children = Object.entries(node.children ?? {});
     return (
-        <div style={{ paddingLeft: `${depth * 16}px` }}>
-            <div className="flex items-center gap-2 py-1">
-                {hasChildren ? (
-                    <button
-                        onClick={() => setExpanded(!expanded)}
-                        className="p-0.5 text-muted-foreground hover:text-foreground transition-colors duration-200"
-                    >
-                        {expanded ? (
-                            <ChevronDown className="h-3 w-3" />
-                        ) : (
-                            <ChevronRight className="h-3 w-3" />
-                        )}
-                    </button>
-                ) : (
-                    <span className="w-4" />
-                )}
-                <TreePine className="h-3 w-3 text-muted-foreground shrink-0" />
-                <Link
-                    to={`/tx/${node.txid}`}
-                    className="text-xs font-mono text-primary hover:text-primary/80 transition-colors duration-200 truncate"
-                >
-                    {truncateHash(node.txid, 10, 10)}
-                </Link>
-                <CopyButton text={node.txid} />
-                {hasChildren && (
-                    <span className="text-xs text-muted-foreground">
-                        ({childEntries.length} outputs)
-                    </span>
-                )}
+        <div className="ml-4 border-l border-border pl-3">
+            <div className="flex items-center gap-1.5 py-0.5">
+                <Glyph kind="tree" size={12} className="text-muted-foreground" />
+                <Hash value={node.txid} to={`/tx/${node.txid}`} head={10} tail={4} copy={false} />
             </div>
-            {expanded && hasChildren && (
-                <div className="border-l border-border ml-2">
-                    {childEntries.map(([vout, childTxid]) => (
-                        <div
-                            key={`${vout}-${childTxid}`}
-                            style={{ paddingLeft: "16px" }}
-                            className="flex items-center gap-2 py-1"
-                        >
-                            <span className="text-xs text-muted-foreground">:{vout}</span>
-                            <Link
-                                to={`/tx/${childTxid}`}
-                                className="text-xs font-mono text-primary hover:text-primary/80 transition-colors duration-200 truncate"
-                            >
-                                {truncateHash(childTxid, 10, 10)}
-                            </Link>
-                            <CopyButton text={childTxid} />
-                        </div>
-                    ))}
+            {children.map(([idx, childTxid]) => (
+                <div key={idx} className="ml-4">
+                    <div className="flex items-center gap-1.5 py-0.5 text-xs text-muted-foreground">
+                        <span className="font-mono text-faint">vout:{idx}</span>
+                        <Hash
+                            value={childTxid}
+                            to={`/tx/${childTxid}`}
+                            head={10}
+                            tail={4}
+                            copy={false}
+                        />
+                    </div>
                 </div>
-            )}
+            ))}
         </div>
     );
 }
 
-function LeafVtxoRow({ leaf, expiresAt }: { leaf: LeafVtxo; expiresAt?: string }) {
-    const recoverable = isRecoverable({ isSwept: leaf.isSwept, expiresAt });
-    const outpointStr = `${leaf.outpoint.txid}:${leaf.outpoint.vout}`;
-    const status = deriveVtxoStatus({ isSpent: leaf.isSpent });
-
+function LeafVtxoRow({ leaf }: { leaf: LeafVtxo; expiresAt?: string }) {
+    const status = deriveVtxoStatus({
+        isSpent: leaf.isSpent,
+        isSwept: leaf.isSwept,
+        isPreconfirmed: leaf.isPreconfirmed,
+    } as VirtualCoin);
+    // Leaf rows carry only outpoint+amount+flags — no expiry or unroll fields,
+    // so only an explicit swept flag can mark recoverable here.
+    const recoverable = isRecoverable({
+        isSpent: leaf.isSpent,
+        isSwept: leaf.isSwept,
+    });
     return (
-        <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-secondary/50 transition-colors duration-150">
-            <Leaf className="h-3 w-3 text-muted-foreground shrink-0" />
-            <Link
-                to={`/tx/${leaf.outpoint.txid}`}
-                className="text-xs font-mono text-primary hover:text-primary/80 transition-colors duration-200 truncate min-w-0"
-            >
-                {truncateHash(outpointStr, 12, 12)}
-            </Link>
-            <CopyButton text={outpointStr} />
-            {leaf.amount && (
-                <MoneyDisplay
-                    sats={parseInt(leaf.amount)}
-                    className="text-xs text-foreground shrink-0"
+        <div className="flex items-center justify-between gap-2 px-3 py-2">
+            <div className="flex items-center gap-2">
+                <Hash
+                    value={leaf.outpoint.txid}
+                    to={`/tx/${leaf.outpoint.txid}`}
+                    head={10}
+                    tail={4}
+                    copy={false}
                 />
-            )}
-            <BadgeStatus status={status} />
-            {recoverable && status !== "spent" && <BadgeRecoverable />}
+                <span className="font-mono text-[10px] text-faint">vout:{leaf.outpoint.vout}</span>
+            </div>
+            <div className="flex items-center gap-2">
+                {leaf.amount && <MoneyDisplay sats={Number(leaf.amount)} className="text-xs" />}
+                <BadgeStatus status={status} />
+                {recoverable && <BadgeRecoverable />}
+            </div>
         </div>
     );
 }
 
-function BatchItem({ batch }: { batch: BatchEntry }) {
-    const [expanded, setExpanded] = useState(false);
-    const [tree, setTree] = useState<TreeNode[]>([]);
-    const [leaves, setLeaves] = useState<LeafVtxo[]>([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [vtxosData, setVtxosData] = useState<any>(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [virtualTxsData, setVirtualTxsData] = useState<any>(null);
-    const [loading, setLoading] = useState(false);
-    const [loaded, setLoaded] = useState(false);
+// ---------------------------------------------------------------------------
+// Batch item
+// ---------------------------------------------------------------------------
 
-    const outpoint = parseOutpointKey(batch.outpoint);
+function BatchItem({ batch, commitmentTxid }: { batch: BatchEntry; commitmentTxid: string }) {
+    const [expanded, setExpanded] = useState(false);
+    const now = useNow(30_000);
+
+    const outpoint = useMemo(
+        () => resolveOutpoint(batch.outpoint, commitmentTxid),
+        [batch.outpoint, commitmentTxid],
+    );
+    const batchIndex = batchIndexFromKey(batch.outpoint);
     const expiryDate = batch.info.expiresAt ? formatTimestamp(batch.info.expiresAt) : "--";
     const totalAmount = parseInt(batch.info.totalOutputAmount || "0");
+    const expiresAtMs = batch.info.expiresAt
+        ? new Date(Number(batch.info.expiresAt) * 1000).getTime()
+        : null;
+    const remaining = expiresAtMs ? expiresAtMs - now : null;
+    const expired = remaining !== null && remaining <= 0;
+    const urgent = remaining !== null && remaining > 0 && remaining < 3600_000;
 
-    // Enrich VTXOs with PSBT data from virtual transactions
-    const enrichedVtxos: VirtualCoin[] = useMemo(() => {
-        if (!vtxosData?.vtxos) return [];
-        if (!virtualTxsData?.txs) return vtxosData.vtxos;
-
-        return vtxosData.vtxos.map((vtxo: VirtualCoin) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const virtualTx = virtualTxsData.txs.find((t: any) => t.txid === vtxo.txid);
-            if (virtualTx?.tx) {
-                return { ...vtxo, _psbt: virtualTx.tx };
-            }
-            return vtxo;
-        });
-    }, [vtxosData, virtualTxsData]);
-
-    const handleToggle = useCallback(async () => {
-        if (!expanded && !loaded && outpoint) {
-            setLoading(true);
-            try {
-                const [treeResult, leavesResult] = await Promise.all([
-                    fetchAllPages((opts) => indexerClient.getVtxoTree(outpoint, opts), "vtxoTree"),
-                    fetchAllPages(
-                        (opts) => indexerClient.getVtxoTreeLeaves(outpoint, opts),
-                        "leaves",
-                    ),
-                ]);
-
-                setTree(treeResult.vtxoTree || []);
-                const rawLeaves: Outpoint[] = leavesResult.leaves || [];
-                setLeaves(
-                    rawLeaves.map((l: Outpoint) => ({
-                        outpoint: l,
-                    })),
-                );
-
-                // Fetch full VTXO data for leaves
-                const leafOutpoints = rawLeaves.map((l: Outpoint) => ({
-                    txid: l.txid,
-                    vout: l.vout,
-                }));
-
-                if (leafOutpoints.length > 0) {
+    // Query for tree + leaves + vtxos when expanded
+    const treeQuery = useQuery({
+        queryKey: ["batch-tree", commitmentTxid, batchIndex],
+        queryFn: async () => {
+            if (!outpoint) return { tree: [], leaves: [], vtxos: [], virtualTxs: [] };
+            const [treeResult, leavesResult] = await Promise.all([
+                fetchAllPages((opts) => indexerClient.getVtxoTree(outpoint, opts), "vtxoTree"),
+                fetchAllPages((opts) => indexerClient.getVtxoTreeLeaves(outpoint, opts), "leaves"),
+            ]);
+            const rawLeaves: Outpoint[] = leavesResult.leaves || [];
+            const leafOutpoints = rawLeaves.map((l) => ({ txid: l.txid, vout: l.vout }));
+            let vtxos: VirtualCoin[] = [];
+            let virtualTxs: Array<{ txid: string; tx: string }> = [];
+            if (leafOutpoints.length > 0) {
+                try {
                     const vtxosResult = await fetchAllPages(
                         (opts) => indexerClient.getVtxos({ outpoints: leafOutpoints, ...opts }),
                         "vtxos",
                     );
-                    setVtxosData(vtxosResult);
-
-                    // Fetch PSBTs via virtual txs
-                    const leafTxids = [...new Set(rawLeaves.map((l: Outpoint) => l.txid))];
+                    vtxos = vtxosResult.vtxos || [];
+                    const leafTxids = [...new Set(rawLeaves.map((l) => l.txid))];
                     if (leafTxids.length > 0) {
                         try {
                             const vtxsResult = await fetchAllPages(
                                 (opts) => indexerClient.getVirtualTxs(leafTxids, opts),
                                 "txs",
                             );
-                            const txsWithIds = vtxsResult.txs.map((tx: string, idx: number) => ({
+                            virtualTxs = vtxsResult.txs.map((tx: string, idx: number) => ({
                                 txid: leafTxids[idx],
                                 tx,
                             }));
-                            setVirtualTxsData({ txs: txsWithIds });
                         } catch {
-                            // Virtual txs may not be available for all leaves
+                            // Virtual txs may not be available
                         }
                     }
+                } catch {
+                    // VTXO fetch may fail
                 }
-
-                setLoaded(true);
-            } catch (err) {
-                console.error("Failed to load batch tree:", err);
-            } finally {
-                setLoading(false);
             }
-        }
-        setExpanded(!expanded);
-    }, [expanded, loaded, outpoint]);
+            return {
+                tree: treeResult.vtxoTree || [],
+                leaves: rawLeaves.map((l) => ({ outpoint: l })),
+                vtxos,
+                virtualTxs,
+            };
+        },
+        enabled: expanded && !!outpoint,
+        staleTime: 60_000,
+    });
 
-    // Derive batch index from the outpoint key (e.g., "txid:2" -> "2", or plain "2" -> "2")
-    const batchIndex = batch.outpoint.includes(":") ? batch.outpoint.split(":")[1] : batch.outpoint;
+    const enrichedVtxos = useMemo(() => {
+        if (!treeQuery.data?.vtxos) return [];
+        if (!treeQuery.data?.virtualTxs) return treeQuery.data.vtxos;
+        return treeQuery.data.vtxos.map((vtxo) => {
+            const virtualTx = treeQuery.data.virtualTxs.find((t) => t.txid === vtxo.txid);
+            if (virtualTx?.tx) return { ...vtxo, _psbt: virtualTx.tx };
+            return vtxo;
+        });
+    }, [treeQuery.data]);
 
     return (
-        <div
-            id={`batch-${batchIndex}`}
-            className="rounded-xl border border-border bg-card overflow-hidden shadow-[0_0_0_1px_hsl(var(--border)),0_1px_2px_hsl(var(--border)/0.2)] scroll-mt-6"
-        >
-            {/* Header (always visible) */}
-            <button
-                onClick={handleToggle}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-secondary/30 transition-colors duration-200"
-            >
-                {expanded ? (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                ) : (
-                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                )}
-                <Layers className="h-4 w-4 text-primary shrink-0" />
+        <Panel variant="panel" className="overflow-hidden" bodyClassName="p-0">
+            <div id={`batch-${batchIndex}`} className="scroll-mt-6">
+                {/* Header */}
+                <button
+                    onClick={() => setExpanded(!expanded)}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/30"
+                >
+                    {expanded ? (
+                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <Glyph kind="commitment" size={16} className="shrink-0 text-chain" />
 
-                <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                    <span className="text-sm font-mono text-foreground truncate">
-                        {outpoint ? truncateHash(batch.outpoint, 12, 12) : batch.outpoint}
-                    </span>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span>
-                            <MoneyDisplay sats={totalAmount} className="text-xs" />
-                        </span>
-                        <span className="hidden sm:inline">&middot;</span>
-                        <span>{batch.info.totalOutputVtxos} VTXOs</span>
-                        <span className="hidden sm:inline">&middot;</span>
-                        <span className="hidden sm:inline">Expires {expiryDate}</span>
-                    </div>
-                </div>
-
-                {batch.info.swept && (
-                    <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full border bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 shrink-0">
-                        swept
-                    </span>
-                )}
-            </button>
-
-            {/* Expanded content */}
-            {expanded && (
-                <div className="border-t border-border">
-                    {loading ? (
-                        <div className="flex items-center justify-center py-8">
-                            <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                            <span className="ml-3 text-sm text-muted-foreground">
-                                Loading tree data...
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm text-foreground">
+                                batch #{parseInt(batchIndex) + 1}
+                            </span>
+                            <span className="font-mono text-xs text-faint">
+                                {outpoint
+                                    ? truncateHash(`${outpoint.txid}:${outpoint.vout}`, 12, 8)
+                                    : batch.outpoint}
                             </span>
                         </div>
-                    ) : (
-                        <div className="p-4 space-y-4">
-                            {/* Batch metadata */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                <div>
-                                    <span className="text-xs text-muted-foreground block mb-0.5">
-                                        Amount
-                                    </span>
-                                    <MoneyDisplay
-                                        sats={totalAmount}
-                                        className="text-sm font-semibold text-foreground"
-                                    />
-                                </div>
-                                <div>
-                                    <span className="text-xs text-muted-foreground block mb-0.5">
-                                        VTXOs
-                                    </span>
-                                    <span className="text-sm font-semibold text-foreground">
-                                        {batch.info.totalOutputVtxos}
-                                    </span>
-                                </div>
-                                <div>
-                                    <span className="text-xs text-muted-foreground block mb-0.5">
-                                        Expires
-                                    </span>
-                                    <span className="text-sm text-foreground">{expiryDate}</span>
-                                </div>
-                                <div>
-                                    <span className="text-xs text-muted-foreground block mb-0.5">
-                                        Status
-                                    </span>
-                                    <span className="text-sm text-foreground">
-                                        {batch.info.swept ? "Swept" : "Active"}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* VTXO tree */}
-                            {tree.length > 0 && (
-                                <div className="space-y-2">
-                                    <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                                        <TreePine className="h-4 w-4 text-muted-foreground" />
-                                        VTXO tree ({tree.length} nodes)
-                                    </h4>
-                                    <div className="rounded-lg bg-secondary/30 border border-border p-3 max-h-80 overflow-y-auto">
-                                        {tree.map((node) => (
-                                            <TreeNodeView key={node.txid} node={node} depth={0} />
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Leaf VTXOs (enriched with full data) */}
-                            {enrichedVtxos.length > 0 ? (
-                                <div className="space-y-2">
-                                    <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                                        <Leaf className="h-4 w-4 text-muted-foreground" />
-                                        VTXOs ({enrichedVtxos.length})
-                                    </h4>
-                                    <VtxoList vtxos={enrichedVtxos} showScript />
-                                </div>
-                            ) : leaves.length > 0 ? (
-                                <div className="space-y-2">
-                                    <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                                        <Leaf className="h-4 w-4 text-muted-foreground" />
-                                        Leaf VTXOs ({leaves.length})
-                                    </h4>
-                                    <div className="rounded-lg bg-secondary/30 border border-border max-h-60 overflow-y-auto divide-y divide-border">
-                                        {leaves.map((leaf) => (
-                                            <LeafVtxoRow
-                                                key={`${leaf.outpoint.txid}:${leaf.outpoint.vout}`}
-                                                expiresAt={batch.info.expiresAt}
-                                                leaf={leaf}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            ) : null}
-
-                            {tree.length === 0 && leaves.length === 0 && loaded && (
-                                <p className="text-sm text-muted-foreground text-center py-4">
-                                    No tree data available for this batch.
-                                </p>
-                            )}
+                        <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                            <span>
+                                <MoneyDisplay sats={totalAmount} className="text-xs" />
+                            </span>
+                            <span>
+                                {batch.info.totalOutputVtxos} registered receiver
+                                {batch.info.totalOutputVtxos !== 1 ? "s" : ""}
+                            </span>
+                            <span
+                                className={cn(
+                                    expired ? "text-alert" : urgent ? "text-alert" : "text-faint",
+                                )}
+                            >
+                                {expired
+                                    ? "expired"
+                                    : `expires ${formatFutureTime(expiresAtMs ?? 0, now)}`}
+                            </span>
                         </div>
-                    )}
-                </div>
-            )}
-        </div>
+                    </div>
+
+                    {batch.info.swept && <Tag tone="warning">swept</Tag>}
+                </button>
+
+                {/* Expanded content */}
+                {expanded && (
+                    <div className="border-t border-border">
+                        {treeQuery.isLoading ? (
+                            <div className="flex items-center justify-center py-8">
+                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                                <span className="ml-3 text-sm text-muted-foreground">
+                                    Loading tree data…
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 p-4">
+                                {/* Metadata grid */}
+                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                    <div>
+                                        <MicroLabel>Amount</MicroLabel>
+                                        <MoneyDisplay
+                                            sats={totalAmount}
+                                            className="text-sm font-semibold text-foreground"
+                                        />
+                                    </div>
+                                    <div>
+                                        <MicroLabel>Registered receivers</MicroLabel>
+                                        <span className="text-sm font-semibold text-foreground">
+                                            {batch.info.totalOutputVtxos}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <MicroLabel>Expires</MicroLabel>
+                                        <span className="text-sm text-foreground">
+                                            {expiryDate}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <MicroLabel>Status</MicroLabel>
+                                        <span className="text-sm text-foreground">
+                                            {batch.info.swept ? "Swept" : "Active"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Tree */}
+                                {treeQuery.data && treeQuery.data.tree.length > 0 && (
+                                    <div className="space-y-2">
+                                        <MicroLabel className="flex items-center gap-1.5">
+                                            <TreePine className="h-3.5 w-3.5" />
+                                            VTXO tree ({treeQuery.data.tree.length} nodes)
+                                        </MicroLabel>
+                                        <div className="max-h-80 overflow-y-auto rounded-lg border border-border bg-secondary/30 p-3">
+                                            {treeQuery.data.tree.map((node) => (
+                                                <TreeNodeView
+                                                    key={node.txid}
+                                                    node={node}
+                                                    depth={0}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* VTXOs */}
+                                {enrichedVtxos.length > 0 ? (
+                                    <div className="space-y-2">
+                                        <MicroLabel className="flex items-center gap-1.5">
+                                            <Leaf className="h-3.5 w-3.5" />
+                                            VTXOs ({enrichedVtxos.length})
+                                        </MicroLabel>
+                                        <VtxoList vtxos={enrichedVtxos} showScript />
+                                    </div>
+                                ) : treeQuery.data && treeQuery.data.leaves.length > 0 ? (
+                                    <div className="space-y-2">
+                                        <MicroLabel className="flex items-center gap-1.5">
+                                            <Leaf className="h-3.5 w-3.5" />
+                                            Leaf VTXOs ({treeQuery.data.leaves.length})
+                                        </MicroLabel>
+                                        <div className="max-h-60 divide-y divide-border overflow-y-auto rounded-lg border border-border bg-secondary/30">
+                                            {treeQuery.data.leaves.map((leaf) => (
+                                                <LeafVtxoRow
+                                                    key={`${leaf.outpoint.txid}:${leaf.outpoint.vout}`}
+                                                    expiresAt={batch.info.expiresAt}
+                                                    leaf={leaf}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : null}
+
+                                {treeQuery.data &&
+                                    treeQuery.data.tree.length === 0 &&
+                                    treeQuery.data.leaves.length === 0 && (
+                                        <p className="py-4 text-center text-sm text-muted-foreground">
+                                            No tree data available for this batch.
+                                        </p>
+                                    )}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </Panel>
     );
 }
 
@@ -385,29 +382,25 @@ function BatchItem({ batch }: { batch: BatchEntry }) {
 // Main component
 // ---------------------------------------------------------------------------
 
-export function BatchList({ batches }: BatchListProps) {
+export function BatchList({ batches, commitmentTxid }: BatchListProps) {
     if (batches.length === 0) {
         return (
-            <div className="rounded-xl border border-border bg-card p-6 text-center shadow-[0_0_0_1px_hsl(var(--border)),0_1px_2px_hsl(var(--border)/0.2)]">
-                <Layers className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+            <Panel variant="panel" bodyClassName="p-6 text-center">
+                <Layers className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
                     No batches found in this commitment transaction.
                 </p>
-            </div>
+            </Panel>
         );
     }
 
     return (
-        <div className="space-y-4">
-            <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2">
-                <Layers className="h-5 w-5 text-primary" />
-                Batches ({batches.length})
-            </h2>
-            <div className="space-y-3">
+        <Panel variant="panel" title={`Batches (${batches.length})`} bodyClassName="p-0">
+            <div className="divide-y divide-border">
                 {batches.map((batch) => (
-                    <BatchItem key={batch.outpoint} batch={batch} />
+                    <BatchItem key={batch.outpoint} batch={batch} commitmentTxid={commitmentTxid} />
                 ))}
             </div>
-        </div>
+        </Panel>
     );
 }

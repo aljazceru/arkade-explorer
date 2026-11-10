@@ -4,12 +4,87 @@ All notable changes to Arkade Explorer will be documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- Refine the Atlas diamond-and-rail favicon for small sizes, with matching SVG, 64px PNG,
+  and multi-resolution ICO assets.
+
+- Snapshot VTXO expiry is recomputed from each output's absolute `expiresAt` instead of the
+  snapshot's frozen countdown, so outputs that already expired no longer show time left.
+- Spent or settled outputs are never counted as needing review (previously inflated the count
+  and the value at risk).
+- Batch amounts distinguish registered off-chain receivers and forfeited VTXOs from Bitcoin
+  inputs, outputs and fees. Forfeits are not fabricated commitment transaction inputs.
+- Coin stats no longer label snapshot-derived figures as live.
+- The Second scope watches the P2TR address derived from its advertised server key
+  (`VITE_SECOND_SERVER_P2TR` overrides). This is not complete round or network activity.
+- Snapshot VTXOs the indexer lists more than once render as a single row (spent state wins);
+  duplicates previously left stale rows behind when switching the network filter.
+- Address pages no longer drop the last page of VTXOs. Paging stopped as soon as a page came
+  back shorter than the requested size, but the indexer caps pages at 100 items whatever size is
+  asked for, so a 1,537-VTXO address listed 1,500. Paging now follows the indexer's
+  `current`/`next`/`total` page metadata (`src/lib/api/fetchAllPages.ts`).
+- Expanding a batch on a commitment page loads its tree and VTXOs again (the batch was looked up
+  by a bare output index instead of its outpoint), and batch expiry reads the indexer's
+  unix-seconds value.
+- Watchlist expiry for block-height VTXOs is evaluated against the live chain tip instead of
+  being dropped.
+- Past Second round announcements remain past; no future rounds are invented from the nominal
+  interval. Unconfirmed transactions are not plotted at a moving “now”.
+- Arkade historical coverage and stale/missing snapshots are visible. `OBSERVATION_OUT` lets
+  local dev/preview use fresh collector output without changing committed regression fixtures.
+- Height-based expiry requires a chain tip; unknown evidence stays unknown. “Exit started”
+  does not claim an unrolled VTXO has completed or confirmed its unilateral exit.
+- Address pagination preserves partial results on failure, exposes retry, deduplicates
+  outpoints, and separates received output value from unspent value.
+- Asset balances and supply preserve integer precision; issuance group IDs use little-endian
+  encoding. Malformed metadata is normalized and invalid decimals show explicit raw units.
+  Asset details refresh periodically rather than retaining potentially lossy supply forever.
+- Unknown ancestry makes exit depth unknown. Settlement leaf loading drains all pages.
+- Stream events are transaction observations, not invented coins or confirmation evidence;
+  observed Bitcoin confirmation takes precedence over an unconfirmed notification.
+- barkd round timing uses the documented `/api/v1/wallet/next-round` response. Remote tokens
+  require HTTPS; HTTP is limited to loopback.
+- Removed guessed lifetime/safe-exit guarantees, unlabeled UTC assumptions and broken Bitcoin
+  address links into Arkade address lookup. Source refresh failures remain visible with cached data.
+
+### Changed (landing page)
+
+- Restructure the landing page into a visitor-facing network overview: hero with search; Network
+  KPIs (liquidity, 24h transactions with sparkline, 24h volume, next Second round) labeled with
+  snapshot age; Arkade and Second operator parameter cards; Latest activity table with relative
+  time, newest-first order, and plain-English types; Your coins panel limited to watchlist and
+  barkd VTXOs; Sources folded into a collapsed "About this data" disclosure without env var names.
+- Move the barkd connect panel from the landing page to `/watchlist`.
+- Latest activity: the All networks / Arkade / Second filter sits in the table toolbar next to
+  the type filters, with a row count per network.
+
 ### Changed
 
+- Implement the 03 Atlas redesign as the production UI, replacing the Operator Console. Atlas
+  ink (dark, default) and Atlas day (light) themes; Instrument Sans and Martian Mono bundled
+  (SIL OFL 1.1); top bar with network pill, search palette (`/`, Ctrl/Cmd+K), sats/BTC toggle
+  (sats by default), glyph legend, Observe and Watchlist. The overview is built around the Ark
+  layer canvas — Arkade virtual transactions and commitments and Second server transactions over
+  a Bitcoin block rail, with time window, lane filter, pan and an inspector — plus an exit
+  outlook, operator lifetime-versus-exit-window bars, a latest list, and the activity table with
+  a drawer inspector. Transaction pages draw the unroll path down to the on-chain anchor with
+  exit depth; commitment pages stand the commitment on its block with its outputs, connectors
+  and forfeits; address pages cluster VTXOs by commitment and lead with facts and a needs-action
+  callout. One VTXO state vocabulary throughout: "Settled" is an unspent batch VTXO, and a VTXO
+  consumed by a commitment reads "Spent in batch". Routes load as separate chunks.
 - Refresh direct registry dependencies to current stable releases, including React 19.3,
-  Vite 8, TypeScript 7, Vitest 5, Framer Motion 14, and Arkade SDK 0.4.79; pin exact versions.
-- Align local, CI, and container tooling on Node 24.22.0 and pnpm 10.34.7, retaining the
+  Vite 8, TypeScript 7, Vitest 5, Framer Motion 14, and Arkade SDK 0.5.4; pin exact versions.
+- Align local, CI, and container tooling on Node 24.22.2 and pnpm 10.34.9, retaining the
   supported toolchain majors and Node 24 type definitions.
+- Migrate SDK consumers to `OperatorInfo`, `RestOperatorProvider`, and canonical VTXO
+  state/expiry fields. Remove obsolete `virtualStatus` compatibility paths and tests.
+- Remove eight unused direct dependencies: Radix select/separator/slot/tabs,
+  class-variance-authority, tailwindcss-animate, autoprefixer, and standalone PostCSS.
+  Tailwind's PostCSS plugin owns its PostCSS dependency. Keep Node typings on the Node 24 line.
+- Include the upstream OFL copyright and license notices for all bundled font families.
+- Update CI and Docker actions to their current stable releases, pinned by commit SHA.
+  CI reads the pnpm version from `packageManager` instead of repeating it in the workflow.
 - Use native ESM directory resolution in Vite and Vitest configuration.
 - Implement the selected Operator Console design as the production UI: wide workspace chrome
   with brand mark and network pill; Overview home with snapshot-labeled stats, filterable and
@@ -27,11 +102,17 @@ All notable changes to Arkade Explorer will be documented in this file.
   detail panel. Second's mempool.second.tech Esplora has no human UI, so on-chain links stay on
   mempool.space.
 
-- Independent number validation: `scripts/validate-numbers.ts` oracle recomputing all Overview
-  figures from raw snapshots with optional live upstream reconciliation, plus 19 unit tests for
-  the record/status builders (8 files / 79 tests total); Second-scope stats now compute from
-  live barkd data when connected and show honest placeholders with a connect hint otherwise,
-  replacing the blanket "Not indexed" row.
+- Snapshot number diagnostics: `scripts/validate-numbers.ts` recomputes sampled expiry/status
+  figures with optional live upstream reconciliation. This is not proof of complete network
+  totals, consensus validity, wallet spendability or exit safety.
+
+- Three high-fidelity redesign proposals at `/redesign/` — 01 Signal (dark keyboard-first
+  console), 02 Datasheet (light print-grade reference with generated readings), 03 Atlas
+  (spatial map with unroll path and exit depth) — each covering overview, virtual transaction,
+  commitment and address views, plus a comparison page with screenshots and a recommendation.
+  All three read one real mainnet capture (`public/redesign/data.js`) on a frozen clock and
+  make no network requests; fonts are vendored under SIL OFL 1.1. 03 Atlas was selected and is
+  implemented as the production UI (see Changed).
 
 ### Changed (cont.)
 

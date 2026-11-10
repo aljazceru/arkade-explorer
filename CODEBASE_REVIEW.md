@@ -1,9 +1,10 @@
 # Codebase review and UX directions
 
-Reviewed 2026-10-19. Scope: application routes, data/cache boundaries, expiry interpretation,
-observation snapshots, local persistence, deployment middleware, dependencies, and browser UX.
-This is a targeted review, not a formal security audit. Findings below remain **unfixed**:
-this change upgrades dependencies and supplies design alternatives, not a production UX rewrite.
+Historical review: 2026-10-19. Scope: application routes, data/cache boundaries, expiry
+interpretation, observation snapshots, local persistence, deployment middleware, dependencies,
+and browser UX. Findings in the original sections describe that revision, not current status.
+See the 2026-11-07 correctness review below for fixes, exercised evidence and publication limits.
+Neither review is a formal security or consensus audit.
 
 ## Findings, ordered by risk
 
@@ -252,10 +253,10 @@ by the orchestrator:
   on-chain links stay on mempool.space. The mock barkd ran with a throwaway token; no real
   wallet was connected and no funds were moved.
 
-### Number validation (independent oracle)
+### Historical number diagnostics
 
-Every figure the Overview displays is now verifiable against sources that do not share the
-app's code:
+This harness recomputes selected snapshot figures and can compare sampled rows with upstream
+APIs. Its passing rows are not independent proof of every UI figure or of network-wide truth:
 
 - **`scripts/validate-numbers.ts`** (run with the pinned Node 24; `--live --sample N` for
   upstream reconciliation, `--json` for machine output) independently recomputes per-row
@@ -299,3 +300,139 @@ app's code:
   filters. Live watchlist + barkd + Esplora + gRPC-web are the viable browser-live surface.
   Blockonomics remains server-side-only (no CORS). Snapshots stay only as the `/observe`
   archive.
+
+## 2026-11-07 correctness and announcement review
+
+### Disposition
+
+Local correctness fixes are verified. **Do not announce the previously deployed build as this
+reviewed release.** The inspected `https://ungovernable.exe.xyz/ark/` still served the older UI.
+Deployment, scheduled observation refresh and a final public-origin smoke check remain release
+requirements; no publication was performed by this review.
+
+### Why Arkade appeared absent
+
+The committed observation fixture was dated 2026-10-19. Its ten historical virtual transactions
+were outside the current 24-hour window, while Second queried recent on-chain activity directly.
+Fresh collection restored ten Arkade transactions within that window. The archive is not
+browser-CORS-readable, so historical backfill requires the collector, not an invented live feed.
+Development and preview now support `OBSERVATION_OUT`; configured missing files return 503,
+never silently fall back to fixtures. Root and `/ark/` serving were exercised.
+
+### Correctness fixes
+
+- Expiry uses timestamp/height-aware SDK conventions. A missing tip or exit delay is unknown,
+  not healthy. The wire delay threshold is not generic BIP68 decoding. Unrolled means an exit
+  started, not that its claim confirmed. Swept recovery requires operator cooperation.
+- Observations distinguish coins, stream notifications, batches and Bitcoin transactions.
+  They do not invent VTXOs from notifications, aggregate duplicate coins, replace known Bitcoin
+  confirmation with an unconfirmed notification, or call sampled data a complete network index.
+- Commitment metadata covers forfeited VTXOs and registered off-chain receivers, not Bitcoin
+  input/output totals; receiver totals exclude operator fee leaves. These amounts and the
+  Bitcoin fee are separate. Forfeits are not extra commitment transaction inputs.
+- Unknown ancestry makes exit depth unknown. Settlement leaf queries load all pages.
+  Bitcoin addresses no longer link into an Arkade-only decoder. Address pagination preserves
+  partial results and retry; historical received value is not labeled balance.
+- Asset issuance group indices use little-endian encoding. Quantities remain bigint/string.
+  Invalid decimals show raw units; metadata is normalized. Potentially rounded, indefinitely
+  retained session caches are ignored; asset details refresh every minute.
+- Second timing uses announcements, never projected rounds. Server-address transactions are
+  not rounds or network payment volume; total outputs include change. The watched address was
+  independently derived from its advertised server key.
+- Unknown archive timezones are not guessed. Chart times explicitly use UTC. Lifetime bars
+  use observed/configured values, not invented defaults or safe-exit guarantees. `/observe`
+  labels collection-time expiry values and archive-reported aggregate metrics.
+- barkd uses the documented next-round route/shape and requires HTTPS for remote tokens.
+  Exit-route copy discloses persisted sessions and Esplora status queries/broadcasts.
+
+### Exercised evidence
+
+- Node 24.22.0 / pnpm 10.34.7: typecheck, formatting check, **21 files / 246 tests**, and
+  production build passed. Vite retains its non-blocking large-chunk warning.
+- At 2026-11-07 21:11 UTC, independently fetched indexer data matched all **14 sampled
+  outpoints** for amount, expiry and spent flags: eight unspent (four inside the warning
+  window) and six spent. Four commitments matched Esplora confirmation heights; each Bitcoin
+  input sum minus output sum equalled its fee.
+- `9fc74bee…25b3e6b6`: registered receivers 1,468,140 sats; Bitcoin input 4,968,606 sats;
+  output 4,968,189 sats; fee 417 sats. These deliberately measure different scopes.
+- Injected page-two 503 reproduced unreachable retry before the fix. Afterward, 100 partial
+  rows stayed visible; retry advanced to 200 and completed 1,546 outputs. Received value was
+  244,711,714 sats; unspent value was 7,735,290 sats across 70 outputs. Values are dated
+  observations, not wallet guarantees.
+- Real transaction `6d23d98f…e32a9035` rendered 1,006 sats in/out and its loaded ancestry.
+  TIERO rendered the API's exact 100,000,000,000,000 supply; a malformed/lossy obsolete
+  session cache neither overrode it nor crashed the page.
+- Production-preview overview, transaction, commitment, asset, watchlist and exit import
+  were exercised. Exit import was styled in ink/day and mobile/desktop layouts.
+  Injected upstream failures showed snapshot/refresh-failed states instead of live success.
+- The actual social metadata handler returned TIERO and exact supply in bot HTML and SVG.
+  This does not establish external social-platform SVG support or public deployment.
+- The barkd route was exercised against an HTTP fixture implementing its official contract,
+  **not a real wallet daemon**. Snapshot diagnostics completed with the no-wallet/tip check
+  explicitly skipped; they are not the independent live reconciliation above.
+
+### Sources and limits
+
+- [Arkade VTXO concepts](https://docs.arkadeos.com/learn/concepts/virtual-outputs.md), installed
+  SDK 0.4.79 expiry/asset/unroll code, [arkd](https://github.com/arkade-os/arkd)
+  `SelectRoundStats`, and [live operator information](https://arkade.computer/v1/info).
+- [BIP68](https://github.com/bitcoin/bips/blob/master/bip-0068.mediawiki), distinct from the
+  operator API's delay wire convention.
+- [Second RPC schema](https://docs.rs/crate/bark-server-rpc/0.8.1/source/protos/bark_server.proto),
+  [bark REST OpenAPI](https://gitlab.com/ark-bitcoin/bark/-/raw/master/bark-rest/openapi.json),
+  [Second rounds](https://second.tech/docs/learn/rounds), and live gRPC responses.
+- [Esplora API](https://github.com/Blockstream/esplora/blob/master/API.md) and direct
+  mempool.space transaction responses for Bitcoin amounts and confirmation.
+
+Coverage is asymmetric and sampled: the collector probes at most three outputs from each of
+ten recent archive transactions, then the first listed commitment per sampled VTXO. Second
+exposes no equivalent public VTXO index. Archive liquidity/volume is source-reported, not
+independently reconstructed network-wide. API agreement does not prove consensus validity,
+key ownership, current spendability or adequate exit funding.
+
+No real barkd wallet, funded unilateral exit, adversarial operator scenario, all historical
+transactions, or external social-card crawler was validated. The exit package was not upgraded.
+Local observations are a point-in-time collection; a running preview does not itself refresh
+the collector. Follow [the deployment checklist](DEPLOYMENT.md#fresh-observation-data) before
+announcing. Public wording should describe an observer of selected public Arkade and Second
+data, not a complete Ark index or an exit-safety/security guarantee.
+
+## Dependency maintenance for publication
+
+- Removed eight unused direct dependencies, reducing declarations from 34 to 26:
+  Radix select/separator/slot/tabs, class-variance-authority, tailwindcss-animate,
+  autoprefixer and standalone PostCSS. Tailwind's plugin already depends on PostCSS.
+  Retained packages have active application, decoding, accessibility or build-tool uses;
+  replacing maintained cryptography/UI primitives with bespoke code is not the goal.
+- Updated eleven registry dependencies to their current stable releases. `pnpm outdated`
+  reports only `@types/node`: 24.19.2 is the newest Node 24 release, deliberately not Node 26
+  declarations. Runtime and package manager remain on the supported majors, updated to
+  Node 24.22.2 and pnpm 10.34.9. Exact pins and the refreshed lockfile are committed together.
+- `pnpm audit --json` reported zero known vulnerabilities. A frozen, offline install succeeded.
+  Neither establishes the absence of undisclosed vulnerabilities.
+- The latest [exit-ui release](https://github.com/arkade-os/arkade-unilateral-exit/releases/tag/exit-ui-v0.2.0)
+  remains 0.2.0. Tag commit `718e90a7f58bf99bda48a65aab9d1454740eaef4` has successful
+  [CI](https://github.com/arkade-os/arkade-unilateral-exit/actions/runs/33082405169) and
+  [release checks](https://github.com/arkade-os/arkade-unilateral-exit/actions/runs/33082509365).
+  Its package-decode tests and both skipped-state `phaseFor` cases remain present.
+  All fourteen CSS contract tokens remain mapped; no package release bump was necessary.
+- Updated the CI/Docker actions to current stable releases and pinned their commit SHAs.
+  Their used inputs remain supported and their Node 24 action runtime is supported by
+  the configured GitHub-hosted runners. pnpm setup reads `packageManager` directly.
+- Bundled upstream OFL license/copyright texts in `public/fonts/licenses/` for redistribution
+  of the production and design-reference fonts. Removed trial fonts remain deleted.
+- SDK 0.5.4 removes `ArkInfo` and the `VirtualCoin.virtualStatus` projection. Consumers now
+  use `OperatorInfo`, `RestOperatorProvider`, and canonical coin fields. Deprecated fallback
+  branches and their obsolete tests were removed rather than adding compatibility shims.
+  Address status filtering no longer dereferences the removed projection.
+  The exit UI's imported SDK runtime symbols remain available in 0.5.4.
+- Integrated verification: 244 tests across 21 files pass; typecheck, repository formatting,
+  lint, and production build pass. The build still reports its existing large-chunk warning.
+- Production-browser smoke: live operator parameters, transaction decoding and its ancestry,
+  asset metadata, search, and mobile overview render without JavaScript errors. A 1,644-output
+  address drains completely; preconfirmed and settled filters correctly show 67 and 9 outputs.
+  Browser testing caught and fixed a migration precedence error that initially included spent
+  outputs in the preconfirmed filter.
+- `/unilateral-exit` renders styled and rejects an invalid package. No funded exit or broadcast
+  was performed. Frozen observation fixtures were not regenerated: the overview explicitly
+  warns that Arkade's historical snapshot is stale and that an empty lane is not zero activity.

@@ -12,6 +12,10 @@ export type ArkadeVtxoRow = {
     urgent?: boolean;
     expired?: boolean;
     isSpent?: boolean;
+    isSwept?: boolean;
+    isUnrolled?: boolean;
+    isPreconfirmed?: boolean;
+    expiresAtHeight?: number;
     spentBy?: string;
     settledBy?: string;
     commitmentTxids?: string[];

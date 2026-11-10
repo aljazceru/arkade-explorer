@@ -1,10 +1,10 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { arkClient } from "@/lib/api/indexer";
-import type { ArkInfo } from "@arkade-os/sdk";
+import type { OperatorInfo } from "@arkade-os/sdk";
 
 const ServerInfoContext = createContext<{
-    serverInfo: ArkInfo | null;
+    serverInfo: OperatorInfo | null;
     isLoading: boolean;
     error: Error | null;
 }>({

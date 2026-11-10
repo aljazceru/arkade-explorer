@@ -5,9 +5,10 @@ export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+/** Integer sats with en-US grouping ("78,943"), the one convention used across the app. */
 export function formatSats(sats: number | string): string {
     const amount = typeof sats === "string" ? parseInt(sats) : sats;
-    return amount.toLocaleString();
+    return amount.toLocaleString("en-US");
 }
 
 export function formatTimestamp(timestamp: string | number): string {

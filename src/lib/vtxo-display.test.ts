@@ -46,24 +46,20 @@ describe("deriveExpiryKind", () => {
         expect(deriveExpiryKind(makeVtxo({ isSpent: true }))).toBe("spent");
     });
 
-    it('is "spent" when virtualStatus.state is "spent"', () => {
-        expect(
-            deriveExpiryKind(
-                makeVtxo({ virtualStatus: { state: "spent" } as VirtualCoin["virtualStatus"] }),
-            ),
-        ).toBe("spent");
-    });
-
     it("treats empty-string txids as not settled/spent", () => {
         expect(deriveExpiryKind(makeVtxo({ settledBy: "", spentBy: "" }))).toBe("active");
     });
 });
 
 describe("expiryKindLabel", () => {
-    it("labels settled and spent, and returns null for active (use the countdown)", () => {
-        expect(expiryKindLabel("settled")).toBe("Settled");
-        expect(expiryKindLabel("spent")).toBe("Spent");
+    it("labels only terminal kinds; active renders the countdown", () => {
+        expect(expiryKindLabel("settled")).not.toBeNull();
+        expect(expiryKindLabel("spent")).not.toBeNull();
         expect(expiryKindLabel("active")).toBeNull();
+    });
+
+    it("never calls a VTXO consumed by a commitment 'Settled' (that names unspent batch VTXOs)", () => {
+        expect(expiryKindLabel("settled")).not.toBe("Settled");
     });
 });
 
@@ -112,5 +108,12 @@ describe("expiry monitoring", () => {
         expect(formatDuration(7 * DAY + 3600)).toBe("7d 1h");
         expect(formatDuration(3 * 3600 + 120)).toBe("3h 2m");
         expect(formatDuration(-5)).toBe("0m");
+    });
+
+    it("treats a unix-second wire string as a timestamp", () => {
+        const sec = Math.floor((now + 10 * DAY * 1000) / 1000);
+        const r = remainingLifetime({ ...makeVtxo({}), expiresAt: String(sec) }, now);
+        expect(r?.seconds).toBe((sec * 1000 - now) / 1000);
+        expect(r?.source).toBe("time");
     });
 });

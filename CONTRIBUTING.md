@@ -4,8 +4,8 @@ Thank you for your interest in contributing to Arkade Explorer!
 
 ## Prerequisites
 
-- **Node.js 24.22.0** (see `.nvmrc`; e.g. `nvm use`)
-- **pnpm** — this project is **pnpm-only** (pinned to `pnpm@10.34.7`). Do not use `npm` or `yarn`.
+- **Node.js 24.22.2** (see `.nvmrc`; e.g. `nvm use`)
+- **pnpm** — this project is **pnpm-only** (pinned to `pnpm@10.34.9`). Do not use `npm` or `yarn`.
 
 ## Development Setup
 
@@ -62,7 +62,8 @@ src/
 
 ## Component Guidelines
 
-1. **Reusable Components**: Place in `src/components/UI/`
+1. **Reusable Components**: Atlas kit in `src/components/atlas/`, other shared pieces in
+   `src/components/shared/`
 2. **Feature Components**: Place in feature-specific folders
 3. **Page Components**: Place in `src/pages/`
 4. **Export Pattern**: Use named exports for components
@@ -70,8 +71,10 @@ src/
 ## Styling
 
 - Use TailwindCSS utility classes
-- Follow the retro Space Invaders theme
-- Use custom color palette defined in `tailwind.config.js`
+- Follow the Atlas design (reference prototype: `public/redesign/atlas.html`) and build from the
+  kit in `src/components/atlas/` (glyph, panel, tag, legend, term, hash)
+- Use the theme tokens from `src/themes/*.css` mapped in `src/globals.css` (`chain`, `virt`, `cp`,
+  `alert`, `ok`, `faint`, `line-strong`, `canvas`, `grid`); no raw palette colours
 - Avoid inline styles when possible
 
 ## Testing

@@ -18,26 +18,32 @@ export function AssetPage() {
 
     return (
         <PageTransition>
-            <div className="space-y-6">
-                <div className="flex items-center gap-3">
+            <div className="mx-auto w-full max-w-3xl space-y-5">
+                <nav
+                    className="flex items-center gap-2 text-[12px] text-faint"
+                    aria-label="Breadcrumb"
+                >
                     <Link
                         to="/"
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+                        className="text-muted-foreground transition-colors hover:text-foreground"
                     >
                         Home
                     </Link>
-                    <span className="text-muted-foreground">/</span>
-                    <span className="text-sm text-foreground">Asset</span>
-                </div>
+                    <span aria-hidden="true">/</span>
+                    <span className="font-mono text-foreground">asset</span>
+                </nav>
 
                 {isLoading ? (
-                    <LoadingSpinner />
+                    <LoadingSpinner label="Loading asset" />
                 ) : error ? (
-                    <ErrorMessage message={error.message || "Failed to load asset details"} />
+                    <ErrorMessage
+                        title="Failed to load asset"
+                        message={error.message || "Failed to load asset details"}
+                    />
                 ) : assetDetails ? (
                     <AssetDetail assetDetails={assetDetails} />
                 ) : (
-                    <ErrorMessage message="Asset not found" />
+                    <ErrorMessage title="Not found" message="Asset not found" />
                 )}
             </div>
         </PageTransition>

@@ -8,9 +8,7 @@ import type { VirtualCoin } from "@arkade-os/sdk";
  */
 export type ExpiryKind = "settled" | "spent" | "active";
 
-type ExpiryKindInput = Pick<VirtualCoin, "isSpent" | "spentBy" | "settledBy"> & {
-    virtualStatus?: { state?: string };
-};
+type ExpiryKindInput = Pick<VirtualCoin, "isSpent" | "spentBy" | "settledBy">;
 
 /**
  * Decide what a VTXO's expiry slot should show.
@@ -21,24 +19,27 @@ type ExpiryKindInput = Pick<VirtualCoin, "isSpent" | "spentBy" | "settledBy"> & 
  */
 export function deriveExpiryKind(vtxo: ExpiryKindInput): ExpiryKind {
     if (vtxo.settledBy && vtxo.settledBy !== "") return "settled";
-    const spent =
-        vtxo.isSpent === true ||
-        (!!vtxo.spentBy && vtxo.spentBy !== "") ||
-        vtxo.virtualStatus?.state === "spent";
+    const spent = vtxo.isSpent === true || !!vtxo.spentBy;
     if (spent) return "spent";
     return "active";
 }
 
 /**
  * Label for a terminal expiry kind, or `null` for `active` (the caller should
- * render the live batch-expiry countdown instead).
+ * render the live batch-expiry countdown instead). A VTXO consumed by a
+ * commitment is "Spent in batch": "Settled" names an unspent VTXO finalized in
+ * a batch (the indexer's `settled` state). `"unrolled"` only appears in
+ * tx-level aggregates (`TxAggregate.aggregateKind`), never from
+ * `deriveExpiryKind`.
  */
-export function expiryKindLabel(kind: ExpiryKind): string | null {
+export function expiryKindLabel(kind: ExpiryKind | "unrolled"): string | null {
     switch (kind) {
         case "settled":
-            return "Settled";
+            return "Spent in batch";
         case "spent":
             return "Spent";
+        case "unrolled":
+            return "Exit started";
         default:
             return null;
     }
@@ -52,16 +53,33 @@ export function expiryKindLabel(kind: ExpiryKind): string | null {
 export const AVG_BLOCK_SECONDS = 600;
 
 /**
- * BIP68/CSV convention used by arkd for relative timelocks: values below 512
- * are a block count, values at or above 512 are seconds (rounded to 512s).
+ * arkd `/v1/info` + SDK `delayToTimelock` wire convention for relative
+ * timelocks: values below 512 are a block count, values at or above 512 are
+ * seconds. This is NOT BIP68 itself — BIP68 encodes the type in nSequence
+ * bit 22 and permits block counts >= 512; the 512 split is how arkd chooses
+ * between the two BIP68 encodings on the wire.
+ * Verified against `@arkade-os/sdk` `delayToTimelock`/`timelockToSequence`
+ * and live `/v1/info` (605184 s and 7776256 s, both exact multiples of 512).
  */
 export const TIMELOCK_SECONDS_THRESHOLD = 512n;
 
+/**
+ * The SDK's `parseWireExpiry` uses this floor to distinguish raw indexer
+ * timestamps from block heights after converting seconds to milliseconds.
+ */
+export const EXPIRY_MIN_PLAUSIBLE_MS = Date.UTC(2025, 0, 1);
+
 export type RelativeTimelock = { type: "blocks" | "seconds"; value: number };
 
-/** Interpret a relative timelock value (e.g. `unilateralExitDelay`) from `/v1/info`. */
+/**
+ * Interpret a relative timelock value (e.g. `unilateralExitDelay`) from `/v1/info`.
+ * Zero is valid: SDK `delayToTimelock(0n)` yields `{type:"blocks", value:0}` and
+ * `bip68.encode({blocks:0})` → nSequence 0 (BIP68 permits a zero relative
+ * locktime = no delay). Only negative values are malformed.
+ */
 export function parseRelativeTimelock(raw: bigint | number | string): RelativeTimelock {
     const v = BigInt(raw);
+    if (v < 0n) throw new Error(`negative timelock: ${v}`);
     return v < TIMELOCK_SECONDS_THRESHOLD
         ? { type: "blocks", value: Number(v) }
         : { type: "seconds", value: Number(v) };
@@ -76,10 +94,12 @@ export function timelockToSecondsAndBlocks(t: RelativeTimelock): {
     return { seconds: t.value, blocks: Math.ceil(t.value / AVG_BLOCK_SECONDS) };
 }
 
-type ExpiryInput = ExpiryKindInput &
-    Partial<Pick<VirtualCoin, "expiresAt" | "expiresAtHeight">> & {
-        virtualStatus?: { state?: string; batchExpiry?: number };
-    };
+type ExpiryInput = ExpiryKindInput & {
+    /** Canonical wall-clock expiry; JSON round-trips may hand back a string/number. */
+    expiresAt?: Date | string | number;
+    expiresAtHeight?: number;
+    isUnrolled?: boolean;
+};
 
 /**
  * Time left until the VTXO's batch expires.
@@ -107,11 +127,19 @@ export function remainingLifetime(
         const seconds = blocks * AVG_BLOCK_SECONDS;
         return { seconds, blocks, source: "height", expiresAtMs: nowMs + seconds * 1000 };
     }
+    const expiresAtRaw = vtxo.expiresAt;
     let expiresAtMs: number | null = null;
-    if (vtxo.expiresAt instanceof Date && !isNaN(vtxo.expiresAt.getTime())) {
-        expiresAtMs = vtxo.expiresAt.getTime();
-    } else if (vtxo.virtualStatus?.batchExpiry) {
-        expiresAtMs = vtxo.virtualStatus.batchExpiry;
+    if (expiresAtRaw instanceof Date) {
+        const ms = expiresAtRaw.getTime();
+        if (!isNaN(ms)) expiresAtMs = ms;
+    } else if (typeof expiresAtRaw === "number") {
+        // Wire sends unix seconds; ms-scale values pass through.
+        expiresAtMs = expiresAtRaw > 1e12 ? expiresAtRaw : expiresAtRaw * 1000;
+    } else if (typeof expiresAtRaw === "string" && expiresAtRaw !== "") {
+        expiresAtMs = /^\d+$/.test(expiresAtRaw)
+            ? Number(expiresAtRaw) * 1000
+            : new Date(expiresAtRaw).getTime();
+        if (isNaN(expiresAtMs)) expiresAtMs = null;
     }
     if (expiresAtMs === null) return null;
     const seconds = Math.floor((expiresAtMs - nowMs) / 1000);
@@ -125,9 +153,11 @@ export function remainingLifetime(
 /**
  * Urgency of an active VTXO.
  * - `expired`: the batch expiry has passed; the operator may sweep it.
- * - `urgent`: remaining lifetime is at or below the unilateral exit delay, so a
- *   unilateral exit started now could not complete before expiry. Renew (settle)
- *   or exit on-chain now.
+ * - `urgent`: remaining lifetime is at or below the unilateral exit delay.
+ *   This is a heuristic, not a guarantee: the exit delay is the CSV wait on the
+ *   exit path, and a real unilateral exit also needs one confirmation per
+ *   exit-depth hop plus fees — deep VTXOs can need materially longer. Treat
+ *   `urgent` as "renew or exit soon", never as a hard deadline.
  * - `ok`: more lifetime left than the exit delay.
  * - `unknown`: no expiry information, or no exit delay known yet.
  */

@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow" />
+        <title>ark.observer · Redesign proposals</title>
+        <style>
+            /* Fonts: SIL Open Font License 1.1 (Geist, Geist Mono by Vercel). */
+            @font-face {
+                font-family: "Geist";
+                src: url("../fonts/geist.woff2") format("woff2");
+                font-weight: 100 900;
+                font-display: swap;
+            }
+            @font-face {
+                font-family: "Geist Mono";
+                src: url("fonts/geist-mono-var.woff2") format("woff2");
+                font-weight: 100 900;
+                font-display: swap;
+            }
+            :root {
+                --bg: #f4f4f2;
+                --ink: #121212;
+                --ink-2: #55534f;
+                --ink-3: #8b8882;
+                --rule: #d9d6cf;
+                --card: #fbfbfa;
+                --signal: #ff6a2b;
+                --sheet: #2f3fd8;
+                --atlas: #f2a93b;
+                --mono: "Geist Mono", ui-monospace, monospace;
+                --sans: "Geist", system-ui, sans-serif;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+            }
+            body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--ink);
+                font: 15px/1.55 var(--sans);
+                -webkit-font-smoothing: antialiased;
+            }
+            a {
+                color: inherit;
+            }
+            :focus-visible {
+                outline: 2px solid var(--ink);
+                outline-offset: 3px;
+            }
+            .wrap {
+                max-width: 1320px;
+                margin: 0 auto;
+                padding: 0 32px;
+            }
+            .mono {
+                font-family: var(--mono);
+                font-variant-numeric: tabular-nums;
+            }
+            .label {
+                font: 500 11px/1.4 var(--mono);
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: var(--ink-3);
+            }
+            /* top line */
+            .top {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 16px;
+                padding: 18px 0;
+                border-bottom: 1px solid var(--rule);
+                font: 500 13px/1 var(--mono);
+            }
+            .top .brand {
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .top nav {
+                display: flex;
+                gap: 18px;
+                flex-wrap: wrap;
+            }
+            .top nav a {
+                text-decoration: none;
+                color: var(--ink-2);
+            }
+            .top nav a:hover {
+                color: var(--ink);
+            }
+            /* intro */
+            .intro {
+                display: grid;
+                grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+                gap: 48px;
+                padding: 72px 0 56px;
+                align-items: end;
+            }
+            .intro h1 {
+                margin: 14px 0 0;
+                font-size: clamp(40px, 5.4vw, 76px);
+                line-height: 0.98;
+                letter-spacing: -0.035em;
+                font-weight: 560;
+            }
+            .intro p {
+                margin: 0;
+                color: var(--ink-2);
+                font-size: 17px;
+                max-width: 52ch;
+            }
+            .intro .facts {
+                margin-top: 22px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px 22px;
+                font: 12px/1.4 var(--mono);
+                color: var(--ink-3);
+            }
+            /* index strip */
+            .strip {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                border-top: 2px solid var(--ink);
+            }
+            .strip a {
+                display: grid;
+                gap: 6px;
+                align-content: start;
+                padding: 18px 20px 22px 0;
+                text-decoration: none;
+                border-right: 1px solid var(--rule);
+            }
+            .strip a + a {
+                padding-left: 20px;
+            }
+            .strip a:last-child {
+                border-right: 0;
+            }
+            .strip b {
+                font-size: 22px;
+                font-weight: 560;
+                letter-spacing: -0.01em;
+            }
+            .strip span {
+                color: var(--ink-2);
+                font-size: 14px;
+            }
+            .strip a:hover b {
+                text-decoration: underline;
+                text-underline-offset: 4px;
+                text-decoration-thickness: 1px;
+            }
+            .num {
+                font: 500 12px/1 var(--mono);
+                letter-spacing: 0.06em;
+            }
+            .num i {
+                display: inline-block;
+                width: 8px;
+                height: 8px;
+                margin-right: 8px;
+                vertical-align: 0;
+                font-style: normal;
+            }
+            /* diagnosis */
+            section {
+                padding: 80px 0 0;
+            }
+            .sec-head {
+                display: grid;
+                grid-template-columns: 220px minmax(0, 1fr);
+                gap: 32px;
+                border-top: 2px solid var(--ink);
+                padding-top: 18px;
+            }
+            .sec-head h2 {
+                margin: 0;
+                font-size: clamp(28px, 3vw, 40px);
+                line-height: 1.05;
+                letter-spacing: -0.025em;
+                font-weight: 560;
+            }
+            .sec-head p {
+                margin: 12px 0 0;
+                color: var(--ink-2);
+                max-width: 70ch;
+            }
+            .diag {
+                display: grid;
+                grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr);
+                gap: 32px;
+                margin-top: 32px;
+                align-items: start;
+            }
+            .diag ol {
+                margin: 0;
+                padding: 0;
+                list-style: none;
+                counter-reset: d;
+            }
+            .diag li {
+                counter-increment: d;
+                display: grid;
+                grid-template-columns: 34px minmax(0, 1fr);
+                padding: 12px 0;
+                border-top: 1px solid var(--rule);
+                color: var(--ink-2);
+            }
+            .diag li::before {
+                content: counter(d, decimal-leading-zero);
+                font: 500 12px/1.9 var(--mono);
+                color: var(--ink-3);
+            }
+            .diag li b {
+                color: var(--ink);
+                font-weight: 560;
+            }
+            figure {
+                margin: 0;
+            }
+            .shot-link {
+                display: block;
+                transition: opacity 0.15s ease;
+            }
+            .shot-link:hover {
+                opacity: 0.88;
+            }
+            .shot {
+                display: block;
+                width: 100%;
+                height: auto;
+                border: 1px solid var(--rule);
+                background: #e9e8e4;
+            }
+            figcaption {
+                margin-top: 8px;
+                font: 12px/1.4 var(--mono);
+                color: var(--ink-3);
+            }
+            /* proposals */
+            .proposal {
+                padding-top: 96px;
+            }
+            .p-head {
+                display: grid;
+                grid-template-columns: 220px minmax(0, 1fr) auto;
+                gap: 32px;
+                align-items: start;
+                border-top: 2px solid var(--ink);
+                padding-top: 18px;
+            }
+            .p-head h2 {
+                margin: 8px 0 0;
+                font-size: clamp(40px, 5vw, 68px);
+                line-height: 0.95;
+                letter-spacing: -0.035em;
+                font-weight: 560;
+            }
+            .p-head .thesis {
+                margin: 14px 0 0;
+                font-size: 20px;
+                letter-spacing: -0.01em;
+                max-width: 44ch;
+            }
+            .open {
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                padding: 12px 18px;
+                background: var(--ink);
+                color: #fff;
+                text-decoration: none;
+                font: 500 14px/1 var(--sans);
+                white-space: nowrap;
+            }
+            .open:hover {
+                background: #000;
+            }
+            .open kbd {
+                font: 12px/1 var(--mono);
+                opacity: 0.6;
+            }
+            .gallery {
+                display: grid;
+                grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+                gap: 20px;
+                margin-top: 28px;
+            }
+            .gallery .side {
+                display: grid;
+                gap: 20px;
+                align-content: start;
+            }
+            .gallery .phone {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                gap: 20px;
+            }
+            .detail {
+                display: grid;
+                grid-template-columns: 220px repeat(3, minmax(0, 1fr));
+                gap: 32px;
+                margin-top: 36px;
+            }
+            .detail h3 {
+                margin: 0 0 10px;
+            }
+            .detail ul {
+                margin: 0;
+                padding: 0;
+                list-style: none;
+            }
+            .detail li {
+                padding: 9px 0;
+                border-top: 1px solid var(--rule);
+                color: var(--ink-2);
+                font-size: 14px;
+            }
+            .detail li b {
+                color: var(--ink);
+                font-weight: 560;
+            }
+            .meta dl {
+                margin: 0;
+                display: grid;
+                gap: 14px;
+            }
+            .meta dt {
+                margin: 0;
+            }
+            .meta dd {
+                margin: 3px 0 0;
+                font-size: 14px;
+                color: var(--ink-2);
+            }
+            .swatches {
+                display: flex;
+                gap: 4px;
+                margin-top: 6px;
+            }
+            .swatches i {
+                width: 22px;
+                height: 22px;
+                border: 1px solid rgba(0, 0, 0, 0.12);
+            }
+            .phone-shot {
+                max-width: 196px;
+                margin-top: 6px;
+            }
+            .type-sample {
+                margin-top: 4px;
+                font-size: 14px;
+                color: var(--ink);
+            }
+            /* matrix */
+            .matrix-wrap {
+                margin-top: 32px;
+                overflow-x: auto;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                min-width: 760px;
+            }
+            th,
+            td {
+                text-align: left;
+                vertical-align: top;
+                padding: 12px 16px 12px 0;
+                border-top: 1px solid var(--rule);
+                font-size: 14px;
+            }
+            thead th {
+                border-top: 0;
+                padding-bottom: 10px;
+            }
+            tbody th {
+                width: 220px;
+                font: 500 11px/1.9 var(--mono);
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: var(--ink-3);
+            }
+            td {
+                color: var(--ink-2);
+            }
+            td b {
+                color: var(--ink);
+                font-weight: 560;
+            }
+            .reco {
+                display: grid;
+                grid-template-columns: 220px minmax(0, 1fr);
+                gap: 32px;
+                margin-top: 32px;
+            }
+            .reco p {
+                margin: 0 0 14px;
+                font-size: 18px;
+                max-width: 66ch;
+                letter-spacing: -0.005em;
+            }
+            footer {
+                margin: 120px 0 0;
+                padding: 22px 0 40px;
+                border-top: 1px solid var(--rule);
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                gap: 12px;
+                font: 12px/1.5 var(--mono);
+                color: var(--ink-3);
+            }
+            @media (max-width: 1080px) {
+                .intro,
+                .gallery {
+                    grid-template-columns: minmax(0, 1fr);
+                }
+                .sec-head,
+                .diag,
+                .p-head,
+                .detail,
+                .reco {
+                    grid-template-columns: minmax(0, 1fr);
+                    gap: 18px;
+                }
+                .gallery .side {
+                    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                }
+                .gallery .phone {
+                    grid-column: 1 / -1;
+                }
+            }
+            @media (max-width: 640px) {
+                tbody th {
+                    width: 128px;
+                }
+                table {
+                    min-width: 640px;
+                }
+                .wrap {
+                    padding: 0 18px;
+                }
+                .intro {
+                    padding: 44px 0 36px;
+                }
+                .strip {
+                    grid-template-columns: minmax(0, 1fr);
+                }
+                .strip a,
+                .strip a + a {
+                    padding: 14px 0;
+                    border-right: 0;
+                    border-bottom: 1px solid var(--rule);
+                }
+                .gallery .side {
+                    grid-template-columns: minmax(0, 1fr);
+                }
+                section {
+                    padding-top: 56px;
+                }
+                .proposal {
+                    padding-top: 64px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <header class="top">
+                <span class="brand">
+                    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                        <circle cx="9" cy="9" r="7.5" fill="none" stroke="currentColor" stroke-width="1.4" />
+                        <circle cx="9" cy="9" r="3" fill="currentColor" />
+                    </svg>
+                    ark.observer / redesign
+                </span>
+                <nav aria-label="Proposals">
+                    <a href="signal.html">01 Signal</a>
+                    <a href="datasheet.html">02 Datasheet</a>
+                    <a href="atlas.html">03 Atlas</a>
+                    <a href="#compare">Compare</a>
+                </nav>
+            </header>
+
+            <div class="intro">
+                <div>
+                    <span class="label">Design proposals · November 2026</span>
+                    <h1>Three ways to make ark.observer an instrument, not a template.</h1>
+                </div>
+                <div>
+                    <p>
+                        Each proposal is a working prototype built on the same real mainnet capture,
+                        so you can open the same transaction, commitment or address in all three and
+                        compare like for like. The switcher in every prototype keeps you on the
+                        record you are looking at.
+                    </p>
+                    <div class="facts" id="facts"></div>
+                </div>
+            </div>
+
+            <nav class="strip" aria-label="Open a proposal">
+                <a href="signal.html">
+                    <span class="num"><i style="background: var(--signal)"></i>01 · Console</span>
+                    <b>Signal</b>
+                    <span>Dark, dense, keyboard-first. Everything live, nothing decorative.</span>
+                </a>
+                <a href="datasheet.html">
+                    <span class="num"><i style="background: var(--sheet)"></i>02 · Reference</span>
+                    <b>Datasheet</b>
+                    <span>Light, print-grade, chart-led. Read the network like an instrument.</span>
+                </a>
+                <a href="atlas.html">
+                    <span class="num"><i style="background: var(--atlas)"></i>03 · Map</span>
+                    <b>Atlas</b>
+                    <span>Spatial, structure-first. See where every sat sits.</span>
+                </a>
+            </nav>
+
+            <section aria-labelledby="why">
+                <div class="sec-head">
+                    <span class="label">00 · Why redesign</span>
+                    <div>
+                        <h2 id="why">Today it looks like a starter kit.</h2>
+                        <p>
+                            The data underneath is good. The interface hides it behind template
+                            patterns, so the states that matter (expiring coins, where funds are
+                            anchored, what an operator actually guarantees) never stand out.
+                        </p>
+                    </div>
+                </div>
+                <div class="diag">
+                    <span class="label">Findings</span>
+                    <ol>
+                        <li>
+                            <span><b>Template layout.</b> Centered hero, four icon KPI cards and
+                            rounded cards around everything: no hierarchy, low density.</span>
+                        </li>
+                        <li>
+                            <span><b>Provenance as noise.</b> "snapshot 18d ago · may be stale"
+                            sits next to the figures instead of being stated once, clearly.</span>
+                        </li>
+                        <li>
+                            <span><b>Every row is green.</b> "Confirmed" pills on every on-chain
+                            row; renew and expired states never stand out.</span>
+                        </li>
+                        <li>
+                            <span><b>Ids you cannot follow.</b> Truncated hashes with no way to
+                            relate the same id across views.</span>
+                        </li>
+                    </ol>
+                    <ol start="5" style="counter-reset: d 4">
+                        <li>
+                            <span><b>Detail pages explain nothing.</b> Raw outpoints in boxes; no
+                            anchor, lineage or exit context; expiry only as a date.</span>
+                        </li>
+                        <li>
+                            <span><b>Mixed units.</b> "~7 days" beside "4,032 blocks"; parameters
+                            dumped without saying what they mean for a holder.</span>
+                        </li>
+                        <li>
+                            <span><b>Type.</b> Courier New for all data and a trial-licensed
+                            display face (TT Firs Neue Trial).</span>
+                        </li>
+                        <li>
+                            <span><b>Same answer for everyone.</b> Visitors, holders and operators
+                            get one page with no path to the job they came for.</span>
+                        </li>
+                    </ol>
+                </div>
+                <figure style="margin-top: 28px">
+                    <img
+                        class="shot"
+                        src="shots/current-overview.webp"
+                        width="1800"
+                        height="1125"
+                        loading="lazy"
+                        alt="Current ark.observer overview: centered title, search, four KPI cards and two operator cards"
+                    />
+                    <figcaption>Current production overview, 1440 px.</figcaption>
+                </figure>
+            </section>
+
+            <article class="proposal" id="signal" aria-labelledby="p1">
+                <div class="p-head">
+                    <span class="num"><i style="background: var(--signal)"></i>01 · Console</span>
+                    <div>
+                        <h2 id="p1">Signal</h2>
+                        <p class="thesis">Everything live, nothing decorative.</p>
+                    </div>
+                    <a class="open" href="signal.html">Open prototype <kbd>→</kbd></a>
+                </div>
+                <div class="gallery">
+                    <a class="shot-link" href="signal.html" data-p="signal" data-view="overview"><img class="shot" src="shots/signal-overview.webp" width="1800" height="1125" loading="lazy" alt="Signal overview: live tape, time strip, activity table and inspector" /></a>
+                    <div class="side">
+                        <a class="shot-link" href="signal.html" data-p="signal" data-view="tx"><img class="shot" src="shots/signal-tx.webp" width="1800" height="1125" loading="lazy" alt="Signal transaction view" /></a>
+                        <a class="shot-link" href="signal.html" data-p="signal" data-view="address"><img class="shot" src="shots/signal-address.webp" width="1800" height="1125" loading="lazy" alt="Signal address view" /></a>
+                    </div>
+                </div>
+                <div class="detail">
+                    <div class="meta">
+                        <dl>
+                            <div><dt class="label">For</dt><dd>Operators, developers, power users who keep the tab open all day.</dd></div>
+                            <div>
+                                <dt class="label">Palette</dt>
+                                <dd class="swatches"><i style="background: #0a0a0b"></i><i style="background: #16161a"></i><i style="background: #ededef"></i><i style="background: #ff6a2b"></i><i style="background: #4cc38a"></i><i style="background: #7aa7ff"></i></dd>
+                            </div>
+                            <div><dt class="label">Type</dt><dd class="type-sample">Geist · Geist Mono</dd></div>
+                            <div><dt class="label">390 px</dt><dd><img class="shot phone-shot" src="shots/signal-mobile.webp" width="488" height="1055" loading="lazy" alt="Signal overview on a 390 px phone" /></dd></div>
+                        </dl>
+                    </div>
+                    <div>
+                        <h3 class="label">Signature</h3>
+                        <ul>
+                            <li><b>Live tape.</b> Tip, fees, both operators, next round, 24 h activity in one strip.</li>
+                            <li><b>Hash chips.</b> Identicon per id, so the same id is recognisable everywhere.</li>
+                            <li><b>Time strip is the filter.</b> Brush 24 h / 7 d / 45 d to filter the table.</li>
+                            <li><b>Query bar.</b> <span class="mono">net:arkade state:renew amt&gt;10000</span>, synced with toggles.</li>
+                            <li><b>Inspector + trail.</b> Follows the cursor; lifecycle rail to expiry; <span class="mono">j k c w / ?</span>.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="label">Tradeoffs</h3>
+                        <ul>
+                            <li><b>Dense.</b> First-time visitors lean on the <span class="mono">?</span> overlay.</li>
+                            <li><b>Dark-first.</b> Needs a light variant mapped onto Dawn.</li>
+                            <li><b>Easy to get wrong.</b> Without the details it becomes "another dashboard".</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="label">Path to production · S–M</h3>
+                        <ul>
+                            <li>Evolves the current Overview: <span class="mono">records-table</span>, <span class="mono">record-detail</span>, <span class="mono">network-pulse</span>.</li>
+                            <li>New: <span class="mono">HashChip</span>, <span class="mono">TimeStrip</span>, <span class="mono">QueryBar</span>, shortcut map on <span class="mono">use-keyboard-shortcut</span>.</li>
+                            <li>Tokens replace <span class="mono">themes/midnight.css</span>; no new data sources.</li>
+                        </ul>
+                    </div>
+                </div>
+            </article>
+
+            <article class="proposal" id="datasheet" aria-labelledby="p2">
+                <div class="p-head">
+                    <span class="num"><i style="background: var(--sheet)"></i>02 · Reference</span>
+                    <div>
+                        <h2 id="p2">Datasheet</h2>
+                        <p class="thesis">Read the network like an instrument.</p>
+                    </div>
+                    <a class="open" href="datasheet.html">Open prototype <kbd>→</kbd></a>
+                </div>
+                <div class="gallery">
+                    <a class="shot-link" href="datasheet.html" data-p="datasheet" data-view="overview"><img class="shot" src="shots/datasheet-overview.webp" width="1800" height="1125" loading="lazy" alt="Datasheet overview: masthead, reading and figures" /></a>
+                    <div class="side">
+                        <a class="shot-link" href="datasheet.html" data-p="datasheet" data-view="tx"><img class="shot" src="shots/datasheet-tx.webp" width="1800" height="1125" loading="lazy" alt="Datasheet transaction specimen sheet" /></a>
+                        <a class="shot-link" href="datasheet.html" data-p="datasheet" data-view="address"><img class="shot" src="shots/datasheet-address.webp" width="1800" height="1125" loading="lazy" alt="Datasheet address statement" /></a>
+                    </div>
+                </div>
+                <div class="detail">
+                    <div class="meta">
+                        <dl>
+                            <div><dt class="label">For</dt><dd>Researchers, Bitcoiners comparing implementations, newcomers who need to understand.</dd></div>
+                            <div>
+                                <dt class="label">Palette</dt>
+                                <dd class="swatches"><i style="background: #f3f2ee"></i><i style="background: #131313"></i><i style="background: #cdc9c0"></i><i style="background: #2f3fd8"></i><i style="background: #0e7c66"></i><i style="background: #e2401c"></i></dd>
+                            </div>
+                            <div><dt class="label">Type</dt><dd class="type-sample">Archivo (62–125 % width) · IBM Plex Mono</dd></div>
+                            <div><dt class="label">390 px</dt><dd><img class="shot phone-shot" src="shots/datasheet-mobile.webp" width="488" height="1055" loading="lazy" alt="Datasheet overview on a 390 px phone" /></dd></div>
+                        </dl>
+                    </div>
+                    <div>
+                        <h3 class="label">Signature</h3>
+                        <ul>
+                            <li><b>Readings.</b> Plain-language sentences generated from the data, footnoted to sources.</li>
+                            <li><b>Seismograph.</b> Both operators on one Bitcoin-block axis.</li>
+                            <li><b>Spec comparison.</b> Arkade vs Second in normalised units, differences explained.</li>
+                            <li><b>Expiry horizon.</b> Every observed unspent VTXO on a 31-day ruler, exit window hatched.</li>
+                            <li><b>Stratigraphy.</b> The unroll path from Bitcoin up: exit depth made visible. Prints as A4.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="label">Tradeoffs</h3>
+                        <ul>
+                            <li><b>Long scroll.</b> Slower to triage than a console.</li>
+                            <li><b>Light-only.</b> Needs a dark variant for night use.</li>
+                            <li><b>Copy must be right.</b> Generated sentences need careful edge-case tests.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="label">Path to production · M</h3>
+                        <ul>
+                            <li>Readings are pure functions in <span class="mono">src/lib</span>, unit-tested like the rest.</li>
+                            <li>SVG chart components (seismograph, horizon, strata); new type scale and grid.</li>
+                            <li>Print stylesheet; no new data sources.</li>
+                        </ul>
+                    </div>
+                </div>
+            </article>
+
+            <article class="proposal" id="atlas" aria-labelledby="p3">
+                <div class="p-head">
+                    <span class="num"><i style="background: var(--atlas)"></i>03 · Map</span>
+                    <div>
+                        <h2 id="p3">Atlas</h2>
+                        <p class="thesis">See where every sat sits.</p>
+                    </div>
+                    <a class="open" href="atlas.html">Open prototype <kbd>→</kbd></a>
+                </div>
+                <div class="gallery">
+                    <a class="shot-link" href="atlas.html" data-p="atlas" data-view="overview"><img class="shot" src="shots/atlas-overview.webp" width="1800" height="1125" loading="lazy" alt="Atlas overview: the Ark layer canvas with lanes and block rail" /></a>
+                    <div class="side">
+                        <a class="shot-link" href="atlas.html" data-p="atlas" data-view="tx"><img class="shot" src="shots/atlas-tx.webp" width="1800" height="1125" loading="lazy" alt="Atlas transaction flow graph and unroll path" /></a>
+                        <a class="shot-link" href="atlas.html" data-p="atlas" data-view="address"><img class="shot" src="shots/atlas-address.webp" width="1800" height="1125" loading="lazy" alt="Atlas address constellation" /></a>
+                    </div>
+                </div>
+                <div class="detail">
+                    <div class="meta">
+                        <dl>
+                            <div><dt class="label">For</dt><dd>Anyone tracing funds, auditing exit safety, or learning how Ark works.</dd></div>
+                            <div>
+                                <dt class="label">Palette</dt>
+                                <dd class="swatches"><i style="background: #0b0e14"></i><i style="background: #121722"></i><i style="background: #e6eaf2"></i><i style="background: #f2a93b"></i><i style="background: #8fb8ff"></i><i style="background: #ff6464"></i></dd>
+                            </div>
+                            <div><dt class="label">Type</dt><dd class="type-sample">Instrument Sans · Martian Mono</dd></div>
+                            <div><dt class="label">390 px</dt><dd><img class="shot phone-shot" src="shots/atlas-mobile.webp" width="488" height="1055" loading="lazy" alt="Atlas overview on a 390 px phone" /></dd></div>
+                        </dl>
+                    </div>
+                    <div>
+                        <h3 class="label">Signature</h3>
+                        <ul>
+                            <li><b>The Ark layer.</b> One time axis: Arkade and Second lanes over a Bitcoin block rail.</li>
+                            <li><b>Unroll path.</b> A route from a VTXO to its commitment; exit depth as the headline.</li>
+                            <li><b>Flow graph.</b> Inputs → tx → outputs, rings show lifetime left.</li>
+                            <li><b>Constellation.</b> An address's VTXOs clustered by batch.</li>
+                            <li><b>Lifetime bars.</b> VTXO lifetime vs exit window: safety margins side by side.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="label">Tradeoffs</h3>
+                        <ul>
+                            <li><b>Most novel.</b> Highest learning curve and most engineering.</li>
+                            <li><b>Scale.</b> Layout must hold for 600-hop chains and 1,500-VTXO addresses.</li>
+                            <li><b>Mobile.</b> Canvases need deliberate pan and stack behaviour.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="label">Path to production · L</h3>
+                        <ul>
+                            <li>Needs per-entity <span class="mono">getVtxoChain</span> (already used by the exit flow).</li>
+                            <li>An SVG layout layer (time scale, lanes, collision handling, chain compression).</li>
+                            <li>Detail pages rebuilt around the graph; tables become the secondary view.</li>
+                        </ul>
+                    </div>
+                </div>
+            </article>
+
+            <section id="compare" aria-labelledby="cmp">
+                <div class="sec-head">
+                    <span class="label">04 · Compare</span>
+                    <div>
+                        <h2 id="cmp">Same data, three jobs.</h2>
+                        <p>Each direction optimises for a different first job. None needs a new backend.</p>
+                    </div>
+                </div>
+                <div class="matrix-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col"><span class="label">&nbsp;</span></th>
+                                <th scope="col"><span class="num"><i style="background: var(--signal)"></i>01 Signal</span></th>
+                                <th scope="col"><span class="num"><i style="background: var(--sheet)"></i>02 Datasheet</span></th>
+                                <th scope="col"><span class="num"><i style="background: var(--atlas)"></i>03 Atlas</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><th scope="row">First job</th><td><b>Monitor and triage</b></td><td><b>Understand and compare</b></td><td><b>Trace and audit</b></td></tr>
+                            <tr><th scope="row">Density</th><td>High: one screen holds the network</td><td>Medium: sectioned document</td><td>Spatial: position carries meaning</td></tr>
+                            <tr><th scope="row">Theme</th><td>Dark-first</td><td>Light, print-grade</td><td>Dark canvas</td></tr>
+                            <tr><th scope="row">Navigation</th><td>Keyboard, inspector, trail</td><td>Scroll, numbered sections</td><td>Canvas, drill-down</td></tr>
+                            <tr><th scope="row">Explains Ark to newcomers</th><td>Little: assumes fluency</td><td><b>Most</b>: readings and glossary</td><td>A lot: shows the structure</td></tr>
+                            <tr><th scope="row">Exit safety</th><td>Needs-action filter, lifecycle rail, exit depth as a number</td><td>Expiry horizon, dated deadline in words, strata</td><td><b>Exit depth drawn as a route</b> on every tx and VTXO</td></tr>
+                            <tr><th scope="row">Mobile</th><td>Bottom-sheet inspector</td><td>Natural (document)</td><td>Pannable canvas, vertical graphs</td></tr>
+                            <tr><th scope="row">Effort</th><td><b>S–M</b>: evolves current code</td><td><b>M</b>: new charts and copy</td><td><b>L</b>: layout engine</td></tr>
+                            <tr><th scope="row">Main risk</th><td>Drifts back to a generic dashboard</td><td>Too slow for repeat visitors</td><td>Novelty and scale</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="reco">
+                    <span class="label">Decision</span>
+                    <div>
+                        <p>
+                            <b>03 Atlas was selected</b> and is now the production UI, running on
+                            live data. The recommendation below is kept as written at review time.
+                        </p>
+                    </div>
+                </div>
+                <div class="reco">
+                    <span class="label">Recommendation</span>
+                    <div>
+                        <p>
+                            Ship <b>Signal</b> as the shell: it is the shortest path from today's
+                            code and gives repeat visitors the most per glance.
+                        </p>
+                        <p>
+                            Then borrow the two ideas no other explorer has: Datasheet's
+                            <b>Readings</b> on every detail page, so newcomers know what they are
+                            looking at, and Atlas's <b>unroll path</b> with exit depth on every
+                            transaction and coin, because that is the number a holder cannot get
+                            anywhere else.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <footer>
+                <span id="colophon">Prototypes use one real mainnet capture; nothing on these pages is live.</span>
+                <span>Fonts: Geist, Geist Mono, Archivo, IBM Plex Mono, Instrument Sans, Martian Mono (SIL OFL 1.1).</span>
+            </footer>
+        </div>
+        <script src="data.js"></script>
+        <script>
+            (function () {
+                var D = window.ARK_OBSERVER_DATA;
+                var el = document.getElementById("facts");
+                if (!D || !el) return;
+                var n = function (x) {
+                    return Number(x).toLocaleString("en-US");
+                };
+                var when = new Date(D.meta.generatedAt * 1000);
+                var stamp =
+                    when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) +
+                    " " +
+                    when.toISOString().slice(11, 16) +
+                    " UTC";
+                var facts = [
+                    "captured " + stamp,
+                    "block " + n(D.chain.tipHeight),
+                    n(D.activity.length) + " activity rows",
+                    n(Object.keys(D.virtualTxs).length) + " virtual txs",
+                    n(Object.keys(D.commitmentTxs).length) + " commitments",
+                    n(Object.keys(D.vtxoChains).length) + " unroll paths",
+                    n(D.observedVtxos.length) + " unspent VTXOs",
+                ];
+                facts.forEach(function (text) {
+                    var span = document.createElement("span");
+                    span.textContent = text;
+                    el.appendChild(span);
+                });
+                var routes = {
+                    overview: "#/",
+                    tx: "#/tx/" + D.featured.virtualTxid,
+                    address: "#/address/" + D.featured.address,
+                };
+                document.querySelectorAll("a.shot-link").forEach(function (a) {
+                    a.href = a.dataset.p + ".html" + (routes[a.dataset.view] || "");
+                });
+                var colophon = document.getElementById("colophon");
+                if (colophon) {
+                    colophon.textContent =
+                        "Prototypes share one real mainnet capture (" + stamp + ", block " + n(D.chain.tipHeight) + "). Nothing on these pages is live.";
+                }
+            })();
+        </script>
+    </body>
+</html>

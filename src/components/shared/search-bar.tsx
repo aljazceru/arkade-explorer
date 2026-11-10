@@ -2,27 +2,39 @@ import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Command } from "cmdk";
 import { Search, Clock, ArrowRight, X, Pin, PinOff, Pencil, Check } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useRecentSearches } from "@/hooks/use-recent-searches";
+import { useRecentSearches, type RecentSearch } from "@/hooks/use-recent-searches";
 import { isValidTxid, isValidOutpoint, isValidAssetId } from "@/lib/validation";
-import { truncateHash } from "@/lib/utils";
-import { cn } from "@/lib/utils";
-
-type SearchVariant = "header" | "hero" | "sidebar" | "command-palette";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface SearchBarProps {
-    variant?: SearchVariant;
-    className?: string;
-    placeholder?: string;
-}
+import { truncateHash, cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
+import { Tag } from "@/components/atlas/tag";
+import type { AtlasTone } from "@/lib/atlas/tones";
 
 // ---------------------------------------------------------------------------
 // Shared search logic
 // ---------------------------------------------------------------------------
+
+/** What a typed query looks like, used for the palette hint and recents type. */
+type QueryKind = "transaction" | "outpoint" | "address" | "asset" | "unrecognised";
+
+function classifyQuery(q: string): QueryKind {
+    if (isValidTxid(q)) return "transaction";
+    if (isValidOutpoint(q)) return "outpoint";
+    if (q.startsWith("tark1") || q.startsWith("ark1")) return "address";
+    if (isValidAssetId(q)) return "asset";
+    return "unrecognised";
+}
+
+const KIND_META: Record<QueryKind, { label: string; tone: AtlasTone; note: string }> = {
+    transaction: { label: "Transaction", tone: "chain", note: "txid · opens /tx/" },
+    outpoint: { label: "Outpoint", tone: "chain", note: "txid:vout · opens its tx" },
+    address: { label: "Address", tone: "virt", note: "ark1… · opens /address/" },
+    asset: { label: "Asset", tone: "cp", note: "68-hex id · opens /asset/" },
+    unrecognised: {
+        label: "Unrecognised",
+        tone: "warning",
+        note: "not a txid, outpoint, ark1 address or asset id — opens /tx/",
+    },
+};
 
 function useSearch() {
     const routerNavigate = useNavigate();
@@ -33,22 +45,27 @@ function useSearch() {
             const q = query.trim();
             if (!q) return;
 
-            if (isValidTxid(q)) {
-                addRecentSearch(q, "transaction");
-                routerNavigate(`/tx/${q}`);
-            } else if (isValidOutpoint(q)) {
-                const outpointTxid = q.split(":")[0];
-                addRecentSearch(q, "transaction");
-                routerNavigate(`/tx/${outpointTxid}`);
-            } else if (q.startsWith("tark1") || q.startsWith("ark1")) {
-                addRecentSearch(q, "address");
-                routerNavigate(`/address/${q}`);
-            } else if (isValidAssetId(q)) {
-                addRecentSearch(q, "asset");
-                routerNavigate(`/asset/${q}`);
-            } else {
-                addRecentSearch(q, "transaction");
-                routerNavigate(`/tx/${q}`);
+            const kind = classifyQuery(q);
+            switch (kind) {
+                case "transaction":
+                    addRecentSearch(q, "transaction");
+                    routerNavigate(`/tx/${q}`);
+                    break;
+                case "outpoint":
+                    addRecentSearch(q, "transaction");
+                    routerNavigate(`/tx/${q.split(":")[0]}`);
+                    break;
+                case "address":
+                    addRecentSearch(q, "address");
+                    routerNavigate(`/address/${q}`);
+                    break;
+                case "asset":
+                    addRecentSearch(q, "asset");
+                    routerNavigate(`/asset/${q}`);
+                    break;
+                default:
+                    addRecentSearch(q, "transaction");
+                    routerNavigate(`/tx/${q}`);
             }
         },
         [routerNavigate, addRecentSearch],
@@ -58,7 +75,7 @@ function useSearch() {
 }
 
 // ---------------------------------------------------------------------------
-// Header variant (compact search in top nav)
+// Header variant (compact search in top nav / hero)
 // ---------------------------------------------------------------------------
 
 function SearchHeader({ className, placeholder }: { className?: string; placeholder?: string }) {
@@ -82,7 +99,7 @@ function SearchHeader({ className, placeholder }: { className?: string; placehol
             aria-label="Search transactions, addresses, and outpoints"
         >
             <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-faint"
                 aria-hidden="true"
             />
             <input
@@ -91,108 +108,22 @@ function SearchHeader({ className, placeholder }: { className?: string; placehol
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={placeholder ?? "Search txid, address, asset, or outpoint..."}
                 aria-label="Search by transaction ID, address, or outpoint"
-                className="w-full h-9 pl-9 pr-3 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40 transition-shadow duration-200"
+                className="h-9 w-full rounded-md border border-line-strong bg-card pl-9 pr-3 text-[13px] text-foreground placeholder:text-faint focus:border-virt focus:outline-none focus:ring-1 focus:ring-virt/50"
             />
         </form>
     );
 }
 
 // ---------------------------------------------------------------------------
-// Hero variant (large centered search with heading)
+// Command-palette overlay (Cmd/Ctrl+K, opened from the top bar)
 // ---------------------------------------------------------------------------
 
-function SearchHero({ className, placeholder }: { className?: string; placeholder?: string }) {
-    const { navigate } = useSearch();
-    const [query, setQuery] = useState("");
-
-    const handleSubmit = useCallback(
-        (e: React.FormEvent) => {
-            e.preventDefault();
-            navigate(query);
-            setQuery("");
-        },
-        [query, navigate],
-    );
-
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: [0.165, 0.84, 0.44, 1] }}
-            className={cn("w-full max-w-2xl mx-auto", className)}
-        >
-            <h1 className="font-heading text-3xl sm:text-4xl font-bold text-foreground text-center mb-3 tracking-tight">
-                ark.observer
-            </h1>
-            <p className="text-muted-foreground text-center mb-6 text-sm sm:text-base">
-                Explore transactions, VTXOs, and addresses across Ark implementations
-            </p>
-            <form
-                onSubmit={handleSubmit}
-                className="relative"
-                role="search"
-                aria-label="Search transactions, addresses, and outpoints"
-            >
-                <Search
-                    className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground"
-                    aria-hidden="true"
-                />
-                <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={placeholder ?? "Search by txid, address, asset, or outpoint..."}
-                    aria-label="Search by transaction ID, address, or outpoint"
-                    className="w-full h-12 sm:h-14 pl-12 pr-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-ring/40 shadow-[0_0_0_1px_hsl(var(--border)),0_1px_2px_-1px_hsl(var(--border)/0.3),0_2px_4px_hsl(var(--border)/0.2)] transition-shadow duration-200"
-                />
-            </form>
-        </motion.div>
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Sidebar variant (full-width search in sidebar)
-// ---------------------------------------------------------------------------
-
-function SearchSidebar({ className, placeholder }: { className?: string; placeholder?: string }) {
-    const { navigate } = useSearch();
-    const [query, setQuery] = useState("");
-
-    const handleSubmit = useCallback(
-        (e: React.FormEvent) => {
-            e.preventDefault();
-            navigate(query);
-            setQuery("");
-        },
-        [query, navigate],
-    );
-
-    return (
-        <form
-            onSubmit={handleSubmit}
-            className={cn("relative w-full", className)}
-            role="search"
-            aria-label="Search transactions, addresses, and outpoints"
-        >
-            <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
-                aria-hidden="true"
-            />
-            <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={placeholder ?? "Search..."}
-                aria-label="Search by transaction ID, address, or outpoint"
-                className="w-full h-9 pl-9 pr-3 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40 transition-shadow duration-200"
-            />
-        </form>
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Command-palette variant (cmdk-style, triggered by Cmd+K)
-// ---------------------------------------------------------------------------
+const SEARCH_TYPE_META: Record<RecentSearch["type"], { label: string; tone: AtlasTone }> = {
+    transaction: { label: "Transaction", tone: "chain" },
+    "commitment-tx": { label: "Commitment", tone: "chain" },
+    address: { label: "Address", tone: "virt" },
+    asset: { label: "Asset", tone: "cp" },
+};
 
 export function SearchCommandPaletteOverlay({
     open,
@@ -217,17 +148,15 @@ export function SearchCommandPaletteOverlay({
         isPinned,
     } = useRecentSearches();
 
-    // Listen for Escape to close
+    // Escape closes the palette even when focus sits outside the input.
     useEffect(() => {
+        if (!open) return;
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "Escape") {
-                onOpenChange(false);
-            }
+            if (e.key === "Escape") onOpenChange(false);
         };
-
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [onOpenChange]);
+    }, [open, onOpenChange]);
 
     const handleSelect = useCallback(
         (value: string) => {
@@ -246,6 +175,9 @@ export function SearchCommandPaletteOverlay({
         }
     }, [query, navigate, onOpenChange]);
 
+    const trimmed = query.trim();
+    const hint = trimmed ? classifyQuery(trimmed) : null;
+
     const hasRecent = recentSearches.length > 0;
     const hasPinned = pinnedSearches.length > 0;
     const hasBothTabs = hasRecent && hasPinned;
@@ -254,773 +186,367 @@ export function SearchCommandPaletteOverlay({
     return (
         <AnimatePresence>
             {open && (
-                <>
-                    {/* Backdrop + dialog container — single layer so clicks anywhere outside the card close the modal */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="fixed inset-0 z-50 flex items-start justify-center bg-background/70 px-4 backdrop-blur-[2px]"
+                    style={{ paddingTop: "18vh" }}
+                    onClick={() => onOpenChange(false)}
+                    role="presentation"
+                >
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.15 }}
-                        className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm flex justify-center items-start px-4"
-                        style={{ paddingTop: "20vh" }}
-                        onClick={() => onOpenChange(false)}
+                        initial={{ opacity: 0, scale: 0.98, y: -6 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.98, y: -6 }}
+                        transition={{ duration: 0.18, ease: [0.165, 0.84, 0.44, 1] }}
+                        className="w-full max-w-lg"
+                        onClick={(e) => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Search"
                     >
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.96, y: -8 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.96, y: -8 }}
-                            transition={{ duration: 0.2, ease: [0.165, 0.84, 0.44, 1] }}
-                            className="w-full max-w-lg"
-                            onClick={(e) => e.stopPropagation()}
+                        <Command
+                            className="overflow-hidden rounded-lg border border-line-strong bg-popover"
+                            shouldFilter={false}
+                            label="Search"
                         >
-                            <Command
-                                className="rounded-xl border border-border bg-card shadow-[0_0_0_1px_hsl(var(--border)),0_1px_2px_-1px_hsl(var(--border)/0.3),0_2px_4px_hsl(var(--border)/0.2),0_8px_16px_hsl(var(--border)/0.15)] overflow-hidden"
-                                shouldFilter={false}
-                            >
-                                {/* Input */}
-                                <div className="flex items-center border-b border-border px-3">
-                                    <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                                    <Command.Input
-                                        autoFocus
-                                        value={query}
-                                        onValueChange={setQuery}
-                                        placeholder="Search txid, address, asset, or outpoint..."
-                                        className="flex-1 h-12 px-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:outline-none"
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                handleSubmit();
-                                            }
-                                        }}
-                                    />
-                                    <button
-                                        onClick={() => onOpenChange(false)}
-                                        aria-label="Close search"
-                                        className="p-1 text-muted-foreground hover:text-foreground transition-colors duration-150 shrink-0"
+                            {/* Input */}
+                            <div className="flex items-center gap-2 border-b border-border px-3">
+                                <Search
+                                    className="h-3.5 w-3.5 shrink-0 text-faint"
+                                    aria-hidden="true"
+                                />
+                                <Command.Input
+                                    autoFocus
+                                    value={query}
+                                    onValueChange={setQuery}
+                                    placeholder="txid · txid:vout · ark1… address · asset id"
+                                    className="h-11 flex-1 bg-transparent font-mono text-[12.5px] text-foreground placeholder:font-sans placeholder:text-faint focus:outline-none"
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            handleSubmit();
+                                        }
+                                    }}
+                                />
+                                {trimmed && (
+                                    <Tag
+                                        tone={KIND_META[hint!].tone}
+                                        className="hidden sm:inline-flex"
                                     >
-                                        <X className="h-4 w-4" aria-hidden="true" />
-                                    </button>
-                                </div>
+                                        {KIND_META[hint!].label}
+                                    </Tag>
+                                )}
+                                <button
+                                    onClick={() => onOpenChange(false)}
+                                    aria-label="Close search"
+                                    className="shrink-0 rounded p-1 text-faint transition-colors hover:text-foreground"
+                                >
+                                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                                </button>
+                            </div>
 
-                                {/* Results */}
-                                <Command.List className="max-h-80 overflow-y-auto p-2">
-                                    <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
-                                        {query.trim()
-                                            ? "Press Enter to search"
-                                            : "Select a recent or pinned search"}
-                                    </Command.Empty>
+                            {/* Results */}
+                            <Command.List className="max-h-80 overflow-y-auto p-1.5">
+                                <Command.Empty className="px-3 py-6 text-center text-xs text-muted-foreground">
+                                    {trimmed ? KIND_META[hint!].note : "Recent and pinned searches"}
+                                </Command.Empty>
 
-                                    {/* Direct search action */}
-                                    {query.trim() && (
-                                        <Command.Group>
-                                            <Command.Item
-                                                value={query.trim()}
-                                                onSelect={handleSelect}
-                                                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground cursor-pointer data-[selected=true]:bg-secondary transition-colors duration-150"
-                                            >
-                                                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                                                <span className="truncate">
-                                                    Search for &ldquo;
-                                                    <span className="font-mono">
-                                                        {truncateHash(query.trim(), 16, 8)}
-                                                    </span>
-                                                    &rdquo;
-                                                </span>
-                                            </Command.Item>
-                                        </Command.Group>
-                                    )}
-
-                                    {/* Recent / Pinned searches */}
-                                    {(hasRecent || hasPinned) && !query.trim() && (
-                                        <Command.Group
-                                            heading={
-                                                <div className="flex items-center justify-between px-1 py-1.5">
-                                                    {hasBothTabs ? (
-                                                        <div className="flex items-center gap-1">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setShowPinned(false)}
-                                                                className={cn(
-                                                                    "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors duration-150",
-                                                                    !showPinned
-                                                                        ? "text-foreground bg-secondary"
-                                                                        : "text-muted-foreground hover:text-foreground",
-                                                                )}
-                                                            >
-                                                                <Clock className="h-3 w-3" />
-                                                                Recent ({recentSearches.length})
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setShowPinned(true)}
-                                                                className={cn(
-                                                                    "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors duration-150",
-                                                                    showPinned
-                                                                        ? "text-foreground bg-secondary"
-                                                                        : "text-muted-foreground hover:text-foreground",
-                                                                )}
-                                                            >
-                                                                <Pin className="h-3 w-3" />
-                                                                Pinned ({pinnedSearches.length})
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                                            {hasPinned
-                                                                ? "Pinned searches"
-                                                                : "Recent searches"}
-                                                        </span>
-                                                    )}
-
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (
-                                                                showPinned ||
-                                                                (hasPinned && !hasRecent)
-                                                            ) {
-                                                                clearPinnedSearches();
-                                                            } else {
-                                                                clearRecentSearches();
-                                                            }
-                                                        }}
-                                                        className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150"
-                                                    >
-                                                        Clear{" "}
-                                                        {hasBothTabs
-                                                            ? showPinned
-                                                                ? "pinned"
-                                                                : "recent"
-                                                            : "all"}
-                                                    </button>
-                                                </div>
-                                            }
+                                {/* Direct search action */}
+                                {trimmed && (
+                                    <Command.Group>
+                                        <Command.Item
+                                            value={`search:${trimmed}`}
+                                            onSelect={() => handleSelect(trimmed)}
+                                            className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-foreground transition-colors data-[selected=true]:bg-secondary"
                                         >
-                                            {activeList.slice(0, 10).map((search) => {
-                                                const pinned = isPinned(search.value);
-                                                const isEditing = editingLabel === search.value;
+                                            <ArrowRight
+                                                className="h-3.5 w-3.5 shrink-0 text-faint"
+                                                aria-hidden="true"
+                                            />
+                                            <span className="min-w-0 truncate">
+                                                Search for{" "}
+                                                <span className="font-mono">
+                                                    {truncateHash(trimmed, 16, 8)}
+                                                </span>
+                                            </span>
+                                            <span className="micro ml-auto shrink-0 text-faint">
+                                                Enter ↵
+                                            </span>
+                                        </Command.Item>
+                                    </Command.Group>
+                                )}
 
-                                                return (
-                                                    <Command.Item
-                                                        key={search.value}
-                                                        value={search.value}
-                                                        onSelect={() => {
-                                                            if (!isEditing)
-                                                                handleSelect(search.value);
-                                                        }}
-                                                        className="flex flex-col gap-1.5 px-3 py-2 rounded-lg text-sm cursor-pointer data-[selected=true]:bg-secondary transition-colors duration-150"
-                                                    >
-                                                        {pinned && isEditing && (
-                                                            <div
-                                                                className="flex items-center gap-2"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                                onKeyDown={(e) =>
-                                                                    e.stopPropagation()
-                                                                }
-                                                            >
-                                                                <input
-                                                                    type="text"
-                                                                    value={labelInput}
-                                                                    onChange={(e) =>
-                                                                        setLabelInput(
-                                                                            e.target.value,
-                                                                        )
-                                                                    }
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === "Enter") {
-                                                                            updatePinLabel(
-                                                                                search.value,
-                                                                                labelInput,
-                                                                            );
-                                                                            setEditingLabel(null);
-                                                                        } else if (
-                                                                            e.key === "Escape"
-                                                                        ) {
-                                                                            setEditingLabel(null);
-                                                                        }
-                                                                    }}
-                                                                    placeholder="Add label..."
-                                                                    className="flex-1 bg-secondary border border-border rounded text-xs text-foreground px-2 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
-                                                                    autoFocus
-                                                                />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
+                                {/* Recent / Pinned searches */}
+                                {(hasRecent || hasPinned) && !trimmed && (
+                                    <Command.Group
+                                        heading={
+                                            <div className="flex items-center justify-between px-2 py-1.5">
+                                                {hasBothTabs ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowPinned(false)}
+                                                            className={cn(
+                                                                "micro rounded px-2 py-1 transition-colors",
+                                                                !showPinned
+                                                                    ? "bg-secondary text-foreground"
+                                                                    : "text-faint hover:text-foreground",
+                                                            )}
+                                                        >
+                                                            Recent ({recentSearches.length})
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowPinned(true)}
+                                                            className={cn(
+                                                                "micro rounded px-2 py-1 transition-colors",
+                                                                showPinned
+                                                                    ? "bg-secondary text-foreground"
+                                                                    : "text-faint hover:text-foreground",
+                                                            )}
+                                                        >
+                                                            Pinned ({pinnedSearches.length})
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="micro text-faint">
+                                                        {hasPinned
+                                                            ? "Pinned searches"
+                                                            : "Recent searches"}
+                                                    </span>
+                                                )}
+
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (
+                                                            showPinned ||
+                                                            (hasPinned && !hasRecent)
+                                                        ) {
+                                                            clearPinnedSearches();
+                                                        } else {
+                                                            clearRecentSearches();
+                                                        }
+                                                    }}
+                                                    className="micro text-faint transition-colors hover:text-foreground"
+                                                >
+                                                    Clear{" "}
+                                                    {hasBothTabs
+                                                        ? showPinned
+                                                            ? "pinned"
+                                                            : "recent"
+                                                        : "all"}
+                                                </button>
+                                            </div>
+                                        }
+                                    >
+                                        {activeList.slice(0, 10).map((search) => {
+                                            const pinned = isPinned(search.value);
+                                            const isEditing = editingLabel === search.value;
+                                            const typeMeta = SEARCH_TYPE_META[search.type] ?? {
+                                                label: search.type,
+                                                tone: "neutral" as AtlasTone,
+                                            };
+
+                                            return (
+                                                <Command.Item
+                                                    key={search.value}
+                                                    value={search.value}
+                                                    onSelect={() => {
+                                                        if (!isEditing) handleSelect(search.value);
+                                                    }}
+                                                    className="flex cursor-pointer flex-col gap-1 rounded-md px-2.5 py-2 text-[13px] transition-colors data-[selected=true]:bg-secondary"
+                                                >
+                                                    {pinned && isEditing && (
+                                                        <div
+                                                            className="flex items-center gap-2"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            onKeyDown={(e) => e.stopPropagation()}
+                                                        >
+                                                            <input
+                                                                type="text"
+                                                                value={labelInput}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === "Enter") {
+                                                                        e.preventDefault();
                                                                         updatePinLabel(
                                                                             search.value,
                                                                             labelInput,
                                                                         );
                                                                         setEditingLabel(null);
-                                                                    }}
-                                                                    className="p-0.5 text-primary hover:text-primary/80 transition-colors"
-                                                                    title="Save label"
-                                                                >
-                                                                    <Check className="h-3.5 w-3.5" />
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        setEditingLabel(null)
+                                                                    } else if (e.key === "Escape") {
+                                                                        e.preventDefault();
+                                                                        setEditingLabel(null);
                                                                     }
-                                                                    className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
-                                                                    title="Cancel"
-                                                                >
-                                                                    <X className="h-3.5 w-3.5" />
-                                                                </button>
-                                                            </div>
-                                                        )}
-
-                                                        {pinned && search.label && !isEditing && (
-                                                            <span className="text-xs font-medium text-primary">
-                                                                {search.label}
-                                                            </span>
-                                                        )}
-
-                                                        <div className="flex items-center gap-3 w-full">
-                                                            {pinned ? (
-                                                                <Pin className="h-3.5 w-3.5 text-primary shrink-0" />
-                                                            ) : (
-                                                                <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                                            )}
-                                                            <span className="font-mono text-xs text-foreground truncate">
-                                                                {truncateHash(search.value, 12, 8)}
-                                                            </span>
-                                                            <span className="text-xs text-muted-foreground capitalize shrink-0">
-                                                                {search.type}
-                                                            </span>
-
-                                                            <div
-                                                                className="ml-auto flex items-center gap-0.5 shrink-0"
-                                                                onClick={(e) => e.stopPropagation()}
+                                                                }}
+                                                                placeholder="Add label…"
+                                                                className="h-7 flex-1 rounded border border-line-strong bg-secondary px-2 font-mono text-[11px] text-foreground placeholder:text-faint focus:border-virt focus:outline-none"
+                                                                autoFocus
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    updatePinLabel(
+                                                                        search.value,
+                                                                        labelInput,
+                                                                    );
+                                                                    setEditingLabel(null);
+                                                                }}
+                                                                className="rounded p-0.5 text-virt transition-colors hover:text-foreground"
+                                                                title="Save label"
+                                                                aria-label="Save label"
                                                             >
-                                                                {pinned && !isEditing && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            setEditingLabel(
-                                                                                search.value,
-                                                                            );
-                                                                            setLabelInput(
-                                                                                search.label || "",
-                                                                            );
-                                                                        }}
-                                                                        className="p-1 text-muted-foreground hover:text-foreground transition-colors duration-150"
-                                                                        title="Edit label"
-                                                                    >
-                                                                        <Pencil className="h-3 w-3" />
-                                                                    </button>
-                                                                )}
+                                                                <Check className="h-3.5 w-3.5" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    setEditingLabel(null)
+                                                                }
+                                                                className="rounded p-0.5 text-faint transition-colors hover:text-foreground"
+                                                                title="Cancel"
+                                                                aria-label="Cancel"
+                                                            >
+                                                                <X className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    )}
 
+                                                    {pinned && search.label && !isEditing && (
+                                                        <span className="text-xs font-medium text-virt">
+                                                            {search.label}
+                                                        </span>
+                                                    )}
+
+                                                    <div className="flex w-full items-center gap-2.5">
+                                                        {pinned ? (
+                                                            <Pin
+                                                                className="h-3 w-3 shrink-0 text-virt"
+                                                                aria-hidden="true"
+                                                            />
+                                                        ) : (
+                                                            <Clock
+                                                                className="h-3 w-3 shrink-0 text-faint"
+                                                                aria-hidden="true"
+                                                            />
+                                                        )}
+                                                        <span className="min-w-0 truncate font-mono text-[11.5px] text-foreground">
+                                                            {truncateHash(search.value, 12, 8)}
+                                                        </span>
+                                                        <Tag
+                                                            tone={typeMeta.tone}
+                                                            className="shrink-0"
+                                                        >
+                                                            {typeMeta.label}
+                                                        </Tag>
+
+                                                        <div
+                                                            className="ml-auto flex shrink-0 items-center gap-0.5"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            {pinned && !isEditing && (
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => {
-                                                                        if (pinned) {
-                                                                            unpinSearch(
-                                                                                search.value,
-                                                                            );
-                                                                        } else {
-                                                                            pinSearch(
-                                                                                search.value,
-                                                                                search.type,
-                                                                            );
-                                                                        }
+                                                                        setEditingLabel(
+                                                                            search.value,
+                                                                        );
+                                                                        setLabelInput(
+                                                                            search.label || "",
+                                                                        );
                                                                     }}
-                                                                    className={cn(
-                                                                        "p-1 transition-colors duration-150",
-                                                                        pinned
-                                                                            ? "text-primary hover:text-destructive"
-                                                                            : "text-muted-foreground hover:text-primary",
-                                                                    )}
-                                                                    title={pinned ? "Unpin" : "Pin"}
+                                                                    className="rounded p-1 text-faint transition-colors hover:text-foreground"
+                                                                    title="Edit label"
+                                                                    aria-label="Edit label"
                                                                 >
-                                                                    {pinned ? (
-                                                                        <PinOff className="h-3 w-3" />
-                                                                    ) : (
-                                                                        <Pin className="h-3 w-3" />
-                                                                    )}
+                                                                    <Pencil className="h-3 w-3" />
                                                                 </button>
-                                                            </div>
-                                                        </div>
-                                                    </Command.Item>
-                                                );
-                                            })}
-                                        </Command.Group>
-                                    )}
-                                </Command.List>
+                                                            )}
 
-                                {/* Footer hint */}
-                                <div className="border-t border-border px-3 py-2 flex items-center justify-between text-xs text-muted-foreground">
-                                    <div className="flex items-center gap-3">
-                                        <span className="flex items-center gap-1">
-                                            <kbd className="px-1 py-0.5 rounded bg-secondary border border-border font-mono text-[10px]">
-                                                Enter
-                                            </kbd>
-                                            <span>to search</span>
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <kbd className="px-1 py-0.5 rounded bg-secondary border border-border font-mono text-[10px]">
-                                                Esc
-                                            </kbd>
-                                            <span>to close</span>
-                                        </span>
-                                    </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    if (pinned) {
+                                                                        unpinSearch(search.value);
+                                                                    } else {
+                                                                        pinSearch(
+                                                                            search.value,
+                                                                            search.type,
+                                                                        );
+                                                                    }
+                                                                }}
+                                                                className={cn(
+                                                                    "rounded p-1 transition-colors",
+                                                                    pinned
+                                                                        ? "text-virt hover:text-alert"
+                                                                        : "text-faint hover:text-virt",
+                                                                )}
+                                                                title={pinned ? "Unpin" : "Pin"}
+                                                                aria-label={
+                                                                    pinned ? "Unpin" : "Pin"
+                                                                }
+                                                            >
+                                                                {pinned ? (
+                                                                    <PinOff className="h-3 w-3" />
+                                                                ) : (
+                                                                    <Pin className="h-3 w-3" />
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </Command.Item>
+                                            );
+                                        })}
+                                    </Command.Group>
+                                )}
+                            </Command.List>
+
+                            {/* Footer hint */}
+                            <div className="flex items-center justify-between border-t border-border px-3 py-2 text-[11px] text-faint">
+                                <div className="flex items-center gap-3">
+                                    <span className="flex items-center gap-1">
+                                        <kbd className="rounded border border-line-strong bg-secondary px-1 py-px font-mono text-[9.5px]">
+                                            Enter
+                                        </kbd>
+                                        <span>search</span>
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <kbd className="rounded border border-line-strong bg-secondary px-1 py-px font-mono text-[9.5px]">
+                                            Esc
+                                        </kbd>
+                                        <span>close</span>
+                                    </span>
                                 </div>
-                            </Command>
-                        </motion.div>
+                                {hint && (
+                                    <span className="font-mono text-[10px] text-faint">
+                                        {KIND_META[hint].label.toLowerCase()}
+                                    </span>
+                                )}
+                            </div>
+                        </Command>
                     </motion.div>
-                </>
+                </motion.div>
             )}
         </AnimatePresence>
     );
 }
 
-function SearchCommandPalette({ className }: { className?: string }) {
-    const [open, setOpen] = useState(false);
-    const [showPinned, setShowPinned] = useState(false);
-    const [editingLabel, setEditingLabel] = useState<string | null>(null);
-    const [labelInput, setLabelInput] = useState("");
-    const { navigate } = useSearch();
-    const [query, setQuery] = useState("");
-    const {
-        recentSearches,
-        pinnedSearches,
-        clearRecentSearches,
-        clearPinnedSearches,
-        pinSearch,
-        unpinSearch,
-        updatePinLabel,
-        isPinned,
-    } = useRecentSearches();
-
-    // Listen for Cmd+K / Ctrl+K to toggle
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-                e.preventDefault();
-                setOpen((prev) => !prev);
-            }
-            if (e.key === "Escape") {
-                setOpen(false);
-            }
-        };
-
-        document.addEventListener("keydown", handleKeyDown);
-        return () => document.removeEventListener("keydown", handleKeyDown);
-    }, []);
-
-    const handleSelect = useCallback(
-        (value: string) => {
-            navigate(value);
-            setOpen(false);
-            setQuery("");
-        },
-        [navigate],
-    );
-
-    const handleSubmit = useCallback(() => {
-        if (query.trim()) {
-            navigate(query.trim());
-            setOpen(false);
-            setQuery("");
-        }
-    }, [query, navigate]);
-
-    const hasRecent = recentSearches.length > 0;
-    const hasPinned = pinnedSearches.length > 0;
-    const hasBothTabs = hasRecent && hasPinned;
-    const activeList = (showPinned && hasPinned) || !hasRecent ? pinnedSearches : recentSearches;
-
-    return (
-        <>
-            {/* Trigger button */}
-            <button
-                onClick={() => setOpen(true)}
-                aria-label="Open search (Cmd+K)"
-                className={cn(
-                    "inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors duration-200 active:scale-[0.97]",
-                    className,
-                )}
-            >
-                <Search className="h-4 w-4" aria-hidden="true" />
-                <span>Search...</span>
-                <kbd className="ml-auto px-1.5 py-0.5 rounded bg-card border border-border text-xs font-mono text-muted-foreground">
-                    {typeof navigator !== "undefined" &&
-                    /Mac|iPod|iPhone|iPad/.test(navigator.platform ?? "")
-                        ? "\u2318"
-                        : "Ctrl+"}
-                    K
-                </kbd>
-            </button>
-
-            {/* Overlay + Dialog */}
-            <AnimatePresence>
-                {open && (
-                    <>
-                        {/* Backdrop + dialog container */}
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.15 }}
-                            className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm flex justify-center items-start px-4"
-                            style={{ paddingTop: "20vh" }}
-                            onClick={() => setOpen(false)}
-                        >
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.96, y: -8 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.96, y: -8 }}
-                                transition={{ duration: 0.2, ease: [0.165, 0.84, 0.44, 1] }}
-                                className="w-full max-w-lg"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <Command
-                                    className="rounded-xl border border-border bg-card shadow-[0_0_0_1px_hsl(var(--border)),0_1px_2px_-1px_hsl(var(--border)/0.3),0_2px_4px_hsl(var(--border)/0.2),0_8px_16px_hsl(var(--border)/0.15)] overflow-hidden"
-                                    shouldFilter={false}
-                                >
-                                    {/* Input */}
-                                    <div className="flex items-center border-b border-border px-3">
-                                        <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                                        <Command.Input
-                                            autoFocus
-                                            value={query}
-                                            onValueChange={setQuery}
-                                            placeholder="Search txid, address, asset, or outpoint..."
-                                            className="flex-1 h-12 px-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:outline-none"
-                                            onKeyDown={(e) => {
-                                                if (e.key === "Enter") {
-                                                    e.preventDefault();
-                                                    handleSubmit();
-                                                }
-                                            }}
-                                        />
-                                        <button
-                                            onClick={() => setOpen(false)}
-                                            aria-label="Close search"
-                                            className="p-1 text-muted-foreground hover:text-foreground transition-colors duration-150 shrink-0"
-                                        >
-                                            <X className="h-4 w-4" aria-hidden="true" />
-                                        </button>
-                                    </div>
-
-                                    {/* Results */}
-                                    <Command.List className="max-h-80 overflow-y-auto p-2">
-                                        <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
-                                            {query.trim()
-                                                ? "Press Enter to search"
-                                                : "Type to search or select a recent search"}
-                                        </Command.Empty>
-
-                                        {/* Direct search action */}
-                                        {query.trim() && (
-                                            <Command.Group>
-                                                <Command.Item
-                                                    value={query.trim()}
-                                                    onSelect={handleSelect}
-                                                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground cursor-pointer data-[selected=true]:bg-secondary transition-colors duration-150"
-                                                >
-                                                    <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                                                    <span className="truncate">
-                                                        Search for &ldquo;
-                                                        <span className="font-mono">
-                                                            {truncateHash(query.trim(), 16, 8)}
-                                                        </span>
-                                                        &rdquo;
-                                                    </span>
-                                                </Command.Item>
-                                            </Command.Group>
-                                        )}
-
-                                        {/* Recent / Pinned searches */}
-                                        {(hasRecent || hasPinned) && !query.trim() && (
-                                            <Command.Group
-                                                heading={
-                                                    <div className="flex items-center justify-between px-1 py-1.5">
-                                                        {/* Tab toggle or single label */}
-                                                        {hasBothTabs ? (
-                                                            <div className="flex items-center gap-1">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        setShowPinned(false)
-                                                                    }
-                                                                    className={cn(
-                                                                        "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors duration-150",
-                                                                        !showPinned
-                                                                            ? "text-foreground bg-secondary"
-                                                                            : "text-muted-foreground hover:text-foreground",
-                                                                    )}
-                                                                >
-                                                                    <Clock className="h-3 w-3" />
-                                                                    Recent ({recentSearches.length})
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        setShowPinned(true)
-                                                                    }
-                                                                    className={cn(
-                                                                        "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors duration-150",
-                                                                        showPinned
-                                                                            ? "text-foreground bg-secondary"
-                                                                            : "text-muted-foreground hover:text-foreground",
-                                                                    )}
-                                                                >
-                                                                    <Pin className="h-3 w-3" />
-                                                                    Pinned ({pinnedSearches.length})
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                                                {hasPinned
-                                                                    ? "Pinned searches"
-                                                                    : "Recent searches"}
-                                                            </span>
-                                                        )}
-
-                                                        {/* Clear button */}
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                if (
-                                                                    showPinned ||
-                                                                    (hasPinned && !hasRecent)
-                                                                ) {
-                                                                    clearPinnedSearches();
-                                                                } else {
-                                                                    clearRecentSearches();
-                                                                }
-                                                            }}
-                                                            className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150"
-                                                        >
-                                                            Clear{" "}
-                                                            {hasBothTabs
-                                                                ? showPinned
-                                                                    ? "pinned"
-                                                                    : "recent"
-                                                                : "all"}
-                                                        </button>
-                                                    </div>
-                                                }
-                                            >
-                                                {activeList.slice(0, 10).map((search) => {
-                                                    const pinned = isPinned(search.value);
-                                                    const isEditing = editingLabel === search.value;
-
-                                                    return (
-                                                        <Command.Item
-                                                            key={search.value}
-                                                            value={search.value}
-                                                            onSelect={() => {
-                                                                if (!isEditing)
-                                                                    handleSelect(search.value);
-                                                            }}
-                                                            className="flex flex-col gap-1.5 px-3 py-2 rounded-lg text-sm cursor-pointer data-[selected=true]:bg-secondary transition-colors duration-150"
-                                                        >
-                                                            {/* Label display / editing */}
-                                                            {pinned && isEditing && (
-                                                                <div
-                                                                    className="flex items-center gap-2"
-                                                                    onClick={(e) =>
-                                                                        e.stopPropagation()
-                                                                    }
-                                                                    onKeyDown={(e) =>
-                                                                        e.stopPropagation()
-                                                                    }
-                                                                >
-                                                                    <input
-                                                                        type="text"
-                                                                        value={labelInput}
-                                                                        onChange={(e) =>
-                                                                            setLabelInput(
-                                                                                e.target.value,
-                                                                            )
-                                                                        }
-                                                                        onKeyDown={(e) => {
-                                                                            if (e.key === "Enter") {
-                                                                                updatePinLabel(
-                                                                                    search.value,
-                                                                                    labelInput,
-                                                                                );
-                                                                                setEditingLabel(
-                                                                                    null,
-                                                                                );
-                                                                            } else if (
-                                                                                e.key === "Escape"
-                                                                            ) {
-                                                                                setEditingLabel(
-                                                                                    null,
-                                                                                );
-                                                                            }
-                                                                        }}
-                                                                        placeholder="Add label..."
-                                                                        className="flex-1 bg-secondary border border-border rounded text-xs text-foreground px-2 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
-                                                                        autoFocus
-                                                                    />
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            updatePinLabel(
-                                                                                search.value,
-                                                                                labelInput,
-                                                                            );
-                                                                            setEditingLabel(null);
-                                                                        }}
-                                                                        className="p-0.5 text-primary hover:text-primary/80 transition-colors"
-                                                                        title="Save label"
-                                                                    >
-                                                                        <Check className="h-3.5 w-3.5" />
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() =>
-                                                                            setEditingLabel(null)
-                                                                        }
-                                                                        className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
-                                                                        title="Cancel"
-                                                                    >
-                                                                        <X className="h-3.5 w-3.5" />
-                                                                    </button>
-                                                                </div>
-                                                            )}
-
-                                                            {pinned &&
-                                                                search.label &&
-                                                                !isEditing && (
-                                                                    <span className="text-xs font-medium text-primary">
-                                                                        {search.label}
-                                                                    </span>
-                                                                )}
-
-                                                            {/* Main row */}
-                                                            <div className="flex items-center gap-3 w-full">
-                                                                {pinned ? (
-                                                                    <Pin className="h-3.5 w-3.5 text-primary shrink-0" />
-                                                                ) : (
-                                                                    <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                                                )}
-                                                                <span className="font-mono text-xs text-foreground truncate">
-                                                                    {truncateHash(
-                                                                        search.value,
-                                                                        12,
-                                                                        8,
-                                                                    )}
-                                                                </span>
-                                                                <span className="text-xs text-muted-foreground capitalize shrink-0">
-                                                                    {search.type}
-                                                                </span>
-
-                                                                {/* Action buttons */}
-                                                                <div
-                                                                    className="ml-auto flex items-center gap-0.5 shrink-0"
-                                                                    onClick={(e) =>
-                                                                        e.stopPropagation()
-                                                                    }
-                                                                >
-                                                                    {/* Edit label button (pinned items only, when not editing) */}
-                                                                    {pinned && !isEditing && (
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                setEditingLabel(
-                                                                                    search.value,
-                                                                                );
-                                                                                setLabelInput(
-                                                                                    search.label ||
-                                                                                        "",
-                                                                                );
-                                                                            }}
-                                                                            className="p-1 text-muted-foreground hover:text-foreground transition-colors duration-150"
-                                                                            title="Edit label"
-                                                                        >
-                                                                            <Pencil className="h-3 w-3" />
-                                                                        </button>
-                                                                    )}
-
-                                                                    {/* Pin / Unpin button */}
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            if (pinned) {
-                                                                                unpinSearch(
-                                                                                    search.value,
-                                                                                );
-                                                                            } else {
-                                                                                pinSearch(
-                                                                                    search.value,
-                                                                                    search.type,
-                                                                                );
-                                                                            }
-                                                                        }}
-                                                                        className={cn(
-                                                                            "p-1 transition-colors duration-150",
-                                                                            pinned
-                                                                                ? "text-primary hover:text-destructive"
-                                                                                : "text-muted-foreground hover:text-primary",
-                                                                        )}
-                                                                        title={
-                                                                            pinned ? "Unpin" : "Pin"
-                                                                        }
-                                                                    >
-                                                                        {pinned ? (
-                                                                            <PinOff className="h-3 w-3" />
-                                                                        ) : (
-                                                                            <Pin className="h-3 w-3" />
-                                                                        )}
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </Command.Item>
-                                                    );
-                                                })}
-                                            </Command.Group>
-                                        )}
-                                    </Command.List>
-
-                                    {/* Footer hint */}
-                                    <div className="border-t border-border px-3 py-2 flex items-center justify-between text-xs text-muted-foreground">
-                                        <div className="flex items-center gap-3">
-                                            <span className="flex items-center gap-1">
-                                                <kbd className="px-1 py-0.5 rounded bg-secondary border border-border font-mono text-[10px]">
-                                                    Enter
-                                                </kbd>
-                                                <span>to search</span>
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <kbd className="px-1 py-0.5 rounded bg-secondary border border-border font-mono text-[10px]">
-                                                    Esc
-                                                </kbd>
-                                                <span>to close</span>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </Command>
-                            </motion.div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
-        </>
-    );
-}
-
 // ---------------------------------------------------------------------------
-// Main component (variant-aware)
+// Main component (header variant only — hero/sidebar/command-palette removed)
 // ---------------------------------------------------------------------------
 
-export function SearchBar({ variant: overrideVariant, className, placeholder }: SearchBarProps) {
-    const variant = overrideVariant ?? "header";
-
-    switch (variant) {
-        case "header":
-            return <SearchHeader className={className} placeholder={placeholder} />;
-        case "hero":
-            return <SearchHero className={className} placeholder={placeholder} />;
-        case "sidebar":
-            return <SearchSidebar className={className} placeholder={placeholder} />;
-        case "command-palette":
-            return <SearchCommandPalette className={className} />;
-        default:
-            return <SearchHeader className={className} placeholder={placeholder} />;
-    }
+export function SearchBar({
+    variant: _variant,
+    className,
+    placeholder,
+}: {
+    /** Only "header" exists in Atlas; accepted for API compatibility. */
+    variant?: "header";
+    className?: string;
+    placeholder?: string;
+}) {
+    return <SearchHeader className={className} placeholder={placeholder} />;
 }

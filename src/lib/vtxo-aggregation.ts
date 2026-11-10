@@ -1,8 +1,16 @@
-import type { VirtualCoin, PageResponse } from "@arkade-os/sdk";
+import type { VirtualCoin } from "@arkade-os/sdk";
 
-/** A VTXO is "active" (unspent) when it has no spentBy and is not flagged spent. */
+/**
+ * A VTXO is "active" (unspent, still spendable off-chain) only when nothing
+ * consumed it: not spent off-chain (`spentBy`/`isSpent`), not consumed by a
+ * commitment (`settledBy`), not swept (`isSwept`), and not exiting on-chain
+ * (`isUnrolled`). Merely finalizing a VTXO into a batch does not consume it.
+ */
 export function isVtxoActive(vtxo: VirtualCoin): boolean {
-    return !(vtxo.spentBy && vtxo.spentBy !== "") && !vtxo.isSpent;
+    if (vtxo.isUnrolled === true) return false;
+    if (vtxo.isSwept === true) return false;
+    const spent = vtxo.isSpent === true || !!vtxo.spentBy || !!vtxo.settledBy;
+    return !spent;
 }
 
 /** Sum of sat value across all given VTXOs (total received). */
@@ -16,8 +24,8 @@ export function sumActiveVtxoValue(vtxos: VirtualCoin[]): number {
 }
 
 export interface AssetBalance {
-    active: number;
-    total: number;
+    active: bigint;
+    total: bigint;
 }
 
 /** Aggregate per-asset active/total amounts across all given VTXOs. */
@@ -26,9 +34,9 @@ export function aggregateAssetBalances(vtxos: VirtualCoin[]): Map<string, AssetB
     for (const v of vtxos) {
         const active = isVtxoActive(v);
         for (const asset of v.assets ?? []) {
-            const existing = balances.get(asset.assetId) ?? { active: 0, total: 0 };
-            existing.total += Number(asset.amount);
-            if (active) existing.active += Number(asset.amount);
+            const existing = balances.get(asset.assetId) ?? { active: 0n, total: 0n };
+            existing.total += asset.amount;
+            if (active) existing.active += asset.amount;
             balances.set(asset.assetId, existing);
         }
     }
@@ -36,14 +44,22 @@ export function aggregateAssetBalances(vtxos: VirtualCoin[]): Map<string, AssetB
 }
 
 /**
- * Whether the infinite query has more pages to drain, given the last page's
- * PageResponse. Mirrors the termination logic of the address query's
- * getNextPageParam so both can share one tested predicate.
+ * Deduplicate VTXOs by outpoint (`txid:vout`). Paginated indexer reads can
+ * overlap as the dataset changes between page fetches; without this the same
+ * outpoint would be summed twice. When records disagree, the terminal
+ * (non-active) state wins over a stale active one so balances never
+ * overstate what is still spendable.
  */
-export function hasMorePages(page: PageResponse | undefined): boolean {
-    if (!page) return false;
-    const { next, current, total } = page;
-    if (next <= current) return false;
-    if (total > 0 && current >= total - 1) return false;
-    return true;
+export function uniqueVtxos(vtxos: VirtualCoin[]): VirtualCoin[] {
+    const byOutpoint = new Map<string, VirtualCoin>();
+    for (const v of vtxos) {
+        const key = `${v.txid}:${v.vout}`;
+        const existing = byOutpoint.get(key);
+        if (!existing) {
+            byOutpoint.set(key, v);
+        } else if (isVtxoActive(existing) && !isVtxoActive(v)) {
+            byOutpoint.set(key, v);
+        }
+    }
+    return [...byOutpoint.values()];
 }

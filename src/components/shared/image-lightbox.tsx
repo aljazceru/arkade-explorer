@@ -52,17 +52,20 @@ export function ImageLightbox({ src, alt = "", className = "" }: ImageLightboxPr
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 transition={{ duration: 0.15 }}
-                                className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-sm cursor-pointer"
+                                className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/85 backdrop-blur-sm cursor-pointer"
                                 onClick={close}
+                                role="dialog"
+                                aria-modal="true"
+                                aria-label={alt || "Image preview"}
                             >
                                 <motion.img
-                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    initial={{ opacity: 0, scale: 0.96 }}
                                     animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    transition={{ duration: 0.2, ease: [0.165, 0.84, 0.44, 1] }}
+                                    exit={{ opacity: 0, scale: 0.96 }}
+                                    transition={{ duration: 0.18, ease: [0.165, 0.84, 0.44, 1] }}
                                     src={src}
                                     alt={alt}
-                                    className="max-w-[80vw] max-h-[80vh] rounded-lg shadow-2xl cursor-default"
+                                    className="max-h-[80vh] max-w-[80vw] rounded-lg border border-line-strong"
                                     onClick={(e) => e.stopPropagation()}
                                 />
                             </motion.div>

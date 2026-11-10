@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import type { TxNotificationEvent } from "@arkade-os/sdk";
-import type { OverviewRecord, RecordStatus } from "@/components/overview/records-table";
-import { arkClient } from "@/lib/api/indexer";
+import type { OverviewRecord, RecordStatus } from "@/lib/overview-records";
+import { arkClient, ARK_URL } from "@/lib/api/indexer";
+import { buildArkActivityRecord } from "@/lib/ark-activity";
 
-const STORAGE_KEY = "ark-observer-recent-activity";
+const STORAGE_KEY = `ark-observer-recent-activity:${ARK_URL}`;
 const MAX_AGE_MS = 30 * 60 * 1000;
 const MAX_RECORDS = 50;
 const INITIAL_RETRY_MS = 1_000;
@@ -22,7 +22,6 @@ interface ArkActivityState {
 }
 
 type ActivityListener = (state: ArkActivityState) => void;
-type EventKind = "transaction" | "batch" | "vtxo" | "sweep";
 
 const INITIAL_STATE: ArkActivityState = {
     records: [],
@@ -57,7 +56,7 @@ function isRecordStatus(value: unknown): value is RecordStatus {
         value === "urgent" ||
         value === "expired" ||
         value === "unknown" ||
-        value === "settled" ||
+        value === "spent" ||
         value === "healthy" ||
         value === "confirmed" ||
         value === "observed" ||
@@ -92,6 +91,8 @@ function isOverviewRecord(value: unknown): value is OverviewRecord {
         (record.network === "arkade" || record.network === "second") &&
         (record.kind === "virtual" || record.kind === "commitment" || record.kind === "onchain") &&
         typeof record.typeLabel === "string" &&
+        record.entity === "transaction" &&
+        typeof record.amountLabel === "string" &&
         typeof record.label === "string" &&
         (record.amountSat === null || isFiniteNumber(record.amountSat)) &&
         isRecordStatus(record.status) &&
@@ -160,171 +161,6 @@ function publish(nextState: ArkActivityState): void {
     for (const listener of listeners) listener(activityState);
 }
 
-function toUnixSeconds(value: unknown): number | null {
-    if (value instanceof Date) {
-        const timestamp = value.getTime();
-        return Number.isFinite(timestamp) ? timestamp / 1000 : null;
-    }
-    if (typeof value === "number") {
-        if (!Number.isFinite(value)) return null;
-        return value > 1e12 ? value / 1000 : value;
-    }
-    if (typeof value !== "string" || value.length === 0) return null;
-
-    const numeric = Number(value);
-    if (Number.isFinite(numeric)) return numeric > 1e12 ? numeric / 1000 : numeric;
-    const parsed = Date.parse(value);
-    return Number.isNaN(parsed) ? null : parsed / 1000;
-}
-
-function readStringArray(value: unknown): string[] {
-    return Array.isArray(value)
-        ? value.filter((item): item is string => typeof item === "string")
-        : [];
-}
-
-function getNotificationTxid(notification: Record<string, unknown>): string | null {
-    if (typeof notification.txid === "string" && notification.txid.length > 0) {
-        return notification.txid;
-    }
-    const outpoint = asObject(notification.outpoint);
-    return typeof outpoint?.txid === "string" && outpoint.txid.length > 0 ? outpoint.txid : null;
-}
-
-function makeCommitmentRecord(
-    notification: Record<string, unknown>,
-    eventTime: number,
-): OverviewRecord | null {
-    const txid = getNotificationTxid(notification);
-    if (!txid) return null;
-
-    const spentCount = Array.isArray(notification.spentVtxos) ? notification.spentVtxos.length : 0;
-    const spendableCount = Array.isArray(notification.spendableVtxos)
-        ? notification.spendableVtxos.length
-        : 0;
-    const eventTimeIso = new Date(eventTime).toISOString();
-
-    return {
-        id: `ark-stream-commitment:${txid}`,
-        txid,
-        network: "arkade",
-        kind: "commitment",
-        typeLabel: "Commitment · live",
-        label: `Batch (${spendableCount + spentCount} VTXOs)`,
-        amountSat: null,
-        status: "confirmed",
-        statusLabel: "New commitment",
-        needsReview: false,
-        leftSeconds: null,
-        exitSeconds: null,
-        createdAtSeconds: null,
-        expiresAtSeconds: null,
-        recordedAt: eventTimeIso,
-        snapshotFetchedAt: eventTimeIso,
-        sourceLabel: "operator stream · live",
-        commitmentTxids: [txid],
-        blockHeight: null,
-        liveSource: true,
-    };
-}
-
-function makeVirtualRecord(
-    notification: Record<string, unknown>,
-    eventKind: EventKind,
-    eventTime: number,
-): OverviewRecord | null {
-    const txid = getNotificationTxid(notification);
-    if (!txid) return null;
-
-    const eventVtxo = asObject(notification.vtxo) ?? (eventKind === "vtxo" ? notification : null);
-    const spendableVtxos = Array.isArray(notification.spendableVtxos)
-        ? notification.spendableVtxos
-              .map(asObject)
-              .filter((vtxo): vtxo is Record<string, unknown> => vtxo !== null)
-        : [];
-    const expiryValues: unknown[] = [];
-    const directExpiry = eventVtxo?.expiresAt ?? notification.expiresAt;
-    if (directExpiry !== undefined && directExpiry !== null) expiryValues.push(directExpiry);
-    for (const vtxo of spendableVtxos) {
-        if (vtxo.expiresAt !== undefined && vtxo.expiresAt !== null) {
-            expiryValues.push(vtxo.expiresAt);
-        }
-    }
-    const expiries = expiryValues
-        .map(toUnixSeconds)
-        .filter((seconds): seconds is number => seconds !== null);
-    const expiresAtSeconds = expiries.length > 0 ? Math.min(...expiries) : null;
-    const leftSeconds =
-        expiresAtSeconds === null ? null : Math.floor(expiresAtSeconds - eventTime / 1000);
-    const eventTimeIso = new Date(eventTime).toISOString();
-    const createdAtSeconds = toUnixSeconds(eventVtxo?.createdAt ?? notification.createdAt);
-    const commitmentTxids = new Set<string>([
-        ...readStringArray(notification.commitmentTxids),
-        ...readStringArray(eventVtxo?.commitmentTxids),
-    ]);
-    for (const vtxo of spendableVtxos) {
-        for (const commitmentTxid of readStringArray(vtxo.commitmentTxids)) {
-            commitmentTxids.add(commitmentTxid);
-        }
-    }
-    const amountSat = spendableVtxos.reduce((sum, vtxo) => {
-        const amount = Number(vtxo.amount);
-        return Number.isFinite(amount) ? sum + amount : sum;
-    }, 0);
-    const typeLabel =
-        eventKind === "batch"
-            ? "Batch · live"
-            : eventKind === "vtxo"
-              ? "VTXO · live"
-              : eventKind === "sweep"
-                ? "Sweep · live"
-                : "Transaction · live";
-
-    return {
-        id: `ark-stream-${eventKind}:${txid}`,
-        txid,
-        network: "arkade",
-        kind: "virtual",
-        typeLabel,
-        label: "New transaction",
-        amountSat: amountSat > 0 ? amountSat : null,
-        status: "unknown",
-        statusLabel: "New transaction",
-        needsReview: false,
-        leftSeconds,
-        exitSeconds: null,
-        createdAtSeconds,
-        expiresAtSeconds,
-        recordedAt: eventTimeIso,
-        snapshotFetchedAt: eventTimeIso,
-        sourceLabel: "operator stream · live",
-        commitmentTxids: [...commitmentTxids],
-        blockHeight: null,
-        liveSource: true,
-    };
-}
-
-function parseEvent(event: TxNotificationEvent, eventTime: number): OverviewRecord | null {
-    const notificationEvent = event as unknown as Record<string, unknown>;
-
-    const commitmentTx = asObject(notificationEvent.commitmentTx);
-    if (commitmentTx) return makeCommitmentRecord(commitmentTx, eventTime);
-
-    const arkTx = asObject(notificationEvent.arkTx);
-    if (arkTx) return makeVirtualRecord(arkTx, "transaction", eventTime);
-
-    const round = asObject(notificationEvent.round);
-    if (round) return makeVirtualRecord(round, "batch", eventTime);
-
-    const vtxo = asObject(notificationEvent.vtxo);
-    if (vtxo) return makeVirtualRecord(notificationEvent, "vtxo", eventTime);
-
-    const sweepTx = asObject(notificationEvent.sweepTx);
-    if (sweepTx) return makeVirtualRecord(sweepTx, "sweep", eventTime);
-
-    return null;
-}
-
 function isCurrentController(controller: AbortController): boolean {
     return streamController === controller && !controller.signal.aborted;
 }
@@ -347,7 +183,9 @@ function appendRecord(
 
     storedRecords = [
         { record, storedAt: eventTime },
-        ...storedRecords.filter((entry) => entry.record.id !== record.id),
+        ...storedRecords.filter(
+            (entry) => entry.record.id !== record.id && eventTime - entry.storedAt < MAX_AGE_MS,
+        ),
     ].slice(0, MAX_RECORDS);
     saveStoredRecords();
     publish({
@@ -381,12 +219,13 @@ async function consumeTransactions(controller: AbortController): Promise<void> {
         try {
             const eventStream = arkClient.getTransactionsStream(controller.signal);
             if (!isCurrentController(controller)) return;
-            updateConnection(controller, true, true);
+            // The async iterator is lazy: creation does not prove an open connection.
+            updateConnection(controller, false, true);
 
             for await (const event of eventStream) {
                 if (!isCurrentController(controller)) return;
                 const eventTime = Date.now();
-                const record = parseEvent(event, eventTime);
+                const record = buildArkActivityRecord(event, eventTime);
                 if (record) {
                     retryAttempt = 0;
                     appendRecord(controller, record, eventTime);

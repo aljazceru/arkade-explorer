@@ -10,8 +10,8 @@ export function formatCompactNumber(num: number): string {
     return num.toString();
 }
 
-export function formatRelativeTime(timestamp: number): string {
-    const now = Date.now();
+export function formatRelativeTime(timestamp: number, now = Date.now()): string {
+    if (!Number.isFinite(timestamp)) return "just now";
     const diff = now - timestamp;
     const seconds = Math.floor(diff / 1000);
 

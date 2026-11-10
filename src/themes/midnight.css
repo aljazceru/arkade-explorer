@@ -1,57 +1,54 @@
+/* Atlas · ink (default). Bare HSL triplets: consumers wrap them in hsl(var(--x)).
+   Colour encodes LAYER, not vendor: --chain is on-chain/Bitcoin, --virt is the
+   virtual (off-chain) layer, --cp is checkpoints, --alert is the exit window. */
 [data-theme="midnight"] {
     color-scheme: dark;
 
-    /* Purple — lightened for dark-bg contrast (light theme keeps 35%) */
-    --primary: 256 72% 50%;
-    --primary-foreground: 0 0% 100%;
+    --background: 220 29% 6%; /* #0b0e14 */
+    --foreground: 220 32% 93%; /* #e6eaf2 */
 
-    /* Backgrounds */
-    --background: 240 33% 4%; /* #0a0a0f */
-    --foreground: 240 5% 90%; /* #e4e4e7 */
+    --card: 221 31% 10%; /* #121722 panel */
+    --card-foreground: 220 32% 93%;
+    --popover: 221 31% 10%;
+    --popover-foreground: 220 32% 93%;
 
-    /* Cards */
-    --card: 240 20% 8%; /* #12121a */
-    --card-foreground: 240 5% 90%; /* #e4e4e7 */
+    --primary: 218 100% 78%; /* #8fb8ff ice */
+    --primary-foreground: 220 29% 6%;
 
-    /* Popovers */
-    --popover: 240 20% 8%; /* #12121a */
-    --popover-foreground: 240 5% 90%; /* #e4e4e7 */
+    --secondary: 220 29% 12%; /* #161c28 panel-2 */
+    --secondary-foreground: 220 32% 93%;
 
-    /* Secondary */
-    --secondary: 240 15% 14%; /* #1e1e28 */
-    --secondary-foreground: 240 5% 85%;
+    --muted: 220 29% 12%;
+    --muted-foreground: 218 15% 66%; /* #9aa4b5 */
 
-    /* Muted */
-    --muted: 240 12% 16%; /* #232330 */
-    --muted-foreground: 240 5% 55%; /* #88889a */
+    --accent: 216 36% 14%; /* #16202f selected */
+    --accent-foreground: 218 100% 78%;
 
-    /* Accent */
-    --accent: 256 40% 18%; /* Purple-tinted dark */
-    --accent-foreground: 256 60% 80%;
+    --destructive: 0 100% 70%; /* #ff6464 coral */
+    --destructive-foreground: 220 29% 6%;
 
-    /* Destructive */
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --border: 219 25% 16%; /* #1e2532 */
+    --input: 219 24% 22%; /* #2a3344 */
+    --ring: 218 100% 78%;
 
-    /* Borders & inputs */
-    --border: 256 20% 18%; /* Purple-tinted border */
-    --input: 256 15% 20%;
-    --ring: 256 72% 35%;
-
-    /* Radius */
     --radius: 0.5rem;
 
-    /* Elevation surfaces */
-    --surface-elevated: 240 18% 11%; /* #171722 */
-    --surface-sunken: 240 30% 3%; /* #070710 */
+    --surface-elevated: 220 29% 12%;
+    --surface-sunken: 220 29% 8%; /* #0f131b */
 
-    /* Semantic */
-    --success: 142 72% 40%;
-    --warning: 38 92% 50%;
+    --success: 160 59% 60%; /* #5ed6ae mint */
+    --warning: 45 90% 62%;
 
-    /* In-flight. The only exit state with no existing semantic token: it must
-       read as distinct from success, warning and destructive at a glance, since
-       a user watching an exit is distinguishing "still going" from "done" and
-       "stuck". Lightened for contrast on this theme's dark surfaces. */
-    --exit-flight: 213 94% 68%;
+    /* In-flight exit step: must read distinct from success, warning and
+       destructive at a glance. */
+    --exit-flight: 218 100% 78%;
+
+    /* Atlas layers */
+    --chain: 36 88% 59%; /* #f2a93b */
+    --virt: 218 100% 78%; /* #8fb8ff */
+    --cp: 232 59% 64%; /* #6c7bd9 */
+    --faint: 219 13% 54%; /* #7a8599, AA on background and panel */
+    --line-strong: 219 24% 22%;
+    --canvas: 220 29% 8%;
+    --grid: 220 29% 12%;
 }

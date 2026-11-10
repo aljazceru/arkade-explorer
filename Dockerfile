@@ -1,6 +1,6 @@
-FROM node:24.22.0-alpine AS build
+FROM node:24.22.2-alpine AS build
 RUN apk add --no-cache git
-RUN corepack enable && corepack prepare pnpm@10.34.7 --activate
+RUN corepack enable && corepack prepare pnpm@10.34.9 --activate
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile

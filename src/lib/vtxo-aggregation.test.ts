@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
-import type { VirtualCoin, PageResponse } from "@arkade-os/sdk";
+import type { VirtualCoin } from "@arkade-os/sdk";
 import {
     isVtxoActive,
     sumVtxoValue,
     sumActiveVtxoValue,
     aggregateAssetBalances,
-    hasMorePages,
+    uniqueVtxos,
 } from "@/lib/vtxo-aggregation";
 
 function makeVtxo(p: Partial<VirtualCoin> & { value: number }): VirtualCoin {
@@ -19,9 +19,6 @@ function makeVtxo(p: Partial<VirtualCoin> & { value: number }): VirtualCoin {
     } as unknown as VirtualCoin;
 }
 
-const page = (p: Partial<PageResponse>): PageResponse =>
-    ({ current: 0, next: 0, total: 0, ...p }) as PageResponse;
-
 describe("isVtxoActive", () => {
     it("is active when not spent", () => {
         expect(isVtxoActive(makeVtxo({ value: 1 }))).toBe(true);
@@ -31,6 +28,20 @@ describe("isVtxoActive", () => {
     });
     it("is inactive when isSpent is true", () => {
         expect(isVtxoActive(makeVtxo({ value: 1, isSpent: true }))).toBe(false);
+    });
+    it("is inactive when settledBy a commitment", () => {
+        expect(isVtxoActive(makeVtxo({ value: 1, settledBy: "commit" }))).toBe(false);
+    });
+    it("is inactive when swept", () => {
+        expect(isVtxoActive(makeVtxo({ value: 1, isSwept: true }))).toBe(false);
+    });
+    it("is inactive when unrolled", () => {
+        expect(isVtxoActive(makeVtxo({ value: 1, isUnrolled: true }))).toBe(false);
+    });
+    it("stays active when finalized in a batch but not consumed", () => {
+        expect(
+            isVtxoActive(makeVtxo({ value: 1, isPreconfirmed: false, commitmentTxIds: ["c"] })),
+        ).toBe(true);
     });
 });
 
@@ -67,22 +78,40 @@ describe("aggregateAssetBalances", () => {
             makeVtxo({ value: 0, assets: [{ assetId: "B", amount: 7n }] as VirtualCoin["assets"] }),
         ];
         const result = aggregateAssetBalances(vtxos);
-        expect(result.get("A")).toEqual({ active: 10, total: 15 });
-        expect(result.get("B")).toEqual({ active: 7, total: 7 });
+        expect(result.get("A")).toEqual({ active: 10n, total: 15n });
+        expect(result.get("B")).toEqual({ active: 7n, total: 7n });
     });
 });
 
-describe("hasMorePages", () => {
-    it("is false when page is undefined", () => {
-        expect(hasMorePages(undefined)).toBe(false);
+describe("uniqueVtxos", () => {
+    it("dedupes by outpoint and prefers the terminal state over a stale active record", () => {
+        const txid = "a".repeat(64);
+        const active = makeVtxo({ txid, vout: 0, value: 100 });
+        const spent = makeVtxo({
+            txid,
+            vout: 0,
+            value: 100,
+            isSpent: true,
+            spentBy: "b".repeat(64),
+        });
+        const other = makeVtxo({ txid: "c".repeat(64), vout: 1, value: 200 });
+        // Overlapping paginated reads: same outpoint arrives active then spent.
+        expect(uniqueVtxos([active, spent, other])).toEqual([spent, other]);
     });
-    it("is false when next <= current", () => {
-        expect(hasMorePages(page({ current: 2, next: 2 }))).toBe(false);
+
+    it("keeps the first record when duplicates agree on state", () => {
+        const txid = "d".repeat(64);
+        const first = makeVtxo({ txid, vout: 2, value: 100 });
+        const dup = makeVtxo({ txid, vout: 2, value: 999 });
+        expect(uniqueVtxos([first, dup])).toEqual([first]);
     });
-    it("is false when current is the last index (total is a page count)", () => {
-        expect(hasMorePages(page({ current: 4, next: 5, total: 5 }))).toBe(false);
-    });
-    it("is true when more pages remain", () => {
-        expect(hasMorePages(page({ current: 0, next: 1, total: 5 }))).toBe(true);
+
+    it("does not double-count assets for a duplicated outpoint", () => {
+        const txid = "e".repeat(64);
+        const asset = { assetId: "A", amount: 10n };
+        const v1 = makeVtxo({ txid, vout: 0, value: 100, assets: [asset] });
+        const v2 = makeVtxo({ txid, vout: 0, value: 100, assets: [asset], isSpent: true });
+        const balances = aggregateAssetBalances(uniqueVtxos([v1, v2]));
+        expect(balances.get("A")).toEqual({ active: 0n, total: 10n });
     });
 });

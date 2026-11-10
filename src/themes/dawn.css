@@ -1,57 +1,51 @@
+/* Atlas · day. Same layer semantics as ink, darkened for contrast on light
+   surfaces (text-bearing hues meet WCAG AA on white). */
 [data-theme="dawn"] {
     color-scheme: light;
 
-    /* Sacred purple: #391998 = hsl(256, 72%, 35%) */
-    --primary: 256 72% 35%;
+    --background: 220 43% 97%; /* #f5f7fb */
+    --foreground: 223 39% 9%; /* #0e1320 */
+
+    --card: 0 0% 100%;
+    --card-foreground: 223 39% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 223 39% 9%;
+
+    --primary: 224 68% 52%; /* #2f5bd8 */
     --primary-foreground: 0 0% 100%;
 
-    /* Backgrounds */
-    --background: 0 0% 98%; /* #fafafa */
-    --foreground: 240 6% 10%; /* #18181b */
+    --secondary: 218 40% 96%; /* #f1f4f9 */
+    --secondary-foreground: 223 39% 9%;
 
-    /* Cards */
-    --card: 0 0% 100%; /* #ffffff */
-    --card-foreground: 240 6% 10%; /* #18181b */
+    --muted: 218 40% 96%;
+    --muted-foreground: 218 17% 35%; /* #4a5568 */
 
-    /* Popovers */
-    --popover: 0 0% 100%; /* #ffffff */
-    --popover-foreground: 240 6% 10%; /* #18181b */
+    --accent: 221 70% 95%;
+    --accent-foreground: 224 68% 52%;
 
-    /* Secondary */
-    --secondary: 240 5% 95%; /* #f1f1f4 */
-    --secondary-foreground: 240 6% 25%;
-
-    /* Muted */
-    --muted: 240 5% 93%; /* #ededf0 */
-    --muted-foreground: 240 4% 46%; /* #71717a */
-
-    /* Accent */
-    --accent: 256 60% 96%; /* Light purple tint */
-    --accent-foreground: 256 72% 35%;
-
-    /* Destructive */
-    --destructive: 0 72% 51%;
+    --destructive: 1 65% 50%; /* #d2302c */
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders & inputs */
-    --border: 240 6% 90%; /* Light gray border */
-    --input: 240 6% 90%;
-    --ring: 256 72% 35%;
+    --border: 218 30% 89%; /* #dce2ec */
+    --input: 217 24% 81%; /* #c3ccda */
+    --ring: 224 68% 52%;
 
-    /* Radius */
     --radius: 0.5rem;
 
-    /* Elevation surfaces */
-    --surface-elevated: 0 0% 100%; /* Pure white */
-    --surface-sunken: 240 5% 96%; /* Slightly darker than bg */
+    /* Elevation is expressed against the page, so elevated == card here. */
+    --surface-elevated: 0 0% 100%;
+    --surface-sunken: 216 42% 95%;
 
-    /* Semantic */
-    --success: 142 72% 35%;
-    --warning: 38 92% 50%;
+    --success: 160 75% 29%; /* #12805c */
+    --warning: 41 100% 30%;
 
-    /* In-flight. The only exit state with no existing semantic token: it must
-       read as distinct from success, warning and destructive at a glance, since
-       a user watching an exit is distinguishing "still going" from "done" and
-       "stuck". Darkened for contrast on this theme's light surfaces. */
-    --exit-flight: 221 83% 53%;
+    --exit-flight: 224 68% 52%;
+
+    --chain: 36 100% 33%; /* #a86400 */
+    --virt: 224 68% 52%;
+    --cp: 235 43% 51%;
+    --faint: 218 12% 48%;
+    --line-strong: 217 24% 81%;
+    --canvas: 216 42% 95%;
+    --grid: 218 30% 89%;
 }

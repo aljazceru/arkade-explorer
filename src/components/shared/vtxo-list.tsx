@@ -1,30 +1,42 @@
-import { useCallback, useState, useRef, useLayoutEffect, createContext, useContext } from "react";
+import {
+    useState,
+    useRef,
+    useLayoutEffect,
+    createContext,
+    useContext,
+    useMemo,
+    type ReactNode,
+} from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Link } from "react-router-dom";
-import { Copy, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import * as btc from "@scure/btc-signer";
 import { hex } from "@scure/base";
 import type { VirtualCoin } from "@arkade-os/sdk";
 import { MoneyDisplay } from "@/components/shared/money-display";
 import { AssetAmountDisplay } from "@/components/shared/asset-amount-display";
-import {
-    BadgeStatus,
-    BadgeRecoverable,
-    deriveVtxoStatus,
-    isRecoverable,
-} from "@/components/shared/badge-status";
 import { CopyButton } from "@/components/shared/copy-button";
-import { truncateHash, copyToClipboard, formatTimestamp } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { truncateHash, formatTimestamp, cn } from "@/lib/utils";
 import { constructArkAddress } from "@/lib/arkAddress";
 import { useServerInfo } from "@/providers/server-info-provider";
-import { ExpiryCountdown, useVtxoExpiry } from "@/components/shared/expiry-countdown";
+import { ExpiryCountdown } from "@/components/shared/expiry-countdown";
+import { useNow, useExitDelays, useChainTip } from "@/hooks/use-expiry";
+import { VtxoStateTag } from "@/components/atlas/vtxo-state-tag";
+import { Hash } from "@/components/atlas/hash";
+import { MicroLabel } from "@/components/atlas/panel";
+import { atlasVtxoState, type AtlasVtxoContext, type AtlasVtxoView } from "@/lib/atlas/vtxo-state";
+
 type ListStyle = "table" | "cards" | "dense-rows";
 
 const EMPTY_PENDING: ReadonlySet<string> = new Set<string>();
 
-/** Pending ("unfinalized spend") outpoints, supplied by the page and read by StatusBadges. */
-const PendingOutpointsContext = createContext<ReadonlySet<string>>(EMPTY_PENDING);
+/** Shared Atlas context for every row: one clock, one exit delay, one tip. */
+const AtlasCtxContext = createContext<AtlasVtxoContext>({
+    nowMs: 0,
+    exitDelay: null,
+    tipHeight: null,
+    pendingOutpoints: EMPTY_PENDING,
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -69,84 +81,93 @@ function deriveAddress(
     return null;
 }
 
-function StatusBadges({ vtxo }: { vtxo: VirtualCoin }) {
-    const pendingOutpoints = useContext(PendingOutpointsContext);
-    const status = deriveVtxoStatus(vtxo, pendingOutpoints);
-    return (
-        <span className="inline-flex items-center gap-1.5">
-            <BadgeStatus status={status} />
-            {isRecoverable(vtxo) && status !== "spent" && <BadgeRecoverable />}
-        </span>
-    );
+/** Atlas state for one VTXO, read from the shared per-list context. */
+function useVtxoAtlas(vtxo: VirtualCoin): AtlasVtxoView {
+    const ctx = useContext(AtlasCtxContext);
+    return useMemo(() => atlasVtxoState(vtxo, ctx), [vtxo, ctx]);
+}
+
+function StatusTag({ vtxo }: { vtxo: VirtualCoin }) {
+    const view = useVtxoAtlas(vtxo);
+    return <VtxoStateTag state={view.state} />;
 }
 
 // ---------------------------------------------------------------------------
 // Shared sub-components for VTXO detail fields
 // ---------------------------------------------------------------------------
 
+function DetailRow({ label, children }: { label: string; children: ReactNode }) {
+    return (
+        <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
+            <MicroLabel className="w-20 shrink-0 sm:w-24">{label}</MicroLabel>
+            <div className="min-w-0 text-xs text-foreground">{children}</div>
+        </div>
+    );
+}
+
 function CreatedAt({ vtxo }: { vtxo: VirtualCoin }) {
     if (!vtxo.createdAt) return null;
     const ts = vtxo.createdAt instanceof Date ? vtxo.createdAt.getTime() : Number(vtxo.createdAt);
     return (
-        <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground uppercase shrink-0">Created:</span>
-            <span className="text-muted-foreground font-mono break-all">{formatTimestamp(ts)}</span>
-        </div>
+        <DetailRow label="created">
+            <span className="font-mono text-[11px] text-muted-foreground">
+                {formatTimestamp(ts)}
+            </span>
+        </DetailRow>
     );
 }
 
 function SpentByLink({ vtxo }: { vtxo: VirtualCoin }) {
     if (!vtxo.spentBy || vtxo.spentBy === "") return null;
-    const label = vtxo.settledBy ? "Forfeit tx:" : "Spent by:";
+    const label = vtxo.settledBy ? "forfeit tx" : "spent by";
     return (
-        <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground uppercase shrink-0">{label}</span>
-            <Link
+        <DetailRow label={label}>
+            <Hash
+                value={vtxo.spentBy}
                 to={`/tx/${vtxo.spentBy}`}
-                className="font-mono text-foreground hover:text-primary transition-colors duration-150"
-            >
-                {truncateHash(vtxo.spentBy, 8, 8)}
-            </Link>
-        </div>
+                head={10}
+                tail={6}
+                label="spent-by txid"
+            />
+        </DetailRow>
     );
 }
 
 function SettledByLink({ vtxo }: { vtxo: VirtualCoin }) {
     if (!vtxo.settledBy) return null;
     return (
-        <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground uppercase shrink-0">Settled by:</span>
-            <Link
+        <DetailRow label="settled by">
+            <Hash
+                value={vtxo.settledBy}
                 to={`/commitment-tx/${vtxo.settledBy}`}
-                className="font-mono text-foreground hover:text-primary transition-colors duration-150"
-            >
-                {truncateHash(vtxo.settledBy, 8, 8)}
-            </Link>
-        </div>
+                head={10}
+                tail={6}
+                label="commitment txid"
+            />
+        </DetailRow>
     );
 }
 
 function AssetsList({ vtxo }: { vtxo: VirtualCoin }) {
     if (!vtxo.assets || vtxo.assets.length === 0) return null;
     return (
-        <div className="space-y-1 text-xs">
-            <span className="text-muted-foreground uppercase">Assets:</span>
-            <div className="flex flex-wrap gap-2 ml-1">
+        <DetailRow label="assets">
+            <span className="flex flex-wrap gap-1.5">
                 {vtxo.assets.map((asset, idx) => (
-                    <div
+                    <span
                         key={idx}
-                        className="inline-flex items-center border border-primary/20 rounded-md px-2 py-0.5"
+                        className="inline-flex items-center rounded border border-line-strong px-1.5 py-0.5"
                     >
                         <AssetAmountDisplay
                             amount={asset.amount}
                             assetId={asset.assetId}
-                            valueClassName="text-foreground font-bold font-mono text-xs"
-                            unitClassName="text-foreground font-mono text-xs"
+                            valueClassName="font-mono text-[11px] text-foreground"
+                            unitClassName="font-mono text-[11px] text-foreground"
                         />
-                    </div>
+                    </span>
                 ))}
-            </div>
-        </div>
+            </span>
+        </DetailRow>
     );
 }
 
@@ -166,36 +187,66 @@ function AddressLink({
 
     if (!address) return null;
     return (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1 text-xs">
-            <span className="text-muted-foreground uppercase shrink-0">Address:</span>
-            <Link
+        <DetailRow label="address">
+            <Hash
+                value={address}
                 to={`/address/${address}`}
-                className="font-mono text-foreground hover:text-primary transition-colors duration-150 inline-flex items-center gap-1 break-all"
-            >
-                <span className="sm:hidden">{truncateHash(address, 8, 8)}</span>
-                <span className="hidden sm:inline">{truncateHash(address, 16, 16)}</span>
-                <ExternalLink className="h-3 w-3 shrink-0" />
-            </Link>
-        </div>
+                head={12}
+                tail={8}
+                label="arkade address"
+            />
+        </DetailRow>
     );
 }
 
 function DebugToggle({ vtxo }: { vtxo: VirtualCoin }) {
     const [open, setOpen] = useState(false);
     return (
-        <div className="pt-2 border-t border-border">
+        <div className="border-t border-border pt-2">
             <button
+                type="button"
                 onClick={() => setOpen(!open)}
-                className="text-muted-foreground hover:text-foreground text-xs uppercase font-medium transition-colors duration-150 flex items-center gap-1"
+                className="micro inline-flex items-center gap-1 text-faint transition-colors hover:text-foreground"
+                aria-expanded={open}
             >
                 {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                {open ? "Hide" : "Show"} raw JSON
+                {open ? "hide" : "show"} raw json
             </button>
             {open && (
-                <pre className="mt-2 p-3 bg-secondary/50 rounded-lg text-xs overflow-x-auto max-h-64">
-                    <code className="text-muted-foreground">{JSON.stringify(vtxo, null, 2)}</code>
+                <pre className="mt-2 max-h-64 overflow-auto rounded-md border border-border bg-secondary/40 p-3 text-[11px]">
+                    <code className="font-mono text-muted-foreground">
+                        {JSON.stringify(vtxo, null, 2)}
+                    </code>
                 </pre>
             )}
+        </div>
+    );
+}
+
+function VtxoDetails({
+    vtxo,
+    showScript,
+    signerPubkey,
+    network,
+}: {
+    vtxo: VirtualCoin;
+    showScript?: boolean;
+    signerPubkey?: string;
+    network?: string;
+}) {
+    return (
+        <div className="space-y-1.5">
+            <CreatedAt vtxo={vtxo} />
+            <AssetsList vtxo={vtxo} />
+            <AddressLink
+                vtxo={vtxo}
+                signerPubkey={signerPubkey}
+                network={network}
+                showScript={showScript}
+            />
+            <SpentByLink vtxo={vtxo} />
+            <SettledByLink vtxo={vtxo} />
+            <DebugToggle vtxo={vtxo} />
         </div>
     );
 }
@@ -218,8 +269,8 @@ interface VtxoListProps {
 
 function EmptyState() {
     return (
-        <div className="rounded-xl border border-border bg-card p-8 text-center">
-            <p className="text-sm text-muted-foreground">No VTXOs found</p>
+        <div className="rounded-lg border border-border bg-card px-4 py-10 text-center">
+            <p className="micro text-faint">No VTXOs found</p>
         </div>
     );
 }
@@ -241,39 +292,23 @@ function VtxoTable({
     signerPubkey?: string;
     network?: string;
 }) {
-    const handleCopyOutpoint = useCallback((txid: string, vout: number) => {
-        copyToClipboard(`${txid}:${vout}`);
-    }, []);
-
     return (
-        <div
-            className={cn(
-                "rounded-xl border border-border bg-card overflow-hidden shadow-[0_0_0_1px_hsl(var(--border)),0_1px_2px_-1px_hsl(var(--border)/0.3),0_2px_4px_hsl(var(--border)/0.2)]",
-                className,
-            )}
-        >
+        <div className={cn("overflow-hidden rounded-lg border border-border bg-card", className)}>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead>
-                        <tr className="border-b border-border bg-secondary/30">
-                            <th className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Outpoint
-                            </th>
-                            <th className="text-right px-4 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Amount
-                            </th>
-                            <th className="text-center px-4 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Status
-                            </th>
-                            <th className="text-right px-4 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Expiry (blocks · time left)
+                        <tr className="border-b border-border bg-secondary/40">
+                            <th className="micro px-4 py-2.5 text-left text-faint">Outpoint</th>
+                            <th className="micro px-4 py-2.5 text-right text-faint">Amount</th>
+                            <th className="micro px-4 py-2.5 text-center text-faint">State</th>
+                            <th className="micro px-4 py-2.5 text-right text-faint">
+                                Expiry · time left
                             </th>
                         </tr>
                     </thead>
                     <tbody>
                         {vtxos.map((vtxo) => {
                             const outpointStr = `${vtxo.txid}:${vtxo.vout}`;
-
                             return (
                                 <VtxoTableRow
                                     key={outpointStr}
@@ -281,7 +316,6 @@ function VtxoTable({
                                     showScript={showScript}
                                     signerPubkey={signerPubkey}
                                     network={network}
-                                    onCopyOutpoint={handleCopyOutpoint}
                                 />
                             );
                         })}
@@ -297,35 +331,34 @@ function VtxoTableRow({
     showScript,
     signerPubkey,
     network,
-    onCopyOutpoint,
 }: {
     vtxo: VirtualCoin;
     showScript?: boolean;
     signerPubkey?: string;
     network?: string;
-    onCopyOutpoint: (txid: string, vout: number) => void;
 }) {
     const [expanded, setExpanded] = useState(false);
-    const { urgency } = useVtxoExpiry(vtxo);
-    const urgent = urgency === "urgent" || urgency === "expired";
+    const view = useVtxoAtlas(vtxo);
+    const urgent = view.state === "renew" || view.state === "expired";
 
     return (
         <>
             {/* Main row */}
             <tr
                 className={cn(
-                    "hover:bg-secondary/20 transition-colors duration-150",
-                    urgent && "bg-red-500/10 border-l-4 border-l-red-600",
-                    expanded && "bg-secondary/10",
-                    !expanded && "border-b border-border",
+                    "border-b border-border transition-colors last:border-b-0 hover:bg-secondary/40",
+                    urgent && "bg-alert/10 shadow-[inset_2px_0_0_hsl(var(--destructive))]",
+                    expanded && "bg-secondary/30",
                 )}
             >
-                <td className="px-4 py-3">
+                <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
                         <button
+                            type="button"
                             onClick={() => setExpanded(!expanded)}
-                            className="text-muted-foreground hover:text-foreground transition-colors duration-150 shrink-0"
+                            className="shrink-0 text-faint transition-colors hover:text-foreground"
                             aria-label={expanded ? "Collapse details" : "Expand details"}
+                            aria-expanded={expanded}
                         >
                             {expanded ? (
                                 <ChevronDown className="h-3.5 w-3.5" />
@@ -335,25 +368,22 @@ function VtxoTableRow({
                         </button>
                         <Link
                             to={`/tx/${vtxo.txid}`}
-                            className="font-mono text-xs text-foreground hover:text-primary transition-colors duration-150"
+                            className="font-mono text-[12px] text-foreground hover:text-virt"
                         >
                             {truncateHash(vtxo.txid, 8, 6)}:{vtxo.vout}
                         </Link>
-                        <button
-                            onClick={() => onCopyOutpoint(vtxo.txid, vtxo.vout)}
-                            className="text-muted-foreground hover:text-foreground transition-colors duration-150 shrink-0"
-                            title="Copy outpoint"
-                            aria-label="Copy outpoint to clipboard"
-                        >
-                            <Copy className="h-3 w-3" aria-hidden="true" />
-                        </button>
+                        <CopyButton
+                            text={`${vtxo.txid}:${vtxo.vout}`}
+                            label="outpoint"
+                            className="shrink-0"
+                        />
                     </div>
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-2.5 text-right">
                     <div className="flex flex-col items-end gap-0.5">
                         <MoneyDisplay
                             sats={vtxo.value}
-                            className="text-foreground font-mono text-xs"
+                            className="font-mono text-[12px] text-foreground"
                         />
                         {vtxo.assets &&
                             vtxo.assets.length > 0 &&
@@ -362,36 +392,31 @@ function VtxoTableRow({
                                     key={idx}
                                     amount={asset.amount}
                                     assetId={asset.assetId}
-                                    valueClassName="text-foreground font-bold font-mono text-xs"
-                                    unitClassName="text-foreground font-mono text-xs"
+                                    valueClassName="font-mono text-[11px] font-semibold text-foreground"
+                                    unitClassName="font-mono text-[11px] text-foreground"
                                 />
                             ))}
                     </div>
                 </td>
-                <td className="px-4 py-3 text-center">
-                    <StatusBadges vtxo={vtxo} />
+                <td className="px-4 py-2.5 text-center">
+                    <StatusTag vtxo={vtxo} />
                 </td>
-                <td className="px-4 py-3 text-right">
-                    <ExpiryCountdown vtxo={vtxo} />
+                <td className="px-4 py-2.5 text-right">
+                    <ExpiryCountdown vtxo={vtxo} showBadge={false} />
                 </td>
             </tr>
 
             {/* Expanded detail row */}
             {expanded && (
-                <tr className="border-b border-border">
-                    <td colSpan={4} className="px-4 py-3 bg-secondary/5">
-                        <div className="space-y-2 pl-6">
-                            <CreatedAt vtxo={vtxo} />
-                            <AssetsList vtxo={vtxo} />
-                            <AddressLink
+                <tr className="border-b border-border bg-secondary/20">
+                    <td colSpan={4} className="px-4 py-3">
+                        <div className="space-y-1.5 pl-7">
+                            <VtxoDetails
                                 vtxo={vtxo}
                                 signerPubkey={signerPubkey}
                                 network={network}
                                 showScript={showScript}
                             />
-                            <SpentByLink vtxo={vtxo} />
-                            <SettledByLink vtxo={vtxo} />
-                            <DebugToggle vtxo={vtxo} />
                         </div>
                     </td>
                 </tr>
@@ -418,10 +443,9 @@ function VtxoCards({
     network?: string;
 }) {
     return (
-        <div className={cn("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3", className)}>
+        <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3", className)}>
             {vtxos.map((vtxo) => {
                 const outpointStr = `${vtxo.txid}:${vtxo.vout}`;
-
                 return (
                     <VtxoCard
                         key={outpointStr}
@@ -450,31 +474,31 @@ function VtxoCard({
     signerPubkey?: string;
     network?: string;
 }) {
-    const { urgency } = useVtxoExpiry(vtxo);
-    const urgent = urgency === "urgent" || urgency === "expired";
+    const view = useVtxoAtlas(vtxo);
+    const urgent = view.state === "renew" || view.state === "expired";
     return (
         <div
             className={cn(
-                "rounded-xl border bg-card p-4 shadow-[0_0_0_1px_hsl(var(--border)),0_1px_2px_-1px_hsl(var(--border)/0.3),0_2px_4px_hsl(var(--border)/0.2)] hover:bg-secondary/20 transition-colors duration-200",
-                urgent ? "border-red-600 border-2 bg-red-500/5" : "border-border",
+                "rounded-lg border bg-card p-4 transition-colors hover:bg-secondary/30",
+                urgent ? "border-alert/60 bg-alert/5" : "border-border",
             )}
         >
             {/* Header: outpoint + copy */}
-            <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="mb-3 flex items-center justify-between gap-2">
                 <Link
                     to={`/tx/${vtxo.txid}`}
-                    className="font-mono text-xs text-foreground hover:text-primary transition-colors duration-150 truncate min-w-0"
+                    className="min-w-0 truncate font-mono text-[12px] text-foreground hover:text-virt"
                 >
                     {truncateHash(vtxo.txid, 8, 6)}:{vtxo.vout}
                 </Link>
-                <CopyButton text={outpointStr} className="shrink-0" />
+                <CopyButton text={outpointStr} label="outpoint" className="shrink-0" />
             </div>
 
             {/* Amount */}
             <div className="mb-3">
                 <MoneyDisplay
                     sats={vtxo.value}
-                    className="text-foreground font-mono text-lg font-semibold"
+                    className="font-mono text-lg font-semibold text-foreground"
                 />
             </div>
 
@@ -499,7 +523,7 @@ function VtxoCard({
             </div>
 
             {/* Spent by / Settled by */}
-            {vtxo.spentBy && (
+            {vtxo.spentBy && vtxo.spentBy !== "" && (
                 <div className="mt-2">
                     <SpentByLink vtxo={vtxo} />
                 </div>
@@ -511,9 +535,9 @@ function VtxoCard({
             )}
 
             {/* Footer: status + expiry */}
-            <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-border">
-                <StatusBadges vtxo={vtxo} />
-                <ExpiryCountdown vtxo={vtxo} compact />
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
+                <StatusTag vtxo={vtxo} />
+                <ExpiryCountdown vtxo={vtxo} compact showBadge={false} />
             </div>
 
             {/* Debug toggle */}
@@ -525,7 +549,7 @@ function VtxoCard({
 }
 
 // ---------------------------------------------------------------------------
-// Dense-rows variant
+// Dense-rows variant (virtualized)
 // ---------------------------------------------------------------------------
 
 function VtxoDenseRows({
@@ -542,27 +566,40 @@ function VtxoDenseRows({
     network?: string;
 }) {
     const parentRef = useRef<HTMLDivElement>(null);
-    const parentOffsetRef = useRef(0);
+    const [scrollMargin, setScrollMargin] = useState(0);
 
+    // offsetTop shifts when content above the list (filters, facts column on
+    // mobile) loads or resizes after mount — keep the virtualizer's
+    // scrollMargin in sync or rows drift and leave blank bands.
     useLayoutEffect(() => {
-        parentOffsetRef.current = parentRef.current?.offsetTop ?? 0;
+        const el = parentRef.current;
+        if (!el) return;
+        const update = () => {
+            const top = el.offsetTop;
+            setScrollMargin((prev) => (prev === top ? prev : top));
+        };
+        update();
+        const observer = new ResizeObserver(update);
+        observer.observe(el.offsetParent ?? document.body);
+        window.addEventListener("resize", update);
+        return () => {
+            observer.disconnect();
+            window.removeEventListener("resize", update);
+        };
     }, []);
 
     const virtualizer = useWindowVirtualizer({
         count: vtxos.length,
-        estimateSize: () => 40,
+        estimateSize: () => 34,
         overscan: 12,
-        scrollMargin: parentOffsetRef.current,
+        scrollMargin,
         getItemKey: (index) => `${vtxos[index].txid}:${vtxos[index].vout}`,
     });
 
     return (
         <div
             ref={parentRef}
-            className={cn(
-                "rounded-xl border border-border bg-card overflow-hidden shadow-[0_0_0_1px_hsl(var(--border)),0_1px_2px_-1px_hsl(var(--border)/0.3),0_2px_4px_hsl(var(--border)/0.2)]",
-                className,
-            )}
+            className={cn("overflow-hidden rounded-lg border border-border bg-card", className)}
         >
             <div
                 style={{
@@ -615,24 +652,27 @@ function VtxoDenseRow({
     network?: string;
 }) {
     const [expanded, setExpanded] = useState(false);
-    const { urgency } = useVtxoExpiry(vtxo);
-    const urgent = urgency === "urgent" || urgency === "expired";
+    const view = useVtxoAtlas(vtxo);
+    const urgent = view.state === "renew" || view.state === "expired";
 
     return (
         <div
             className={cn(
-                "transition-colors duration-150",
-                index % 2 === 0 && "bg-secondary/30",
+                "transition-colors",
+                index % 2 === 0 && "bg-secondary/25",
                 "hover:bg-secondary/50",
-                urgent && "bg-red-500/10 border-l-4 border-l-red-600",
+                urgent && "bg-alert/10 shadow-[inset_2px_0_0_hsl(var(--destructive))]",
+                expanded && "bg-secondary/40",
             )}
         >
-            {/* Main dense row */}
-            <div className="flex items-center gap-3 py-1.5 px-3">
+            {/* Main dense row — wraps to two lines on narrow screens */}
+            <div className="flex min-h-[34px] flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1">
                 <button
+                    type="button"
                     onClick={() => setExpanded(!expanded)}
-                    className="text-muted-foreground hover:text-foreground transition-colors duration-150 shrink-0"
+                    className="shrink-0 text-faint transition-colors hover:text-foreground"
                     aria-label={expanded ? "Collapse" : "Expand"}
+                    aria-expanded={expanded}
                 >
                     {expanded ? (
                         <ChevronDown className="h-3 w-3" />
@@ -644,16 +684,16 @@ function VtxoDenseRow({
                 {/* Outpoint */}
                 <Link
                     to={`/tx/${vtxo.txid}`}
-                    className="font-mono text-xs text-foreground hover:text-primary transition-colors duration-150 truncate min-w-0 shrink"
+                    className="min-w-0 shrink font-mono text-[12px] text-foreground hover:text-virt"
                 >
                     {truncateHash(vtxo.txid, 6, 4)}:{vtxo.vout}
                 </Link>
 
                 {/* Spent by inline */}
-                {vtxo.spentBy && (
+                {vtxo.spentBy && vtxo.spentBy !== "" && (
                     <Link
                         to={`/tx/${vtxo.spentBy}`}
-                        className="text-[10px] text-muted-foreground hover:text-foreground font-mono transition-colors duration-150 shrink-0 hidden sm:inline"
+                        className="shrink-0 font-mono text-[10px] text-faint transition-colors hover:text-foreground hidden sm:inline"
                         title={`Spent by ${vtxo.spentBy}`}
                     >
                         spent:{truncateHash(vtxo.spentBy, 4, 4)}
@@ -664,19 +704,22 @@ function VtxoDenseRow({
                 {vtxo.settledBy && (
                     <Link
                         to={`/commitment-tx/${vtxo.settledBy}`}
-                        className="text-[10px] text-muted-foreground hover:text-foreground font-mono transition-colors duration-150 shrink-0 hidden sm:inline"
+                        className="shrink-0 font-mono text-[10px] text-faint transition-colors hover:text-foreground hidden sm:inline"
                         title={`Settled by ${vtxo.settledBy}`}
                     >
                         settled:{truncateHash(vtxo.settledBy, 4, 4)}
                     </Link>
                 )}
 
-                {/* Spacer */}
-                <div className="flex-1" />
+                {/* Spacer pushes the trailing group right on the first line */}
+                <span className="flex-1" />
 
-                {/* Amount */}
-                <div className="flex items-center gap-2 shrink-0">
-                    <MoneyDisplay sats={vtxo.value} className="text-foreground font-mono text-xs" />
+                {/* Amount + assets */}
+                <span className="flex shrink-0 items-center gap-2">
+                    <MoneyDisplay
+                        sats={vtxo.value}
+                        className="font-mono text-[12px] text-foreground"
+                    />
                     {vtxo.assets &&
                         vtxo.assets.length > 0 &&
                         vtxo.assets.map((asset, idx: number) => (
@@ -684,33 +727,33 @@ function VtxoDenseRow({
                                 key={idx}
                                 amount={asset.amount}
                                 assetId={asset.assetId}
-                                valueClassName="text-foreground font-bold font-mono text-xs"
-                                unitClassName="text-foreground font-mono text-xs"
+                                valueClassName="font-mono text-[11px] font-semibold text-foreground"
+                                unitClassName="font-mono text-[11px] text-foreground"
                             />
                         ))}
-                </div>
+                </span>
 
-                {/* Status */}
-                <StatusBadges vtxo={vtxo} />
-
-                {/* Expiry */}
-                <ExpiryCountdown vtxo={vtxo} compact className="shrink-0 text-right" />
+                {/* State + expiry: wraps under the identity line on narrow screens */}
+                <span className="flex shrink-0 items-center gap-2">
+                    <StatusTag vtxo={vtxo} />
+                    <ExpiryCountdown
+                        vtxo={vtxo}
+                        compact
+                        showBadge={false}
+                        className="shrink-0 text-right"
+                    />
+                </span>
             </div>
 
             {/* Expanded details */}
             {expanded && (
-                <div className="px-3 pb-2 pl-9 space-y-1.5">
-                    <CreatedAt vtxo={vtxo} />
-                    <AssetsList vtxo={vtxo} />
-                    <AddressLink
+                <div className="px-3 pb-2.5 pl-9">
+                    <VtxoDetails
                         vtxo={vtxo}
                         signerPubkey={signerPubkey}
                         network={network}
                         showScript={showScript}
                     />
-                    <SpentByLink vtxo={vtxo} />
-                    <SettledByLink vtxo={vtxo} />
-                    <DebugToggle vtxo={vtxo} />
                 </div>
             )}
         </div>
@@ -733,6 +776,24 @@ export function VtxoList({
 
     const signerPubkey = serverInfo?.signerPubkey;
     const network = serverInfo?.network;
+
+    // One shared clock/delay/tip for every row's atlasVtxoState call.
+    const now = useNow();
+    const { unilateralExitDelay } = useExitDelays();
+    const needsTip = vtxos.some(
+        (v) => v.expiresAtHeight !== undefined && v.expiresAtHeight !== null,
+    );
+    const tipHeight = useChainTip(needsTip);
+
+    const atlasCtx = useMemo<AtlasVtxoContext>(
+        () => ({
+            nowMs: now,
+            exitDelay: unilateralExitDelay,
+            tipHeight,
+            pendingOutpoints: pendingOutpoints ?? EMPTY_PENDING,
+        }),
+        [now, unilateralExitDelay, tipHeight, pendingOutpoints],
+    );
 
     if (vtxos.length === 0) {
         return <EmptyState />;
@@ -774,9 +835,5 @@ export function VtxoList({
         }
     })();
 
-    return (
-        <PendingOutpointsContext.Provider value={pendingOutpoints ?? EMPTY_PENDING}>
-            {body}
-        </PendingOutpointsContext.Provider>
-    );
+    return <AtlasCtxContext.Provider value={atlasCtx}>{body}</AtlasCtxContext.Provider>;
 }

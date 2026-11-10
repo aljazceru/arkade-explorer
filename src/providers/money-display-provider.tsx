@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 
-type MoneyUnit = "sats" | "btc";
+export type MoneyUnit = "sats" | "btc";
 
 interface MoneyDisplayContextType {
     unit: MoneyUnit;
@@ -12,35 +12,28 @@ const MoneyDisplayContext = createContext<MoneyDisplayContextType | undefined>(u
 
 const STORAGE_KEY = "arkade-explorer-money-unit";
 
-export function MoneyDisplayProvider({ children }: { children: ReactNode }) {
-    const [unit, setUnitState] = useState<MoneyUnit>("btc");
+function readStoredUnit(): MoneyUnit | null {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return stored === "btc" || stored === "sats" ? stored : null;
+    } catch {
+        return null;
+    }
+}
 
-    useEffect(() => {
-        try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored === "btc" || stored === "sats") {
-                setUnitState(stored);
-            }
-        } catch {
-            // localStorage unavailable
-        }
-    }, []);
+/** Amount unit preference. Atlas reads in sats by default; BTC is one toggle away. */
+export function MoneyDisplayProvider({ children }: { children: ReactNode }) {
+    const [unit, setUnit] = useState<MoneyUnit>(() => readStoredUnit() ?? "sats");
 
     useEffect(() => {
         try {
             localStorage.setItem(STORAGE_KEY, unit);
-        } catch (error) {
-            console.error("Failed to save money unit preference:", error);
+        } catch {
+            // localStorage unavailable: the preference lasts for this session.
         }
     }, [unit]);
 
-    const toggleUnit = () => {
-        setUnitState((prev) => (prev === "sats" ? "btc" : "sats"));
-    };
-
-    const setUnit = (newUnit: MoneyUnit) => {
-        setUnitState(newUnit);
-    };
+    const toggleUnit = () => setUnit((prev) => (prev === "sats" ? "btc" : "sats"));
 
     return (
         <MoneyDisplayContext.Provider value={{ unit, toggleUnit, setUnit }}>

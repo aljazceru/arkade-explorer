@@ -1,4 +1,4 @@
-import { AlertTriangle, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import type { VirtualCoin } from "@arkade-os/sdk";
 import { cn } from "@/lib/utils";
 import {
@@ -18,54 +18,96 @@ export function useVtxoExpiry(vtxo: VirtualCoin) {
     const tip = useChainTip(vtxo.expiresAtHeight !== undefined && vtxo.expiresAtHeight !== null);
     const { unilateralExitDelay } = useExitDelays();
     const kind = deriveExpiryKind(vtxo);
-    const remaining = kind === "active" ? remainingLifetime(vtxo, now, tip) : null;
-    const urgency: ExpiryUrgency | null =
-        kind === "active" ? deriveExpiryUrgency(remaining, unilateralExitDelay) : null;
-    return { kind, remaining, urgency, unilateralExitDelay };
+    // An unrolled VTXO already exited on-chain: no batch countdown applies.
+    const terminal = kind !== "active" || vtxo.isUnrolled === true;
+    const remaining = terminal ? null : remainingLifetime(vtxo, now, tip);
+    const urgency: ExpiryUrgency | null = terminal
+        ? null
+        : deriveExpiryUrgency(remaining, unilateralExitDelay);
+    return { kind, remaining, urgency, unilateralExitDelay, unrolled: vtxo.isUnrolled === true };
 }
 
-/** Big, unmissable URGENT pill. */
+/** Exit-window flag: renew into a new batch or exit on-chain now. */
 export function NeedsExitBadge({ expired, className }: { expired?: boolean; className?: string }) {
     return (
         <span
             className={cn(
-                "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                "bg-red-600 text-white ring-2 ring-red-500/40 animate-pulse",
+                "micro inline-flex items-center gap-1 whitespace-nowrap rounded border border-alert/60 bg-alert/15 px-1.5 py-[2px] font-semibold leading-none text-alert",
                 className,
             )}
             role="alert"
         >
-            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-            {expired ? "Expired" : "Urgent: needs exit"}
+            <span aria-hidden="true">▲</span>
+            {expired ? "Expired" : "Renew or exit"}
         </span>
     );
 }
 
 /**
- * Expiry slot for a VTXO row: "Settled"/"Spent" for terminal VTXOs, otherwise a
- * live countdown (blocks + estimated time) and an URGENT flag when the remaining
- * lifetime is at or below the server's unilateral exit delay.
+ * Expiry slot for a VTXO row: "Spent in batch"/"Spent" for terminal VTXOs,
+ * otherwise a live countdown (blocks + estimated time) and the exit-window flag
+ * when the remaining lifetime is at or below the server's unilateral exit delay.
+ *
+ * `showBadge={false}` (Atlas rows, where VtxoStateTag already carries the state)
+ * renders only the countdown time for live VTXOs and "—" otherwise.
  */
 export function ExpiryCountdown({
     vtxo,
     compact,
     className,
+    showBadge = true,
 }: {
     vtxo: VirtualCoin;
     compact?: boolean;
     className?: string;
+    showBadge?: boolean;
 }) {
-    const { kind, remaining, urgency, unilateralExitDelay } = useVtxoExpiry(vtxo);
-    const label = expiryKindLabel(kind);
-    if (label) {
+    const { kind, remaining, urgency, unilateralExitDelay, unrolled } = useVtxoExpiry(vtxo);
+    const label = unrolled && kind === "active" ? "Exit started" : expiryKindLabel(kind);
+    if (!showBadge) {
+        const quiet = (
+            <span className={cn("font-mono text-[11px] text-faint/60", className)}>—</span>
+        );
+        if (label || !remaining || remaining.seconds <= 0) return quiet;
+        const urgent = urgency === "urgent" || urgency === "expired";
+        const title =
+            `Batch expiry ${new Date(remaining.expiresAtMs).toLocaleString()}` +
+            (remaining.source === "time" ? " (blocks estimated at 10 min/block)" : "") +
+            (unilateralExitDelay
+                ? `. Unilateral exit delay: ${describeTimelock(unilateralExitDelay)}`
+                : ". Exit window unknown");
         return (
-            <span className={cn("text-xs text-muted-foreground font-mono", className)}>
-                {label}
+            <span
+                className={cn(
+                    "inline-flex items-center gap-1 whitespace-nowrap font-mono text-[11px]",
+                    compact ? "flex-row" : "flex-col items-end sm:flex-row sm:items-center",
+                    urgent ? "font-semibold text-alert" : "text-muted-foreground",
+                    className,
+                )}
+                title={title}
+                data-expiry-urgency={urgency ?? undefined}
+            >
+                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                    {!urgent && <Clock className="h-3 w-3 text-faint" aria-hidden="true" />}
+                    {remaining.source === "time" ? "~" : ""}
+                    {`${Math.max(0, remaining.blocks).toLocaleString("en-US")} blk`}
+                    <span className="text-faint">·</span>~{formatDuration(remaining.seconds)}
+                </span>
             </span>
         );
     }
+    if (label) {
+        return <span className={cn("font-mono text-[11px] text-faint", className)}>{label}</span>;
+    }
     if (!remaining) {
-        return <span className={cn("text-xs text-muted-foreground font-mono", className)}>--</span>;
+        return (
+            <span
+                className={cn("font-mono text-[11px] text-warning", className)}
+                title="No expiry evidence: unknown is not safe"
+            >
+                expiry unknown
+            </span>
+        );
     }
 
     const urgent = urgency === "urgent" || urgency === "expired";
@@ -74,7 +116,7 @@ export function ExpiryCountdown({
         (remaining.source === "time" ? " (blocks estimated at 10 min/block)" : "") +
         (unilateralExitDelay
             ? `. Unilateral exit delay: ${describeTimelock(unilateralExitDelay)}`
-            : "");
+            : ". Exit window unknown");
 
     const expired = remaining.seconds <= 0;
     const blocks = `${Math.max(0, remaining.blocks).toLocaleString("en-US")} blk`;
@@ -84,9 +126,9 @@ export function ExpiryCountdown({
     return (
         <span
             className={cn(
-                "inline-flex items-center gap-1.5 font-mono text-xs",
+                "inline-flex items-center gap-1.5 font-mono text-[11px]",
                 compact ? "flex-row" : "flex-col items-end sm:flex-row sm:items-center",
-                urgent ? "text-red-600 dark:text-red-400 font-semibold" : "text-muted-foreground",
+                urgent ? "font-semibold text-alert" : "text-muted-foreground",
                 className,
             )}
             title={title}
@@ -95,10 +137,10 @@ export function ExpiryCountdown({
             {urgent && <NeedsExitBadge expired={urgency === "expired"} />}
             {!expired && (
                 <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                    {!urgent && <Clock className="h-3 w-3" aria-hidden="true" />}
+                    {!urgent && <Clock className="h-3 w-3 text-faint" aria-hidden="true" />}
                     {approx}
                     {blocks}
-                    <span className="opacity-60">·</span>~{time}
+                    <span className="text-faint">·</span>~{time}
                 </span>
             )}
         </span>

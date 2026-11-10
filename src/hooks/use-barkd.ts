@@ -39,6 +39,11 @@ export function useBarkd(): {
     vtxos: BarkdVtxo[] | null;
     tipHeight: number | null;
     nextRoundAt: string | null;
+    /**
+     * Timestamp (ms epoch) of the last successful VTXO-list fetch — use this
+     * for "as of" provenance labels; the countdown `now` arg is separate.
+     */
+    updatedAt: number;
     isLoading: boolean;
     error: Error | null;
 } {
@@ -95,6 +100,7 @@ export function useBarkd(): {
         vtxos: vtxosQuery.data ?? null,
         tipHeight: tipHeightQuery.data ?? null,
         nextRoundAt: nextRoundQuery.data ?? null,
+        updatedAt: vtxosQuery.dataUpdatedAt,
         isLoading:
             connected &&
             (vtxosQuery.isLoading || tipHeightQuery.isLoading || nextRoundQuery.isLoading),

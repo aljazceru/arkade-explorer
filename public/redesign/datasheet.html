@@ -1,0 +1,2109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ark.observer — Datasheet</title>
+<style>
+@font-face{font-family:"Archivo";src:url("fonts/archivo-var.woff2") format("woff2");font-weight:100 900;font-stretch:62% 125%;font-display:swap}
+@font-face{font-family:"IBM Plex Mono";src:url("fonts/ibm-plex-mono-400.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"IBM Plex Mono";src:url("fonts/ibm-plex-mono-500.woff2") format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:"IBM Plex Mono";src:url("fonts/ibm-plex-mono-600.woff2") format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Geist Mono";src:url("fonts/geist-mono-var.woff2") format("woff2");font-weight:100 900;font-display:swap}
+
+:root{
+  --paper:#F3F2EE; --paper-2:#EAE8E2; --ink:#131313; --ink-2:#4A4843; --ink-3:#6B6760;
+  --rule:#CDC9C0; --alert:#E2401C; --alert-ink:#C0390F;
+  --ch-a:#2F3FD8; --ch-s:#0E7C66;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --disp:"Archivo",system-ui,sans-serif;
+  --gutter:180px;
+  --maxw:1360px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{
+  background:var(--paper); color:var(--ink); font-family:var(--disp); font-stretch:100%;
+  font-size:16px; line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--ink);color:var(--paper)}
+a{color:inherit;text-decoration:none}
+a:hover{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.mono{font-family:var(--mono)}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.tri{color:var(--alert-ink)}
+.dim{color:var(--ink-3)}
+.small{font-size:12.5px}
+
+/* ---------- masthead ---------- */
+.masthead{
+  max-width:var(--maxw); margin:0 auto; padding:28px 32px 0;
+  display:grid; grid-template-columns:1fr auto; gap:24px; align-items:end;
+  border-bottom:2px solid var(--ink); padding-bottom:20px;
+}
+.brand{font-family:var(--disp); font-stretch:125%; font-weight:600; font-size:15px; letter-spacing:.14em; text-transform:uppercase}
+.brand-sub{font-size:13.5px; color:var(--ink-2); margin-top:6px; max-width:52ch}
+.mast-right{text-align:right; font-family:var(--mono); font-size:11.5px; color:var(--ink-2); line-height:1.7}
+.mast-right .clock{font-size:15px; color:var(--ink); font-weight:500}
+.mast-controls{display:flex; gap:18px; justify-content:flex-end; align-items:center; margin-top:10px; flex-wrap:wrap}
+.btn-quiet{
+  font-family:var(--mono); font-size:11.5px; letter-spacing:.04em; background:none; border:none;
+  border-bottom:1px solid var(--ink-3); color:var(--ink-2); padding:2px 0; cursor:pointer;
+}
+.btn-quiet:hover{color:var(--ink);border-bottom-color:var(--ink)}
+.switcher{display:flex; gap:0; border:1px solid var(--rule); font-family:var(--mono); font-size:11px}
+.switcher a{padding:4px 9px; color:var(--ink-3); border-right:1px solid var(--rule); letter-spacing:.03em}
+.switcher a:last-child{border-right:none}
+.switcher a.cur{background:var(--ink); color:var(--paper)}
+.switcher a:hover{text-decoration:none;color:var(--ink)}
+.switcher a.cur:hover{color:var(--paper)}
+
+/* ---------- search ---------- */
+.search-wrap{max-width:var(--maxw); margin:0 auto; padding:26px 32px 8px}
+.search-box{position:relative}
+#q{
+  width:100%; border:none; border-bottom:1px solid var(--ink); background:transparent; outline:none; font-family:var(--mono);
+  font-size:20px; color:var(--ink); padding:10px 0 12px; caret-color:var(--ink);
+}
+#q::placeholder{color:var(--ink-3); font-family:var(--disp); font-size:15px}
+#q:focus-visible{border-bottom-width:2px}
+.search-hint{font-family:var(--mono); font-size:11px; color:var(--ink-3); margin-top:8px; letter-spacing:.02em}
+.suggest{
+  position:absolute; left:0; right:0; top:100%; z-index:50; background:var(--paper);
+  border:1px solid var(--ink); border-top:none; max-height:320px; overflow:auto;
+}
+.suggest[hidden]{display:none}
+.suggest .sg-item{
+  display:flex; gap:12px; align-items:baseline; padding:9px 14px; cursor:pointer;
+  border-bottom:1px solid var(--rule); font-family:var(--mono); font-size:12px;
+}
+.suggest .sg-item:last-child{border-bottom:none}
+.suggest .sg-item:hover,.suggest .sg-item.active{background:var(--paper-2)}
+.suggest .sg-kind{color:var(--ink-3); min-width:88px; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em}
+.suggest .sg-val{color:var(--ink); word-break:break-all}
+.suggest .sg-note{color:var(--ink-3); font-size:11px; margin-left:auto; white-space:nowrap}
+
+/* ---------- layout grid ---------- */
+.page{max-width:var(--maxw); margin:0 auto; padding:0 32px 80px}
+.section{
+  display:grid; grid-template-columns:var(--gutter) 1fr; gap:0 32px;
+  border-top:2px solid var(--ink); margin-top:56px; padding-top:0;
+}
+.sec-margin{
+  padding-top:22px; font-family:var(--mono); font-size:11px; color:var(--ink-3);
+  border-right:1px solid var(--rule); padding-right:20px; min-height:100%;
+}
+.sec-margin .sec-num{font-size:22px; color:var(--ink); font-weight:500; display:block; margin-bottom:6px}
+.sec-margin .sec-label{display:block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-2); margin-bottom:14px}
+.sec-margin .prov{display:block; margin-top:10px; line-height:1.6}
+.sec-margin .prov a{border-bottom:1px dotted var(--ink-3)}
+.sec-body{padding:22px 0 40px 8px; min-width:0}
+.sec-title{
+  font-family:var(--disp); font-stretch:125%; font-weight:600; font-size:12px;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--ink-2); margin-bottom:18px;
+}
+.reading{
+  display:block; font-size:17px; line-height:1.65; max-width:64ch; color:var(--ink);
+  padding:14px 0 6px;
+}
+.reading .fn{font-family:var(--mono); font-size:10.5px; color:var(--ink-3); vertical-align:super; margin-left:1px; cursor:help}
+.reading b,.reading strong{font-weight:600}
+.reading .mono{font-size:.92em;word-break:break-all;overflow-wrap:anywhere}
+.sec-margin .prov{word-break:normal;overflow-wrap:break-word}
+.prov-after{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-top:10px;padding-top:8px;border-top:1px solid var(--rule);line-height:1.75}
+.prov-after .mono{font-size:10px}
+.prov-after a{border-bottom:1px dotted var(--ink-3);text-decoration:none}
+.prov-after a:hover{border-bottom-color:var(--ink)}
+
+/* ---------- figures row ---------- */
+.figures{display:grid; grid-template-columns:repeat(6,1fr); gap:0; border:1px solid var(--ink); margin-bottom:8px}
+.figure{padding:16px 14px 14px; border-right:1px solid var(--rule); min-width:0; display:flex; flex-direction:column}
+.figure:last-child{border-right:none}
+.fig-label{font-family:var(--mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); margin-bottom:10px; display:flex; justify-content:space-between; gap:6px; flex-wrap:wrap; row-gap:2px}
+.fig-val{
+  font-family:var(--disp); font-stretch:70%; font-weight:550;
+  font-size:clamp(20px,1.7vw,32px);
+  font-variant-numeric:tabular-nums; line-height:1.05; letter-spacing:-.01em;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.fig-val .unit{font-size:.55em; font-stretch:100%; font-weight:400; color:var(--ink-3); margin-left:2px}
+.fig-sub{font-family:var(--mono); font-size:11px; color:var(--ink-2); margin-top:8px; line-height:1.5}
+.fig-sub .tri{font-size:9px}
+.spark{display:block; margin-top:auto; height:26px; width:100%}
+.spark path{fill:none;stroke:var(--ink);stroke-width:1}
+.spark .base{stroke:var(--rule)}
+
+/* ---------- tables ---------- */
+table.ds{width:100%; border-collapse:collapse; font-size:13.5px}
+table.ds th{
+  font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-3); text-align:left; font-weight:500; padding:8px 10px 8px 0;
+  border-bottom:1px solid var(--ink);
+}
+table.ds td{padding:9px 10px 9px 0; border-bottom:1px solid var(--rule); vertical-align:top; font-variant-numeric:tabular-nums}
+table.ds tr:last-child td{border-bottom:none}
+table.ds td.num{text-align:right;font-family:var(--mono);font-size:12.5px}
+table.ds th.num{text-align:right}
+table.ds td.id{font-family:var(--mono);font-size:11.5px;word-break:break-all}
+table.ds .state{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.st-preconfirmed{color:var(--ch-a)} .st-settled{color:var(--ink-2)} .st-renew{color:var(--alert-ink)}
+.st-expired,.st-spent,.st-swept,.st-refreshed{color:var(--ink-3)}
+.st-confirmed{color:var(--ink)} .st-mempool{color:var(--ink-3)} .st-unknown{color:var(--ink-3)}
+.net-tag{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+.net-arkade{color:var(--ch-a)} .net-second{color:var(--ch-s)}
+.kind-tag{font-family:var(--mono);font-size:10.5px;color:var(--ink-2)}
+
+/* ledger */
+.ledger-filters{display:flex; gap:22px; margin:14px 0 4px; flex-wrap:wrap}
+.ledger-filters button{
+  background:none;border:none;font-family:var(--mono);font-size:12px;color:var(--ink-3);
+  padding:4px 0;border-bottom:1px solid transparent;cursor:pointer;letter-spacing:.03em;
+}
+.ledger-filters button.on{color:var(--ink);border-bottom-color:var(--ink)}
+.ledger-filters button .cnt{color:var(--ink-3);font-size:10.5px;margin-left:4px}
+.ledger-more{margin-top:14px}
+
+/* spec table */
+.spec-table td:first-child,.spec-table th:first-child{width:15%}
+.spec-table td:nth-child(2),.spec-table th:nth-child(2){width:21%}
+.spec-table td:nth-child(3),.spec-table th:nth-child(3){width:20%}
+.spec-table td:nth-child(4),.spec-table th:nth-child(4){width:44%}
+.spec-table tr:hover td{background:var(--paper-2)}
+table.ds tr.row-action td{background:var(--paper-2);box-shadow:inset 2px 0 0 var(--alert)}
+.spec-table .reading-cell{color:var(--ink-2);font-size:12.5px;line-height:1.5;max-width:34ch}
+.spec-table .raw{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);display:block;margin-top:3px}
+.spec-table tr:hover td{background:var(--paper-2)}
+
+/* ---------- charts ---------- */
+.chart-wrap{position:relative;overflow-x:auto}
+.chart-wrap svg{display:block;min-width:640px;width:100%;height:auto}
+.axis{stroke:var(--ink);stroke-width:1}
+.axis-tick{stroke:var(--rule);stroke-width:1}
+.tick-label{font-family:var(--mono);font-size:10px;fill:var(--ink-3)}
+.chart-label{font-family:var(--mono);font-size:10px;fill:var(--ink-3);letter-spacing:.06em;text-transform:uppercase}
+.chart-anno{font-family:var(--mono);font-size:10.5px;fill:var(--ink-2)}
+.stroke-a{stroke:var(--ch-a);stroke-width:1.5}
+.stroke-s{stroke:var(--ch-s);stroke-width:1.5}
+.stroke-agg{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3 3;opacity:.55}
+.stroke-hit{fill:transparent;cursor:pointer}
+.crosshair{stroke:var(--ink);stroke-width:1;stroke-dasharray:2 2;opacity:.5}
+.readout{
+  position:absolute; pointer-events:none; background:var(--paper); border:1px solid var(--ink);
+  font-family:var(--mono); font-size:11px; padding:8px 10px; line-height:1.6; z-index:5;
+  box-shadow:3px 3px 0 rgba(19,19,19,.12); white-space:nowrap;
+}
+.readout .rt{color:var(--ink-3);font-size:9.5px;text-transform:uppercase;letter-spacing:.08em}
+.window-toggle{display:inline-flex;gap:0;border:1px solid var(--rule);margin-bottom:10px}
+.window-toggle button{background:none;border:none;font-family:var(--mono);font-size:11px;padding:5px 12px;color:var(--ink-3);cursor:pointer;border-right:1px solid var(--rule)}
+.window-toggle button:last-child{border-right:none}
+.window-toggle button.on{background:var(--ink);color:var(--paper)}
+
+/* ---------- stratigraphy (bands; Bitcoin at bottom → this tx on top) ---------- */
+.strata{margin:18px 0}
+.stratum.band{
+  position:relative;display:flex;align-items:center;gap:14px;
+  border-left:2px solid var(--ink);padding:0 14px;margin-bottom:3px;
+  background:var(--paper);cursor:default;
+}
+.stratum.band .lvl{font-family:var(--mono);font-size:10px;color:var(--ink-3);letter-spacing:.08em;flex:none;min-width:34px}
+.stratum.band .desc{font-size:12.5px;line-height:1.4;min-width:0;flex:1}
+.stratum.band .desc .t{font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+.stratum.band .cnt{font-family:var(--mono);font-size:11px;color:var(--ink-2);flex:none}
+.stratum.band.compressed{background-image:repeating-linear-gradient(45deg,transparent 0 5px,rgba(19,19,19,.07) 5px 6px)}
+.stratum.band.link{cursor:pointer}
+.stratum.band.link:hover{background-color:var(--paper-2)}
+.stratum.band.link .desc::after{content:"→";font-family:var(--mono);color:var(--ink-3);margin-left:8px}
+.stratum.band.current{border-left-color:var(--alert);border-left-width:3px}
+
+/* flow figure */
+.flow-svg{display:block;width:100%;height:auto}
+.chart-wrap .flow-svg{min-width:820px}
+.flow-cap{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-top:8px;line-height:1.6}
+.expiry-legend{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:10.5px;color:var(--ink-2);margin-top:8px}
+.expiry-legend .sw{display:inline-block;width:8px;height:8px;margin-right:5px;vertical-align:-1px}
+.expiry-legend .sw.tri{background:none;color:var(--alert-ink);font-size:9px;width:auto;height:auto}
+
+/* ---------- expiry horizon ---------- */
+.expiry-note{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:8px;line-height:1.6}
+
+/* ---------- address statement ---------- */
+.stmt-head{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:end;margin-bottom:24px}
+.stmt-balance .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+.stmt-balance .val{font-family:var(--disp);font-stretch:65%;font-weight:580;font-size:clamp(40px,5.5vw,72px);font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-.02em}
+.stmt-balance .val .unit{font-size:.4em;color:var(--ink-3);font-stretch:100%;font-weight:400;margin-left:4px}
+.stmt-sub{font-family:var(--mono);font-size:12px;color:var(--ink-2);line-height:1.8;margin-top:12px}
+.state-bar{display:flex;height:22px;border:1px solid var(--ink);margin:16px 0 8px}
+.state-bar div{height:100%}
+.sb-labels{display:flex;flex-wrap:wrap;gap:8px 26px;font-family:var(--mono);font-size:10.5px;color:var(--ink-2);margin-top:8px}
+.sb-labels span{white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.sb-labels b{font-weight:600}
+.sb-labels .sw{display:inline-block;width:9px;height:9px;flex:none}
+
+/* ---------- watchlist ---------- */
+.watch-empty{color:var(--ink-3);font-size:14px;padding:20px 0}
+.watch-item{display:grid;grid-template-columns:1fr auto auto;gap:16px;padding:10px 0;border-bottom:1px solid var(--rule);align-items:baseline;font-size:13px}
+.watch-item .wi-id{font-family:var(--mono);font-size:11.5px;word-break:break-all}
+.watch-item .wi-exp{font-family:var(--mono);font-size:11px;color:var(--ink-2);white-space:nowrap}
+.watch-item .wi-exp.tri{color:var(--alert-ink)}
+.watch-item button{background:none;border:none;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);cursor:pointer;text-decoration:underline}
+
+/* ---------- sources / glossary ---------- */
+.src-list{list-style:none;counter-reset:src}
+.src-list li{counter-increment:src;padding:10px 0 10px 34px;border-bottom:1px solid var(--rule);position:relative;font-size:13px;line-height:1.6}
+.src-list li::before{content:counter(src,decimal-leading-zero);position:absolute;left:0;top:10px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.src-list .src-url{font-family:var(--mono);font-size:11px;color:var(--ink-2);word-break:break-all;display:block;margin-top:2px}
+.glossary{display:grid;grid-template-columns:1fr 1fr;gap:0 40px}
+.glossary dt{font-family:var(--mono);font-size:12px;font-weight:600;margin-top:14px;border-top:1px solid var(--ink);padding-top:8px}
+.glossary dd{font-size:13px;color:var(--ink-2);margin-top:4px;line-height:1.55}
+
+/* ---------- colophon / footer ---------- */
+.colophon{
+  max-width:var(--maxw);margin:0 auto;padding:32px;border-top:2px solid var(--ink);
+  display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:10.5px;color:var(--ink-3);line-height:1.7;
+}
+
+/* ---------- detail views ---------- */
+.detail-head{padding:26px 0 0}
+.detail-kind{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px}
+.detail-title{font-family:var(--disp);font-stretch:110%;font-weight:650;font-size:clamp(30px,4vw,52px);line-height:1.02;letter-spacing:-.015em}
+.detail-title.mono{font-family:var(--mono);font-stretch:normal;font-weight:500;letter-spacing:0}
+.detail-id{font-family:var(--mono);font-size:13px;color:var(--ink-2);margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.detail-id .mono{word-break:break-all;overflow-wrap:anywhere}
+.detail-id .copy,.spec-table .copy,.psbt-box .copy{
+  font-family:var(--mono);font-size:10px;color:var(--ink-2);background:none;
+  border:1px solid var(--rule);padding:3px 8px;cursor:pointer;letter-spacing:.04em;
+}
+.detail-id .copy:hover,.spec-table .copy:hover,.psbt-box .copy:hover{border-color:var(--ink);color:var(--ink)}
+.spec-table .copy{font-size:9.5px;margin-left:5px;white-space:nowrap}
+.detail-meta{display:flex;gap:28px;flex-wrap:wrap;margin-top:18px;font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+.detail-meta b{color:var(--ink);font-weight:500}
+.field-table{width:100%;border-collapse:collapse;margin:8px 0 4px}
+.field-table td{padding:9px 12px 9px 0;border-bottom:1px solid var(--rule);vertical-align:top;font-size:13.5px}
+.field-table td:first-child{width:180px;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;padding-top:12px;white-space:nowrap}
+.field-table td:last-child{font-variant-numeric:tabular-nums}
+.field-table .note{display:block;font-family:var(--mono);font-size:10px;color:var(--ink-3);margin-top:3px;text-transform:none;letter-spacing:0}
+.psbt-box{font-family:var(--mono);font-size:11px;line-height:1.7;word-break:break-all;background:var(--paper-2);padding:14px 16px;margin-top:10px;max-height:220px;overflow:auto;white-space:pre-wrap}
+
+/* timing ruler (commitment) */
+.timing{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--ink);margin:18px 0}
+.timing .tcell{padding:14px 16px;border-right:1px solid var(--rule)}
+.timing .tcell:last-child{border-right:none}
+.timing .tl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.timing .tv{font-family:var(--mono);font-size:14px}
+.timing .ts{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-top:4px}
+.truler{position:relative;height:46px;margin:8px 0 24px}
+.tr-line{position:absolute;left:0;right:0;top:20px;border-top:1px solid var(--ink)}
+.tr-dot{position:absolute;top:15px;width:10px;height:10px;background:var(--ink);transform:translateX(-50%) rotate(45deg)}
+.tr-dot.tr-close{background:var(--ch-a)}
+.tr-lab{position:absolute;top:30px;transform:translateX(-50%);font-family:var(--mono);font-size:9.5px;color:var(--ink-2);white-space:nowrap}
+.tr-dur{position:absolute;top:6px;transform:translateX(-50%);font-family:var(--mono);font-size:9.5px;color:var(--ink-3);white-space:nowrap}
+
+/* not found */
+.notfound{padding:80px 0;text-align:left}
+.notfound .nf-title{font-family:var(--disp);font-stretch:110%;font-weight:600;font-size:clamp(26px,3.5vw,44px);margin-bottom:14px}
+.notfound p{color:var(--ink-2);max-width:52ch;margin-bottom:20px}
+
+/* copy toast */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);
+  font-family:var(--mono);font-size:11px;padding:8px 16px;z-index:100;opacity:0;pointer-events:none;
+  transition:opacity .18s;
+}
+.toast.show{opacity:1}
+
+/* watch button */
+.watch-btn{font-family:var(--mono);font-size:10px;letter-spacing:.04em;background:none;border:1px solid var(--rule);padding:3px 9px;cursor:pointer;color:var(--ink-2);border-radius:0}
+.watch-btn:hover{border-color:var(--ink);color:var(--ink)}
+.watch-btn.on{border-color:var(--ink);color:var(--ink);background:var(--paper-2)}
+
+/* ---------- responsive ---------- */
+@media (max-width:980px){
+  :root{--gutter:0px}
+  .masthead{grid-template-columns:1fr;padding:16px 20px 0;gap:12px}
+  .brand-sub{display:none}
+  .mast-right{text-align:left}
+  .mast-controls{justify-content:flex-start;margin-top:6px}
+  .search-wrap,.page{padding-left:20px;padding-right:20px}
+  .section{grid-template-columns:1fr;gap:0}
+  /* footnotes move below the Reading on narrow screens */
+  .sec-margin{display:contents}
+  .sec-margin .sec-num{order:1;font-size:18px;margin-bottom:0}
+  .sec-margin .sec-label{order:2;margin-bottom:0}
+  .sec-body{order:3;padding:14px 0 28px}
+  .sec-margin .prov{order:4;margin:12px 0 0;padding-top:10px;border-top:1px solid var(--rule)}
+  .figures{grid-template-columns:repeat(2,1fr)}
+  .figure{border-bottom:1px solid var(--rule)}
+  .figure:nth-child(2n){border-right:none}
+  .figure:nth-last-child(-n+2){border-bottom:none}
+  .glossary{grid-template-columns:1fr}
+  .stmt-head{grid-template-columns:1fr}
+  .timing{grid-template-columns:1fr}
+  .timing .tcell{border-right:none;border-bottom:1px solid var(--rule)}
+  .timing .tcell:last-child{border-bottom:none}
+  table.ds thead{display:none}
+  table.ds tr{display:block;padding:8px 0;border-bottom:1px solid var(--rule)}
+  table.ds td{display:block;border:none;padding:3px 0;text-align:left!important}
+  table.ds td::before{content:attr(data-th);display:block;font-family:var(--mono);font-size:9.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em}
+  table.ds td.id::before{content:"id"}
+  .spec-table .reading-cell{max-width:none}
+  .spec-table td,.spec-table th{width:auto!important}
+
+}
+@media (max-width:560px){
+  .figures{grid-template-columns:1fr 1fr}
+  .masthead{gap:16px}
+  .switcher a{padding:4px 6px;font-size:10px}
+}
+
+/* ---------- print ---------- */
+@media print{
+  :root{--paper:#fff}
+  body{background:#fff;font-size:12px}
+  .mast-controls,.search-wrap,.switcher,.watch-btn,.btn-quiet,.ledger-more,.window-toggle,.no-print,.clock{display:none!important}
+  .masthead{padding:0 0 12px;border-bottom:2px solid #000}
+  .page{padding:0;max-width:none}
+  .section{grid-template-columns:1fr;margin-top:24px;page-break-inside:auto}
+  .sec-margin{border:none;padding:0 0 8px;display:flex;gap:12px;align-items:baseline;page-break-after:avoid;break-after:avoid;page-break-inside:avoid;break-inside:avoid}
+  .sec-body{padding:10px 0 20px}
+  /* undo the mobile footnote-reorder rule that leaks into narrow print */
+  .sec-margin .prov,.sec-margin .sec-num,.sec-margin .sec-label{border-top:none;padding-top:0;margin-top:0;order:0}
+  .chart-wrap{overflow:visible}
+  .chart-wrap svg{min-width:0}
+  .readout,.toast{display:none!important}
+  .figures{border:1px solid #000}
+  table.ds{font-size:10.5px}
+  table.ds th{border-bottom:1px solid #000}
+  .strata,.state-bar,.timing,.psbt-box{page-break-inside:avoid}
+  .stratum.band.link .desc::after{content:none}
+  .stratum.band.link{cursor:default}
+  /* restore desktop table layout — print viewport triggers mobile rules otherwise */
+  table.ds thead{display:table-header-group}
+  table.ds tr{display:table-row;padding:0;border-bottom:none}
+  table.ds td{display:table-cell;border-bottom:1px solid var(--rule);padding:7px 10px 7px 0;text-align:left!important}
+  table.ds td::before{content:none}
+  table.ds td.num,table.ds th.num{text-align:right}
+  .field-table td:first-child{width:auto}
+  .copy{display:none!important}
+  .watch-btn{display:none!important}
+  .sec-body,.reading{max-width:none}
+  a{text-decoration:none;color:#000}
+  .st-*{color:#000!important}
+  .net-arkade,.net-second{color:#000!important}
+  .stroke-a,.stroke-s,.stroke-agg{stroke:#000!important}
+  .tick-label,.chart-label,.chart-anno{fill:#000!important}
+  .crosshair{display:none}
+  @page{margin:16mm 14mm}
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div>
+    <div class="brand">ark.observer</div>
+    <div class="brand-sub">An independent datasheet of Ark on Bitcoin — Arkade &amp; Second. Every figure is computed from one frozen mainnet snapshot; the clock shows time elapsed since capture.</div>
+  </div>
+  <div class="mast-right">
+    <div>Snapshot <span id="snap-time">—</span> · block <span id="snap-block" class="mono">—</span></div>
+    <div class="clock" id="live-clock">—</div>
+    <div class="mast-controls">
+      <button class="btn-quiet" id="print-btn" type="button">Print / Save as PDF</button>
+      <nav class="switcher" aria-label="Proposal switcher">
+        <a href="signal.html#" data-proto="signal">01 Signal</a>
+        <a href="datasheet.html#" data-proto="datasheet" class="cur" aria-current="page">02 Datasheet</a>
+        <a href="atlas.html#" data-proto="atlas">03 Atlas</a>
+        <a href="index.html">All</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<div class="search-wrap">
+  <div class="search-box">
+    <input id="q" type="text" autocomplete="off" spellcheck="false"
+      placeholder="Search the snapshot — txid, address, outpoint, block height, script"
+      aria-label="Search transactions, addresses, blocks">
+    <div class="suggest" id="suggest" hidden role="listbox"></div>
+  </div>
+  <div class="search-hint">txid · ark address · outpoint (txid:vout) · block height · taproot script — press <span class="mono">/</span> to focus</div>
+</div>
+
+<main class="page" id="view"><!-- rendered by JS --></main>
+
+<footer class="colophon" id="colophon"></footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+/* ============================================================
+   ark.observer — Proposal 02 DATASHEET
+   Frozen clock, hash routing, real data only.
+   ============================================================ */
+const D = window.ARK_OBSERVER_DATA;
+const T0 = performance.now();
+const now = () => D.meta.generatedAt + (performance.now() - T0) / 1000;
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const NFMT = new Intl.NumberFormat('en-US');
+const sat = n => n == null ? '—' : NFMT.format(Math.round(n)) + ' sat';
+const sats = n => n == null ? '—' : NFMT.format(Math.round(n));
+const btc = n => {
+  if (n == null) return '—';
+  const v = n / 1e8;
+  const [i, d] = v.toFixed(8).split('.');
+  const ip = NFMT.format(Number(i));
+  return ip + '.' + d;
+};
+
+// BTC-valued archive aggregates: already BTC, show as given (trim trailing zeros)
+const btcAgg = v => {
+  if (v == null || !isFinite(v)) return '—';
+  let s = v.toFixed(6);
+  s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  const [i, d] = s.split('.');
+  return NFMT.format(Number(i)) + (d ? '.' + d : '') + ' BTC';
+};
+const plural = (n, w) => n === 1 ? w : w + 's';
+const dur = sec => {
+  if (sec == null || !isFinite(sec)) return '—';
+  sec = Math.abs(sec);
+  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60), s = Math.floor(sec % 60);
+  if (d >= 1) return d + ' d' + (h ? ' ' + h + ' h' : '');
+  if (h >= 1) return h + ' h' + (m ? ' ' + m + ' min' : '');
+  if (m >= 1) return m + ' min' + (s ? ' ' + s + ' s' : '');
+  return s + ' s';
+};
+// block heights use space grouping per datasheet convention
+const blkNum = n => n == null ? '—' : String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const durShort = sec => {
+  if (sec == null || !isFinite(sec)) return '—';
+  sec = Math.abs(sec);
+  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
+  if (d >= 1) return d + ' d';
+  if (h >= 1) return h + ' h ' + m + ' min';
+  if (m >= 1) return m + ' min ' + (Math.floor(sec % 60)) + ' s';
+  return Math.floor(sec) + ' s';
+};
+const ago = (t, ref) => {
+  const d = (ref ?? now()) - t;
+  if (d < 0) return 'in ' + durShort(-d);
+  if (d < 60) return Math.floor(d) + ' s ago';
+  if (d < 3600) return Math.floor(d / 60) + ' min ago';
+  if (d < 86400) return Math.floor(d / 3600) + ' h ago';
+  return Math.floor(d / 86400) + ' d ago';
+};
+const fmtTime = t => {
+  const d = new Date(t * 1000);
+  return d.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+};
+const fmtDate = t => new Date(t * 1000).toISOString().slice(0, 10);
+const midHash = (h, a=10, b=8) => h && h.length > a + b + 1 ? h.slice(0, a) + '…' + h.slice(-b) : h;
+const fullHash = h => h || '';
+
+function copyBtn(text, label='copy') {
+  return `<button class="copy" data-copy="${esc(text)}" type="button" aria-label="Copy ${esc(label)}">copy</button>`;
+}
+function linkTx(txid, label) {
+  if (D.virtualTxs[txid] || D.commitmentTxs[txid]) {
+    const route = D.virtualTxs[txid] ? '#/tx/' : '#/commitment/';
+    return `<a href="${route}${txid}" class="mono" title="${esc(txid)}">${esc(label ?? midHash(txid))}</a>`;
+  }
+  return `<a href="https://mempool.space/tx/${txid}" target="_blank" rel="noopener" class="mono" title="${esc(txid)} — opens mempool.space ↗">${esc(label ?? midHash(txid))} ↗</a>`;
+}
+function linkAddr(a, label) {
+  if (D.addresses[a]) return `<a href="#/address/${a}" class="mono" title="${esc(a)}">${esc(label ?? midHash(a, 14, 10))}</a>`;
+  return `<span class="mono dim" title="${esc(a)}">${esc(label ?? midHash(a, 14, 10))}</span>`;
+}
+function linkOutpoint(op) {
+  const [txid, vout] = op.split(':');
+  return `<a href="#/vtxo/${op}" class="mono" title="${esc(op)}">${esc(midHash(txid))}:${vout}</a>`;
+}
+
+/* state glyphs — never color alone */
+const STATE_GLYPH = {
+  preconfirmed:'◌', settled:'●', renew:'▲', expired:'✕', spent:'—', refreshed:'↻',
+  swept:'✕', unknown:'?', confirmed:'●', mempool:'◌'
+};
+const stateTag = s => `<span class="state st-${s}">${STATE_GLYPH[s] ?? '·'} ${esc(s)}</span>`;
+const netTag = n => `<span class="net-tag net-${n}">${n === 'arkade' ? 'A' : 'S'} ${n === 'arkade' ? 'Arkade' : 'Second'}</span>`;
+
+/* footnote marker */
+const fn = n => `&nbsp;<sup class="fn" title="Source ${n}">${n}</sup>`;
+
+/* toast */
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-copy]');
+  if (!b) return;
+  const txt = b.getAttribute('data-copy');
+  const done = () => { toast('copied — ' + txt.slice(0, 24) + (txt.length > 24 ? '…' : '')); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => fallbackCopy(txt, done));
+  else fallbackCopy(txt, done);
+});
+function fallbackCopy(txt, done) {
+  const ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch(_) {}
+  ta.remove();
+}
+
+/* watchlist */
+const WATCH_KEY = 'ark-observer-proto-datasheet-watchlist';
+function getWatch() { try { return JSON.parse(localStorage.getItem(WATCH_KEY)) || []; } catch(_) { return []; } }
+function setWatch(w) { try { localStorage.setItem(WATCH_KEY, JSON.stringify(w)); } catch(_) {} }
+function isWatched(id) { return getWatch().some(w => w.id === id); }
+function toggleWatch(id, label) {
+  let w = getWatch();
+  const i = w.findIndex(x => x.id === id);
+  if (i >= 0) { w.splice(i, 1); toast('removed from watchlist'); }
+  else { w.push({ id, label: label ?? id, addedAt: now() }); toast('added to watchlist'); }
+  setWatch(w);
+  $$('[data-watch-id]').forEach(b => {
+    const on = isWatched(b.getAttribute('data-watch-id'));
+    b.classList.toggle('on', on); b.textContent = on ? '● watching' : '○ watch';
+    b.setAttribute('aria-pressed', on);
+  });
+  renderWatchSection();
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-watch-id]');
+  if (b) { e.preventDefault(); toggleWatch(b.getAttribute('data-watch-id'), b.getAttribute('data-watch-label')); }
+});
+
+/* ============================================================
+   BLOCK HEIGHT ↔ TIME  (piecewise: real blocks, extrapolate ~660 s/blk)
+   ============================================================ */
+const sortedBlocks = D.chain.blocks.slice().sort((a, b) => a.time - b.time);
+const SEC_PER_BLOCK = (D.chain.tipTime - sortedBlocks[0].time) / (D.chain.tipHeight - sortedBlocks[0].height);
+function heightAtTime(t) {
+  const B = sortedBlocks;
+  if (t >= B[B.length - 1].time) return D.chain.tipHeight - (B[B.length - 1].time - t) / SEC_PER_BLOCK;
+  if (t <= B[0].time) return B[0].height - (B[0].time - t) / SEC_PER_BLOCK;
+  let lo = 0, hi = B.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (B[m].time <= t) lo = m; else hi = m; }
+  const a = B[lo], b = B[hi];
+  const f = (t - a.time) / (b.time - a.time || 1);
+  return a.height + f * (b.height - a.height);
+}
+function timeAtHeight(h) {
+  // invert: find block with height<=h, interpolate
+  const B = sortedBlocks;
+  if (h >= D.chain.tipHeight) return D.chain.tipTime - (h - D.chain.tipHeight) * SEC_PER_BLOCK;
+  if (h <= B[0].height) return B[0].time - (B[0].height - h) * SEC_PER_BLOCK;
+  let lo = 0, hi = B.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (B[m].height <= h) lo = m; else hi = m; }
+  const a = B[lo], b = B[hi];
+  const f = (h - a.height) / (b.height - a.height || 1);
+  return a.time + f * (b.time - a.time);
+}
+
+/* ============================================================
+   READINGS — generated sentences with footnotes
+   ============================================================ */
+function readingOverview() {
+  const s24 = D.stats.arkade24h, s2 = D.stats.second24h, A = D.operators.arkade, S = D.operators.second;
+  const t = now();
+  const est = expiryStats();
+  // round countdown
+  let nextRound = S.nextRoundAt;
+  while (nextRound <= t) nextRound += S.roundIntervalSec;
+  const roundIn = nextRound - t;
+  const chg = s24.txCountChangePct;
+  const chgTxt = chg == null ? '' : (chg < 0 ? ' — ' + Math.abs(chg).toFixed(1) + ' % fewer than the previous day' : ' — ' + chg.toFixed(1) + ' % more than the previous day');
+  const volChg = s24.volumeChangePct;
+  const volChgTxt = volChg == null ? '' : (volChg < 0 ? ' (' + Math.abs(volChg).toFixed(1) + ' % less volume)' : ' (' + volChg.toFixed(1) + ' % more volume)');
+  const n24 = D.activity.filter(a => a.time >= t - 86400).length;
+  const arkVirt24 = D.activity.filter(a => a.time >= t - 86400 && a.network === 'arkade' && a.layer === 'virtual').length;
+  return `At block ${blkNum(D.chain.tipHeight)} both operators are live.${fn(1)} ` +
+    `Arkade settled <strong>${NFMT.format(s24.virtualTxCount)} virtual transactions</strong> in the last 24 hours${chgTxt}${volChgTxt}, ` +
+    `moving ${btcAgg(s24.virtualTxVolumeBtc)}; its pool holds ${btcAgg(s24.networkLiquidityBtc)}.${fn(2)} ` +
+    `Of those, ${NFMT.format(arkVirt24)} were individually observed in this snapshot.${fn(3)} ` +
+    `Across the snapshot, ${NFMT.format(est.total)} unspent VTXOs are indexed by expiry — ${NFMT.format(est.inWin)} inside Arkade's ${dur(est.exitWin)} exit window${est.nRenew ? `, ${NFMT.format(est.nRenew)} flagged renew` : ''}.${fn(5)} ` +
+    `Second's next round opens in <strong><span data-round-countdown>${durShort(roundIn)}</span></strong>; its server wallet touched ${NFMT.format(s2.serverTxCount)} on-chain ${plural(s2.serverTxCount, 'transaction')} today.${fn(4)}`;
+}
+function readingTx(tx) {
+  const t = now();
+  const kindLabel = { payment: 'Payment', onboard: 'Onboarding', refresh: 'Refresh' }[tx.kind] ?? tx.kind;
+  const inSum = tx.inputs.reduce((s, i) => s + (i.amount ?? 0), 0);
+  const outSum = tx.outputs.filter(o => o.kind === 'vtxo').reduce((s, o) => s + (o.amount ?? 0), 0);
+  const nIn = tx.inputs.length, nOut = tx.outputs.filter(o => o.kind === 'vtxo').length;
+  const stateTxt = tx.state === 'preconfirmed' ? 'preconfirmed — cosigned by the operator but not yet anchored in a Bitcoin block'
+    : tx.state === 'settled' ? 'settled — its VTXOs are anchored in a confirmed commitment transaction'
+    : tx.state === 'spent' ? 'spent — every output VTXO has since been spent'
+    : tx.state === 'renew' ? 'in the exit window — at least one output VTXO must be renewed before expiry'
+    : tx.state;
+  const exp = tx.expiresAt ? `; outputs expire ${fmtDate(tx.expiresAt)} (${durShort(tx.expiresAt - t)} from now)` : '';
+  const commitTxt = tx.commitmentTxids?.length ? ` It is earmarked for commitment ${linkTx(tx.commitmentTxids[0])}.` : '';
+  return `A <strong>${kindLabel.toLowerCase()}</strong> virtual transaction with ${nIn} ${plural(nIn, 'input')} and ${nOut} ${plural(nOut, 'VTXO output')} ` +
+    `moving ${sat(inSum || null)} in and ${sat(outSum || null)} out${exp}.${fn(5)} ` +
+    `State: <strong>${stateTxt}</strong>.${commitTxt}`;
+}
+function readingCommit(c) {
+  const t = now();
+  const oc = c.onchain;
+  const sess = c.endedAt - c.startedAt;
+  const nV = c.totalInputVtxos;
+  const amt = c.totalInputAmount;
+  const nB = c.batches.length;
+  const nConn = c.connectorCount, nForf = c.forfeitCount;
+  const conf = oc.confirmations;
+  const feeRate = oc.feeRate;
+  const blkTxt = oc.confirmed ? `in block ${blkNum(oc.blockHeight)}` : '— not yet confirmed';
+  const mined = oc.blockTime ? ago(oc.blockTime, t) : '';
+  const swept = c.batches.filter(b => b.swept).length;
+  return `Batch ${linkTx(c.txid)} settled ${NFMT.format(nV)} ${plural(nV, 'VTXO')} worth ${sat(amt)} ${blkTxt} ` +
+    `after a ${durShort(sess)} session; the commitment transaction paid a ${sat(oc.fee)} fee at ${feeRate} sat/vB.${fn(4)} ` +
+    `It produced ${nB} ${plural(nB, 'batch output')} (${NFMT.format(c.totalOutputVtxos)} ${plural(c.totalOutputVtxos, 'VTXO')} out) ` +
+    `with ${nConn} connector${nConn === 1 ? '' : 's'} and ${nForf} forfeit${nForf === 1 ? '' : 's'}.${fn(5)} ` +
+    (swept ? `${NFMT.format(swept)} ${plural(swept, 'batch')} ${swept === 1 ? 'has' : 'have'} been swept since.` : 'No batch outputs have been swept since.') +
+    (oc.confirmed ? ` Mined ${mined}.` : '');
+}
+function readingAddress(addr) {
+  const t = now();
+  const s = addr.summary;
+  const c = s.counts || {};
+  const total = addr.totalVtxos, listed = addr.listedVtxos;
+  // summary buckets are disjoint sat amounts over ALL VTXOs; counts carry the VTXO numbers
+  const spendableN = (c.preconfirmed ?? 0) + (c.settled ?? 0);
+  const unknownN = c.unknown ?? 0;
+  const spendableAmt = s.spendable ?? 0;
+  const renew = c.renew ?? 0;
+  const renewAmt = s.renew ?? 0;
+  const expiredN = c.expired ?? 0;
+  const expiredAmt = s.expired ?? 0;
+  const unspentAmt = spendableAmt + renewAmt + expiredAmt;
+  const unspentN = spendableN + renew + expiredN + unknownN;
+  const nextExp = s.nearestExpiry;
+  const listedTxt = total > listed ? ` The index tracks all ${NFMT.format(total)} VTXOs but lists only the ${NFMT.format(listed)} most relevant; older spent history is not in this snapshot.` : '';
+  const exitWin = dur(D.operators.arkade.unilateralExitDelaySec);
+  const vs = n => `${NFMT.format(n)} VTXO${n === 1 ? '' : 's'}`;
+  // lead with the unspent total, then account for each bucket — exit-window first (actionable)
+  let detail = '';
+  if (renew > 0) {
+    detail += ` Of which, <strong>${sat(renewAmt)} across ${vs(renew)} sit inside Arkade's ${exitWin} exit window</strong> — renew or exit before ${nextExp ? fmtDate(nextExp) : 'expiry'}${nextExp ? ` (${durShort(nextExp - t)} away)` : ''}.`;
+  }
+  if (spendableN > 0) {
+    detail += ` ${renew > 0 ? 'The other ' : ''}${sat(spendableAmt)} across ${vs(spendableN)} ${spendableN === 1 ? 'is' : 'are'} outside the window, with more than ${exitWin} left.`;
+  }
+  if (expiredN > 0) {
+    detail += ` ${sat(expiredAmt)} across ${vs(expiredN)} ${expiredN === 1 ? 'has' : 'have'} expired and can no longer be spent unilaterally.`;
+  }
+  if (unknownN > 0) {
+    detail += ` ${vs(unknownN)} ${unknownN === 1 ? 'has' : 'have'} no expiry evidence and ${unknownN === 1 ? 'is' : 'are'} not counted as safe.`;
+  }
+  if (!detail) detail = ' No unspent VTXOs are currently indexed for this address.';
+  return `Address <strong>${midHash(addr.address, 16, 12)}</strong> holds <strong>${sat(unspentAmt)}</strong> unspent across ${vs(unspentN)}.${listedTxt}${fn(5)}${detail}`;
+}
+function readingVtxoChain(chain, outpoint) {
+  const t = now();
+  const n = chain.length, c = chain.counts;
+  const offchain = n - (c.commitment ?? 0);
+  const anchors = chain.anchorCommitments?.length ?? 0;
+  const trunc = chain.truncated ? ' (the chain is truncated in this snapshot — the true depth is larger)' : '';
+  return `The unroll path for <span class="mono">${esc(outpoint)}</span> runs ${NFMT.format(n)} transactions deep: ` +
+    `${NFMT.format(c.ark ?? 0)} Ark layers, ${NFMT.format(c.checkpoint ?? 0)} checkpoints, ${NFMT.format(c.tree ?? 0)} tree ${plural(c.tree ?? 0, 'node')} and ${NFMT.format(c.commitment ?? 0)} commitment${(c.commitment ?? 0) === 1 ? '' : 's'} ` +
+    `anchoring to ${NFMT.format(anchors)} Bitcoin ${plural(anchors, 'output')}.${fn(5)} ` +
+    `To exit unilaterally the holder would broadcast <strong>${NFMT.format(offchain)} off-chain ${plural(offchain, 'transaction')}</strong> before the funds return on-chain.${trunc}`;
+}
+
+/* ============================================================
+   MASTHEAD / CLOCK
+   ============================================================ */
+function initMasthead() {
+  const t = now();
+  // one-line snapshot: "7 Nov 2026 · 12:54 UTC · block 974 935"
+  const snapD = new Date(t * 1000);
+  const snapDate = snapD.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const snapClock = snapD.toISOString().slice(11, 16) + ' UTC';
+  $('#snap-time').textContent = `${snapDate} · ${snapClock}`;
+  $('#snap-block').textContent = blkNum(D.chain.tipHeight);
+  $('#colophon').innerHTML =
+    `<div>ark.observer · Proposal 02 — Datasheet<br>Typeset in Archivo, IBM Plex Mono, Geist Mono (OFL).</div>` +
+    `<div>Data captured ${esc(D.meta.generatedAtIso)} · block ${blkNum(D.chain.tipHeight)} · network ${esc(D.meta.network)}<br>` +
+    `Sources: operator endpoints, activity archive, Esplora — see § 08.</div>`;
+  // ticking clock
+  const tick = () => {
+    const t = now();
+    $('#live-clock').textContent = 'T+' + durShort(t - D.meta.generatedAt) + ' · ' + fmtTime(t);
+  };
+  tick(); setInterval(tick, 1000);
+  // round countdown element if present
+  setInterval(() => { $$('[data-round-countdown]').forEach(el => { el.textContent = durShort(roundInSec()); }); }, 1000);
+}
+function roundInSec() {
+  const t = now(); let n = D.operators.second.nextRoundAt;
+  while (n <= t) n += D.operators.second.roundIntervalSec;
+  return n - t;
+}
+
+/* ============================================================
+   SEARCH / OMNIBOX
+   ============================================================ */
+const q = $('#q'), suggest = $('#suggest');
+let sugItems = [], sugIdx = -1;
+
+function detectQuery(s) {
+  s = s.trim();
+  if (!s) return null;
+  if (/^[0-9a-f]{64}$/i.test(s)) return { type: 'txid', value: s.toLowerCase() };
+  if (/^[0-9a-f]{64}:[0-9]+$/i.test(s)) { const [t, v] = s.split(':'); return { type: 'vtxo', value: t.toLowerCase() + ':' + v }; }
+  if (/^ark1[0-9a-z]+$/i.test(s)) return { type: 'address', value: s.toLowerCase() };
+  if (/^bc1[0-9a-z]+$/i.test(s)) return { type: 'address', value: s.toLowerCase() };
+  if (/^[0-9a-f]{20,}$/i.test(s) && s.toLowerCase().startsWith('5120')) return { type: 'script', value: s.toLowerCase() };
+  if (/^\d{4,7}$/.test(s)) return { type: 'block', value: parseInt(s, 10) };
+  if (/^[0-9a-f]{8,63}$/i.test(s)) return { type: 'partial-txid', value: s.toLowerCase() };
+  return null;
+}
+function buildSuggestions(s) {
+  s = s.trim().toLowerCase(); if (!s) return [];
+  const out = [];
+  const det = detectQuery(s);
+  if (det && det.type !== 'partial-txid') {
+    // still offer matches
+  }
+  // txid prefix matches
+  const allTx = {};
+  for (const id of Object.keys(D.virtualTxs)) allTx[id] = 'virtual';
+  for (const id of Object.keys(D.commitmentTxs)) allTx[id] = 'commitment';
+  for (const a of D.activity) if (a.network === 'second') allTx[a.txid] = 'second-onchain';
+  const txMatches = Object.keys(allTx).filter(id => id.startsWith(s)).slice(0, 6);
+  for (const id of txMatches) out.push({ kind: allTx[id], val: id, note: allTx[id] === 'virtual' ? 'virtual tx' : allTx[id] === 'commitment' ? 'commitment' : 'Second on-chain ↗' });
+  // address matches
+  for (const a of Object.keys(D.addresses)) if (a.toLowerCase().includes(s) || s.length >= 6 && a.toLowerCase().startsWith(s)) out.push({ kind: 'address', val: a, note: 'ark address' });
+  // vtxo outpoint matches
+  for (const k of Object.keys(D.vtxoChains)) if (k.toLowerCase().includes(s)) out.push({ kind: 'vtxo', val: k, note: 'unroll path' });
+  // block matches
+  if (/^\d+$/.test(s)) {
+    const h = parseInt(s, 10);
+    const b = D.chain.blocks.find(b => b.height === h);
+    if (b) out.push({ kind: 'block', val: String(h), note: 'block ' + blkNum(h) + ' · ' + b.txCount + ' tx' });
+    else if (h >= D.chain.blocks[D.chain.blocks.length-1].height && h <= D.chain.tipHeight) out.push({ kind: 'block', val: String(h), note: 'within observed range (est.)' });
+  }
+  // dedupe & cap
+  const seen = new Set();
+  return out.filter(o => { const k = o.kind + o.val; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 12);
+}
+function renderSuggest() {
+  const s = q.value.trim();
+  sugItems = buildSuggestions(s); sugIdx = -1;
+  if (!sugItems.length) { suggest.hidden = true; suggest.innerHTML = ''; return; }
+  suggest.hidden = false;
+  suggest.innerHTML = sugItems.map((o, i) =>
+    `<div class="sg-item" data-i="${i}" role="option">
+      <span class="sg-kind">${esc(o.kind)}</span>
+      <span class="sg-val mono">${esc(o.val)}</span>
+      <span class="sg-note">${esc(o.note ?? '')}</span>
+    </div>`).join('');
+}
+function goSuggestion(o) {
+  if (!o) return;
+  const v = o.val;
+  if (o.kind === 'address' || /^ark1|^bc1/.test(v)) location.hash = '#/address/' + v;
+  else if (o.kind === 'vtxo') location.hash = '#/vtxo/' + v;
+  else if (o.kind === 'block') location.hash = '#/block/' + v;
+  else if (o.kind === 'script') location.hash = '#/script/' + v;
+  else if (D.virtualTxs[v]) location.hash = '#/tx/' + v;
+  else if (D.commitmentTxs[v]) location.hash = '#/commitment/' + v;
+  else location.hash = '#/tx/' + v; // second on-chain → will render with mempool link
+  suggest.hidden = true; q.blur();
+}
+q.addEventListener('input', renderSuggest);
+q.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { suggest.hidden = true; q.blur(); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); sugIdx = Math.min(sugIdx + 1, sugItems.length - 1); highlightSug(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); sugIdx = Math.max(sugIdx - 1, 0); highlightSug(); }
+  else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (sugIdx >= 0 && sugItems[sugIdx]) goSuggestion(sugItems[sugIdx]);
+    else navigateFromQuery(q.value.trim());
+  }
+});
+suggest.addEventListener('click', e => {
+  const it = e.target.closest('.sg-item'); if (!it) return;
+  goSuggestion(sugItems[+it.getAttribute('data-i')]);
+});
+function highlightSug() {
+  $$('.sg-item', suggest).forEach((el, i) => el.classList.toggle('active', i === sugIdx));
+  if (sugIdx >= 0) $$('.sg-item', suggest)[sugIdx]?.scrollIntoView({ block: 'nearest' });
+}
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement !== q && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) {
+    e.preventDefault(); q.focus();
+  }
+});
+function navigateFromQuery(s) {
+  if (!s) return;
+  const det = detectQuery(s);
+  if (!det) { toast('unrecognized query — try a txid, address, outpoint or block height'); return; }
+  if (det.type === 'txid') location.hash = '#/tx/' + det.value;
+  else if (det.type === 'vtxo') location.hash = '#/vtxo/' + det.value;
+  else if (det.type === 'address') location.hash = '#/address/' + det.value;
+  else if (det.type === 'script') location.hash = '#/script/' + det.value;
+  else if (det.type === 'block') location.hash = '#/block/' + det.value;
+  else if (det.type === 'partial-txid') {
+    const all = Object.keys(D.virtualTxs).concat(Object.keys(D.commitmentTxs)).filter(id => id.startsWith(det.value));
+    if (all.length === 1) location.hash = (D.virtualTxs[all[0]] ? '#/tx/' : '#/commitment/') + all[0];
+    else if (all.length > 1) { sugItems = all.slice(0, 10).map(id => ({ kind: D.virtualTxs[id] ? 'virtual' : 'commitment', val: id })); renderSuggestForce(); }
+    else toast('no match in this snapshot');
+  }
+}
+function renderSuggestForce() {
+  suggest.hidden = false;
+  suggest.innerHTML = sugItems.map((o, i) =>
+    `<div class="sg-item" data-i="${i}" role="option"><span class="sg-kind">${esc(o.kind)}</span><span class="sg-val mono">${esc(o.val)}</span></div>`).join('');
+}
+
+/* ============================================================
+   PROPOSAL SWITCHER — preserve hash
+   ============================================================ */
+function initSwitcher() {
+  const hash = location.hash || '#/';
+  $$('.switcher a[data-proto]').forEach(a => {
+    const proto = a.getAttribute('data-proto');
+    a.setAttribute('href', proto + '.html' + hash);
+  });
+  const all = $('.switcher a[href="index.html"]');
+  if (all) all.setAttribute('href', 'index.html' + hash);
+}
+
+/* ============================================================
+   CHART HELPERS (SVG)
+   ============================================================ */
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+/* ============================================================
+   SEISMOGRAPH — § 03 Rhythm
+   ============================================================ */
+function seismoData(winSec) {
+  const tEnd = now(), tStart = tEnd - winSec;
+  const rows = D.activity.filter(a => a.time >= tStart && a.time <= tEnd);
+  // block axis: shared. Determine height range.
+  const hEnd = D.chain.tipHeight, hStart = heightAtTime(tStart);
+  return { rows, tStart, tEnd, hStart, hEnd };
+}
+function renderSeismo(winSec) {
+  const { rows, tStart, tEnd, hStart, hEnd } = seismoData(winSec);
+  const W = 1160, H = 340;
+  const axisY = 168;           // shared block axis
+  const topZone = axisY - 34;  // arkade strokes live above
+  const botZone = H - axisY - 52; // second strokes below, leave room for tick labels
+  const padL = 52, padR = 30;
+  const plotW = W - padL - padR;
+  // clamp axis range to observed tip — never draw future blocks
+  const hMin = Math.floor(hStart / 10) * 10;
+  const hMax = Math.ceil(Math.min(hEnd, D.chain.tipHeight) / 10) * 10;
+  const xOfH = h => padL + ((h - hMin) / (hMax - hMin)) * plotW;
+  const maxLog = Math.log10(1 + Math.max(...rows.map(r => r.amount || 0), 1));
+  const hOfAmt = amt => {
+    const l = Math.log10(1 + (amt || 0));
+    const frac = maxLog > 0 ? l / maxLog : 0;
+    return 8 + frac * (topZone - 24);
+  };
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Seismograph of Ark activity">`;
+  // channel labels inside their zones
+  s += `<text class="chart-label" x="${padL}" y="16">ARKADE — virtual txs &amp; commitments</text>`;
+  s += `<text class="chart-label" x="${padL}" y="${H - 10}">SECOND — server wallet on-chain</text>`;
+  // zone hairlines
+  s += `<line x1="${padL}" y1="${axisY - topZone - 4}" x2="${W - padR}" y2="${axisY - topZone - 4}" stroke="var(--rule)" stroke-width="1"/>`;
+  s += `<line x1="${padL}" y1="${axisY + botZone + 4}" x2="${W - padR}" y2="${axisY + botZone + 4}" stroke="var(--rule)" stroke-width="1"/>`;
+  // block axis
+  s += `<line class="axis" x1="${padL}" y1="${axisY}" x2="${W - padR}" y2="${axisY}"/>`;
+  // ticks — adaptive, labels only when they fit
+  const span = hMax - hMin;
+  const tickEvery = span > 4000 ? 500 : span > 1000 ? 100 : span > 200 ? 24 : 12;
+  const labelEvery = span > 4000 ? 2 : span > 1000 ? 2 : span > 200 ? 2 : 1;
+  let tickIdx = 0;
+  for (let h = Math.ceil(hMin / tickEvery) * tickEvery; h <= hMax; h += tickEvery) {
+    const x = xOfH(h);
+    s += `<line class="axis-tick" x1="${x}" y1="${axisY - 4}" x2="${x}" y2="${axisY + 4}"/>`;
+    if (tickIdx % labelEvery === 0) s += `<text class="tick-label" x="${x}" y="${H - 26}" text-anchor="middle">${blkNum(h)}</text>`;
+    tickIdx++;
+  }
+  // 'now' edge — at actual tip height, label inside
+  const xNow = Math.min(xOfH(hEnd), W - padR - 80);
+  s += `<line x1="${xNow}" y1="${axisY - topZone - 4}" x2="${xNow}" y2="${axisY + botZone + 4}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="4 3"/>`;
+  s += `<text class="tick-label" x="${xNow - 5}" y="${axisY - topZone - 12}" text-anchor="end" fill="var(--ink)">now · ${blkNum(Math.round(hEnd))}</text>`;
+  // strokes
+  const strokes = [];
+  for (const r of rows) {
+    const h = r.blockHeight ?? heightAtTime(r.time);
+    if (h < hMin || h > hMax + tickEvery) continue;
+    const x = Math.min(xOfH(h), W - padR);
+    const isA = r.network === 'arkade';
+    const isBatch = r.kind === 'batch';
+    const hh = hOfAmt(r.amount);
+    const y1 = isA ? axisY - hh : axisY + hh;
+    const y2 = axisY;
+    const w = isBatch ? 2.5 : 1.2;
+    strokes.push({ r, x, y1, y2, w, isA, isBatch });
+  }
+  strokes.sort((a, b) => (b.y2 - b.y1) - (a.y2 - a.y1));
+  // clip strokes to their zones so they never cross the axis or labels
+  s += `<defs><clipPath id="clip-a"><rect x="${padL}" y="${axisY - topZone - 2}" width="${plotW}" height="${topZone + 2}"/></clipPath>`;
+  s += `<clipPath id="clip-s"><rect x="${padL}" y="${axisY}" width="${plotW}" height="${botZone + 2}"/></clipPath></defs>`;
+  let pathA = '', pathS = '', diaA = '';
+  for (const st of strokes) {
+    const { r, x, y1, y2, w, isA, isBatch } = st;
+    if (isA) {
+      pathA += `<line class="stroke-a" x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke-width="${w}"/>`;
+      if (isBatch) diaA += `<rect x="${x - 3.5}" y="${axisY - 6}" width="7" height="7" fill="var(--paper)" stroke="var(--ch-a)" stroke-width="1.5" transform="rotate(45 ${x} ${axisY - 2.5})"/>`;
+    } else {
+      pathS += `<line class="stroke-s" x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke-width="${w}"/>`;
+    }
+  }
+  s += `<g clip-path="url(#clip-a)">${pathA}${diaA}</g>`;
+  s += `<g clip-path="url(#clip-s)">${pathS}</g>`;
+  // hit areas (full height per channel)
+  for (const st of strokes) {
+    const { r, x, isA } = st;
+    s += `<line class="stroke-hit" data-seismo="${esc(r.id)}" x1="${x}" y1="${isA ? axisY - topZone - 4 : axisY}" x2="${x}" y2="${isA ? axisY : axisY + botZone + 4}"/>`;
+  }
+  // arkadeHourly aggregate — proper step area, faint, anchored to a baseline inside arkade zone
+  if (winSec <= 86400 * 1.2) {
+    const hrs = D.stats.arkadeHourly;
+    const maxC = Math.max(...hrs.map(z => z.virtualTxCount), 1);
+    const baseY = axisY - 6;
+    const amp = topZone * 0.4;
+    let dLine = '', dArea = '';
+    hrs.forEach((h, i) => {
+      const x = xOfH(heightAtTime(h.hourStart));
+      const y = baseY - (h.virtualTxCount / maxC) * amp;
+      const cmd = i ? ' L' : 'M';
+      dLine += cmd + x.toFixed(1) + ' ' + y.toFixed(1);
+    });
+    const xFirst = xOfH(heightAtTime(hrs[0].hourStart));
+    const xLast = xOfH(heightAtTime(hrs[hrs.length - 1].hourStart + 3600));
+    dArea = dLine + ` L${xLast.toFixed(1)} ${baseY} L${xFirst.toFixed(1)} ${baseY} Z`;
+    s += `<path d="${dArea}" fill="var(--ink-3)" opacity="0.10"/>`;
+    s += `<path d="${dLine}" fill="none" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="3 3" opacity="0.55"/>`;
+    s += `<text class="chart-anno" x="${padL + 4}" y="${axisY - topZone + 12}">archive aggregate · hourly count</text>`;
+  }
+  s += `</svg>`;
+  return { html: s, strokes, xOfH, axisY, topZone, botZone, padL, padR, W, H, hMin, hMax, tStart, tEnd };
+}
+function mountSeismo(winSec) {
+  const wrap = $('#seismo');
+  const { html, strokes, xOfH, axisY, topZone, botZone, padL, padR, W, H, hMin, hMax, tStart, tEnd } = renderSeismo(winSec);
+  wrap.innerHTML = `<div class="chart-wrap">${html}<div class="readout" id="seismo-readout" hidden></div></div>`;
+  const svg = wrap.querySelector('svg');
+  const ro = $('#seismo-readout');
+  const NS = 'http://www.w3.org/2000/svg';
+  const cross = svgEl('line', { class: 'crosshair', y1: 30, y2: H - 20, visibility: 'hidden' });
+  svg.appendChild(cross);
+  const xToBlock = x => {
+    const rect = svg.getBoundingClientRect();
+    const px = (x - rect.left) * (W / rect.width);
+    return hMin + ((px - padL) / (W - padL - padR)) * (hMax - hMin);
+  };
+  svg.addEventListener('mousemove', e => {
+    const rect = svg.getBoundingClientRect();
+    const px = (e.clientX - rect.left) * (W / rect.width);
+    if (px < padL || px > W - padR) { ro.hidden = true; cross.setAttribute('visibility', 'hidden'); return; }
+    const h = hMin + ((px - padL) / (W - padL - padR)) * (hMax - hMin);
+    const tEst = timeAtHeight(h);
+    cross.setAttribute('x1', px); cross.setAttribute('x2', px); cross.setAttribute('visibility', 'visible');
+    // find nearest strokes within tolerance
+    const tol = (W - padL - padR) / (hMax - hMin) * 3;
+    const near = strokes.filter(s => Math.abs(s.x - px) < tol).slice(0, 8);
+    let inner = `<div class="rt">block ≈ ${blkNum(Math.round(h))} · ${fmtTime(tEst).slice(0, 16)}</div>`;
+    for (const s of near.slice(0, 6)) {
+      const r = s.r;
+      const kindTxt = r.kind === 'batch' ? 'commitment' : r.kind === 'server-in' ? 'Second in' : r.kind === 'server-out' ? 'Second out' : r.kind;
+      inner += `<div>${s.isA ? '▲' : '▼'} ${esc(kindTxt)} · ${sat(r.amount)} · ${esc(r.state)} · ${esc(midHash(r.txid, 8, 6))}</div>`;
+    }
+    if (near.length > 6) inner += `<div class="rt">+ ${near.length - 6} more</div>`;
+    ro.innerHTML = inner; ro.hidden = false;
+    const wr = wrap.getBoundingClientRect();
+    ro.style.left = Math.min(e.clientX - wr.left + 14, wr.width - 220) + 'px';
+    ro.style.top = '10px';
+  });
+  svg.addEventListener('mouseleave', () => { ro.hidden = true; cross.setAttribute('visibility', 'hidden'); });
+  svg.addEventListener('click', e => {
+    const hit = e.target.closest('[data-seismo]');
+    if (!hit) return;
+    const id = hit.getAttribute('data-seismo');
+    // find the activity row to get txid
+    const row = D.activity.find(a => a.id === id);
+    if (!row) return;
+    if (row.network === 'arkade' && row.kind === 'batch') location.hash = '#/commitment/' + row.txid;
+    else if (row.network === 'arkade') location.hash = '#/tx/' + row.txid;
+    else location.hash = '#/tx/' + row.txid; // second → not in pack → notfound with mempool link
+  });
+}
+
+/* ============================================================
+   EXPIRY HORIZON — § 05
+   ============================================================ */
+function renderExpiry(vtxos, exitWin, network) {
+  const t = now();
+  exitWin = exitWin ?? D.operators.arkade.unilateralExitDelaySec;
+  network = network ?? 'arkade';
+  const horizon = 31 * 86400;
+  const W = 1160, padL = 46, padR = 16, padT = 66;
+  const axisY = 198, H = 246;
+  const plotW = W - padL - padR;
+  const xOfDt = dt => padL + (Math.min(Math.max(dt, 0), horizon) / horizon) * plotW;
+  const dots = (vtxos ?? D.observedVtxos).map(v => ({ ...v, dt: v.expiresAt - t }));
+  const maxAmt = Math.max(...dots.map(d => d.amount), 1);
+  const rOf = amt => 3 + Math.sqrt(amt / maxAmt) * 9;
+  const xw0 = xOfDt(0), xw1 = xOfDt(Math.min(exitWin, horizon));
+  // two lanes inside the plot: in-window (top) and beyond-window (bottom)
+  const laneTop = padT + 6, laneBot = axisY - 8;
+  const laneMidIn = laneTop + (laneBot - laneTop) * 0.30;
+  const laneMidOut = laneTop + (laneBot - laneTop) * 0.72;
+  const laneSpread = (laneBot - laneTop) * 0.13;
+  const placed = dots.map(d => {
+    const dt = Math.max(0, d.dt);
+    const x = xOfDt(Math.min(dt, horizon));
+    const inWin = dt <= exitWin && dt >= 0;
+    const r = rOf(d.amount);
+    const lane = inWin ? laneMidIn : laneMidOut;
+    const cy = lane + (hash01(d.outpoint) - 0.5) * laneSpread * 2;
+    const col = inWin ? 'var(--alert)' : (d.state === 'renew' ? 'var(--alert)' : d.state === 'settled' ? 'var(--ch-a)' : 'var(--ink-2)');
+    return { d, x, cy, r, inWin, col };
+  });
+  let s = `<svg viewBox="0 0 ${W} ${H}" class="flow-svg" role="img" aria-label="Expiry horizon of unspent VTXOs">`;
+  s += `<defs><pattern id="exphatch" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="var(--paper-2)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--alert)" stroke-width="1" opacity="0.55"/></pattern></defs>`;
+  s += `<text class="chart-label" x="${padL}" y="18">time to expiry →</text>`;
+  // Arkade exit-window hatch (left region = inside unilateral-exit delay)
+  s += `<rect x="${xw0}" y="${padT}" width="${xw1 - xw0}" height="${axisY - padT}" fill="url(#exphatch)"/>`;
+  // Second exit window — narrower green wash over the same left region
+  const secExit = (D.operators.second?.exitDeltaBlocks ?? 0) * 600;
+  if (secExit > 0) {
+    const xs1 = xOfDt(Math.min(secExit, horizon));
+    s += `<rect x="${padL}" y="${padT}" width="${xs1 - padL}" height="${axisY - padT}" fill="var(--ch-s)" opacity="0.10"/>`;
+    s += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${axisY}" stroke="var(--ch-s)" stroke-width="1"/>`;
+    s += `<line x1="${xs1}" y1="${padT}" x2="${xs1}" y2="${axisY}" stroke="var(--ch-s)" stroke-width="1" stroke-dasharray="3 2"/>`;
+  }
+  // axis + ticks
+  s += `<line class="axis" x1="${padL}" y1="${axisY}" x2="${W - padR}" y2="${axisY}"/>`;
+  for (let d = 0; d <= 28; d += 7) {
+    const x = xOfDt(d * 86400);
+    s += `<line class="axis-tick" x1="${x}" y1="${axisY}" x2="${x}" y2="${axisY + 4}"/>`;
+    s += `<text class="tick-label" x="${x}" y="${axisY + 17}" text-anchor="middle">+${d} d</text>`;
+  }
+  const xEnd = xOfDt(horizon);
+  s += `<line class="axis-tick" x1="${xEnd}" y1="${axisY}" x2="${xEnd}" y2="${axisY + 4}"/>`;
+  s += `<text class="tick-label" x="${xEnd}" y="${axisY + 17}" text-anchor="end">+${Math.round(horizon / 86400)} d</text>`;
+  // window labels inside plot top
+  const wlX = Math.min(Math.max((xw0 + xw1) / 2, padL + 80), W - padR - 80);
+  s += `<text class="chart-anno" x="${wlX}" y="${padT + 8}" text-anchor="middle" fill="var(--alert-ink)">Arkade exit window · ${dur(exitWin)}</text>`;
+  // amount labels: top N by amount placed in a reserved strip at the top, leader line to each dot
+  const LABEL_N = 6, ROWS = [30, 42, 54];
+  const cands = placed.slice().sort((a, b) => b.d.amount - a.d.amount).slice(0, LABEL_N);
+  const rowUsed = ROWS.map(() => []); // placed x-intervals per row
+  const labelFor = new Map();
+  const approxW = txt => txt.length * 6.1;
+  for (const p of cands) {
+    const txt = sats(p.d.amount);
+    const w = approxW(txt);
+    for (let ri = 0; ri < ROWS.length; ri++) {
+      const ly = ROWS[ri];
+      const lx = Math.max(padL + w / 2 + 2, Math.min(p.x, W - padR - w / 2 - 2));
+      const x0 = lx - w / 2, x1 = lx + w / 2;
+      const clash = rowUsed[ri].some(u => !(x1 < u[0] - 6 || x0 > u[1] + 6));
+      if (!clash) {
+        rowUsed[ri].push([x0, x1]);
+        labelFor.set(p.d.outpoint, { x: lx, y: ly, txt, dotX: p.x, dotY: p.cy - p.r });
+        break;
+      }
+    }
+  }
+  // draw dots
+  for (const p of placed) {
+    s += `<circle cx="${p.x}" cy="${p.cy}" r="${p.r}" fill="${p.col}" opacity="${p.inWin ? 0.9 : 0.5}" stroke="var(--ink)" stroke-width="${p.inWin ? 1 : 0.5}"/>`;
+    if (p.d.state === 'renew') {
+      s += `<text x="${p.x}" y="${p.cy - p.r - 2}" text-anchor="middle" font-size="9" fill="var(--alert-ink)" font-family="var(--mono)">▲</text>`;
+    }
+    s += `<circle class="stroke-hit" data-vtxo-exp="${esc(p.d.outpoint)}" cx="${p.x}" cy="${p.cy}" r="${Math.max(p.r + 4, 10)}" fill="transparent"/>`;
+  }
+  // leader lines + labels (label gets a paper halo so leader lines never strike the text)
+  for (const [op, L] of labelFor) {
+    s += `<line x1="${L.dotX}" y1="${L.dotY}" x2="${L.x}" y2="${L.y + 7}" stroke="var(--ink-3)" stroke-width="0.6"/>`;
+    const lw = L.txt.length * 6.1;
+    s += `<rect x="${(L.x - lw / 2 - 2).toFixed(1)}" y="${L.y - 10}" width="${(lw + 4).toFixed(1)}" height="13" fill="var(--paper)"/>`;
+    s += `<text class="chart-anno" x="${L.x}" y="${L.y}" text-anchor="middle" fill="var(--alert-ink)">${esc(L.txt)}</text>`;
+  }
+  // Second note below axis
+  if (secExit > 0) {
+    s += `<text class="tick-label" x="${padL + 4}" y="${axisY + 36}" fill="var(--ch-s)">Second exit ${dur(secExit)} — no public index</text>`;
+  }
+  s += `</svg>`;
+  return { svg: s, dots, labelCount: labelFor.size };
+}
+function hash01(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return (h % 1000) / 1000; }
+// single source for the §05 expiry counts — caption, margin note and Reading all read this
+function expiryStats() {
+  const t = now();
+  const exitWin = D.operators.arkade.unilateralExitDelaySec;
+  const vtxos = D.observedVtxos || [];
+  const inWin = vtxos.filter(v => v.expiresAt != null && (v.expiresAt - t) <= exitWin && (v.expiresAt - t) >= 0);
+  return {
+    total: vtxos.length,
+    inWin: inWin.length,
+    inWinAmt: inWin.reduce((a, v) => a + (v.amount || 0), 0),
+    nRenew: vtxos.filter(v => v.state === 'renew').length,
+    exitWin,
+  };
+}
+function mountExpiry() {
+  const { svg, dots, labelCount } = renderExpiry();
+  const st = expiryStats();
+  const secExit = D.operators.second.exitDeltaBlocks * 600;
+  $('#expiry').innerHTML = `<div class="chart-wrap">${svg}</div>` +
+    `<div class="expiry-note">${NFMT.format(st.total)} observed unspent VTXOs · dot area ∝ amount (√ scale) · ${NFMT.format(st.inWin)} inside the ${dur(st.exitWin)} exit window holding ${sat(st.inWinAmt)}.${st.nRenew ? ` ${NFMT.format(st.nRenew)} already flagged <span class="tri">▲</span> renew.` : ''}${labelCount < 7 ? ` Largest ${NFMT.format(labelCount)} labelled; the rest are on hover.` : ''} Second's ${dur(secExit)} exit window is narrower — green wash; it publishes no VTXO index, so nothing is plotted there.</div>` +
+    `<div class="expiry-legend">` +
+    `<span><i class="sw" style="background:var(--alert)"></i>inside Arkade exit window</span>` +
+    `<span><i class="sw" style="background:var(--ch-s)"></i>Second exit window (no index)</span>` +
+    `<span><i class="sw tri">▲</i>flagged renew</span>` +
+    `<span><i class="sw" style="background:var(--ch-a)"></i>settled</span>` +
+    `<span><i class="sw" style="background:var(--ink-2)"></i>unspent</span>` +
+    `</div>`;
+  // hover
+  const wrap = $('#expiry .chart-wrap, #expiry');
+  const svgEl2 = $('#expiry svg');
+  if (!svgEl2) return;
+  const ro = document.createElement('div'); ro.className = 'readout'; ro.hidden = true; $('#expiry').style.position = 'relative'; $('#expiry').appendChild(ro);
+  svgEl2.addEventListener('mousemove', e => {
+    const hit = e.target.closest('[data-vtxo-exp]');
+    if (!hit) { ro.hidden = true; return; }
+    const op = hit.getAttribute('data-vtxo-exp');
+    const d = dots.find(x => x.outpoint === op); if (!d) return;
+    ro.innerHTML = `<div class="rt">${esc(op)}</div><div>${sat(d.amount)} · expires ${fmtDate(d.expiresAt)} · ${durShort(d.dt)} · ${esc(d.state)}</div>`;
+    ro.hidden = false;
+    const wr = $('#expiry').getBoundingClientRect();
+    ro.style.left = Math.min(e.clientX - wr.left + 12, wr.width - 240) + 'px'; ro.style.top = '8px';
+  });
+  svgEl2.addEventListener('mouseleave', () => ro.hidden = true);
+  svgEl2.addEventListener('click', e => {
+    const hit = e.target.closest('[data-vtxo-exp]'); if (!hit) return;
+    location.hash = '#/vtxo/' + hit.getAttribute('data-vtxo-exp');
+  });
+}
+
+/* ============================================================
+   STRATIGRAPHY — tx/address pages
+   ============================================================ */
+function renderStrata(chain, currentTxid) {
+  if (!chain) return '<div class="expiry-note">No unroll path in this snapshot.</div>';
+  const c = chain.counts;
+  const n = chain.length;
+  const offchain = n - (c.commitment ?? 0);
+  const commitEntries = chain.entries.filter(e => e.type === 'commitment');
+  const arkN = c.ark ?? 0, ckN = c.checkpoint ?? 0;
+  // "this tx" is entries[0] — an ark layer — so intermediate layers exclude it
+  const interArk = Math.max(0, arkN - 1), interCk = ckN;
+  const interTotal = interArk + interCk;
+  // bands ordered Bitcoin (bottom) → this tx (top); thickness ∝ log(count)
+  const bandH = cnt => {
+    const v = cnt == null || cnt === '—' ? 1 : Math.max(1, cnt);
+    return Math.max(26, Math.min(64, 18 + Math.log10(v + 1) * 16));
+  };
+  const bands = [
+    { lvl: 'L4', title: 'This transaction', sub: midHash(currentTxid), cnt: '1', h: 30, cls: 'current', link: '#/tx/' + currentTxid },
+    { lvl: 'L3', title: 'Ark + checkpoint', sub: interTotal > 0 ? `${NFMT.format(interArk)} virtual ${plural(interArk, 'tx')} + ${NFMT.format(interCk)} checkpoint ${plural(interCk, 'tx')}` : 'none', cnt: NFMT.format(interTotal), h: bandH(interTotal), cls: 'compressed' },
+  ];
+  if ((c.tree ?? 0) > 0) bands.push({ lvl: 'L2', title: 'Tree', sub: `${NFMT.format(c.tree)} Merkle ${plural(c.tree, 'node')}`, cnt: NFMT.format(c.tree), h: bandH(c.tree), cls: '' });
+  bands.push({ lvl: 'L1', title: 'Commitment', sub: `${NFMT.format(c.commitment ?? 0)} batch${(c.commitment ?? 0) === 1 ? '' : 'es'} anchoring to Bitcoin`, cnt: NFMT.format(c.commitment ?? 0), h: bandH(c.commitment ?? 0), cls: '', link: commitEntries[0] ? '#/commitment/' + commitEntries[0].txid : null });
+  bands.push({ lvl: 'L0', title: 'Bitcoin', sub: 'on-chain anchor · block', cnt: '—', h: 30, cls: '' });
+  // render top→bottom in DOM so Bitcoin sits at the bottom visually
+  const html = bands.map(b =>
+    `<div class="stratum band ${b.cls} ${b.link ? 'link' : ''}" style="height:${b.h}px" ${b.link ? `data-href="${b.link}" role="link" tabindex="0"` : ''}>
+      <span class="lvl">${b.lvl}</span>
+      <span class="desc"><span class="t">${esc(b.title)}</span> — ${esc(b.sub)}</span>
+      <span class="cnt">${esc(b.cnt)}</span>
+    </div>`).join('');
+  return `<div class="strata">${html}</div>` +
+    `<div class="expiry-note">Depth ${NFMT.format(n)} · ${NFMT.format(offchain)} off-chain ${plural(offchain, 'transaction')} to broadcast for unilateral exit${chain.truncated ? ' · truncated in snapshot' : ''}</div>`;
+}
+document.addEventListener('click', e => {
+  const s = e.target.closest('.stratum[data-href]'); if (s) location.hash = s.getAttribute('data-href');
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { const s = e.target.closest('.stratum[data-href]'); if (s) location.hash = s.getAttribute('data-href'); }
+});
+
+/* ============================================================
+   PROPORTIONAL FLOW — tx pages
+   ============================================================ */
+function renderFlow(tx) {
+  const MAX_ROWS = 9, PLOT_H = 168;
+  let ins = tx.inputs.map(i => ({ ...i, amt: i.amount ?? resolveBatchAmount(i) }));
+  // cap rows: keep the largest MAX_ROWS-1 individually, aggregate the rest
+  const capSide = arr => {
+    if (arr.length <= MAX_ROWS) return arr;
+    const sorted = [...arr].sort((a, b) => (b.amt ?? b.amount ?? 0) - (a.amt ?? a.amount ?? 0));
+    const keep = sorted.slice(0, MAX_ROWS - 1);
+    const rest = sorted.slice(MAX_ROWS - 1);
+    const restAmt = rest.reduce((s, i) => s + (i.amt ?? i.amount ?? 0), 0);
+    keep.push({ _agg: true, amt: restAmt, amount: restAmt, count: rest.length, via: 'mixed', _label: `+ ${rest.length} more` });
+    return keep;
+  };
+  ins = capSide(ins);
+  const vtxoOuts = tx.outputs.filter(o => o.kind === 'vtxo');
+  const outs = capSide(vtxoOuts.map(o => ({ ...o })));
+  const anchors = tx.outputs.filter(o => o.kind === 'anchor');
+  const totalIn = tx.inputs.reduce((s, i) => s + (i.amount ?? resolveBatchAmount(i) ?? 0), 0);
+  const totalOut = tx.outputs.filter(o => o.kind === 'vtxo').reduce((s, o) => s + (o.amount ?? 0), 0);
+  const hasNull = ins.some(i => i.amt == null) || vtxoOuts.some(o => o.amount == null);
+  const maxAmt = Math.max(totalIn, totalOut, 1);
+  const W = 980, padL = 290, padR = 270;
+  const x1 = padL + 60, x2 = W - padR - 60; // node bar x positions
+  const gap = 6, barW = 8;
+  const hOf = amt => Math.max(3, (amt / maxAmt) * PLOT_H);
+  const stack = (arr, amtKey) => {
+    const totalH = arr.reduce((s, i) => s + hOf(i[amtKey] ?? 0), 0) + gap * Math.max(0, arr.length - 1);
+    const startY = 20 + Math.max(0, (PLOT_H - totalH) / 2);
+    let y = startY;
+    arr.forEach(it => { const h = hOf(it[amtKey] ?? 0); it._y = y; it._h = h; it._cy = y + h / 2; y += h + gap; });
+    return totalH;
+  };
+  stack(ins, 'amt'); stack(outs, 'amount');
+  const H = 20 + PLOT_H + 10 + anchors.length * 11;
+  const midX = (x1 + x2) / 2;
+  let s = `<svg viewBox="0 0 ${W} ${H}" class="flow-svg" role="img" aria-label="Proportional flow of ${esc(tx.kind)} transaction">`;
+  // ribbons — channel colour at low alpha, 1px ink edge
+  const drawRibbons = (aArr, aKey, bArr, bKey, ySide) => {
+    if (!aArr.length || !bArr.length || hasNull) return;
+    const bTotal = bArr.reduce((s, o) => s + (o[bKey] ?? 0), 0) || 1;
+    aArr.forEach(a => {
+      let cursor = a._y;
+      bArr.forEach(b => {
+        const share = (b[bKey] ?? 0) / bTotal;
+        const rh = Math.max(1, share * a._h);
+        const y1t = cursor, y1b = cursor + rh;
+        const yc = b._cy, y2t = yc - rh / 2, y2b = yc + rh / 2;
+        s += `<path d="M ${x1} ${y1t} C ${midX} ${y1t}, ${midX} ${y2t}, ${x2} ${y2t} L ${x2} ${y2b} C ${midX} ${y2b}, ${midX} ${y1b}, ${x1} ${y1b} Z" fill="var(--ch-a)" opacity="0.14" stroke="var(--ink)" stroke-width="0.5" stroke-opacity="0.35"/>`;
+        cursor += rh;
+      });
+    });
+  };
+  drawRibbons(ins, 'amt', outs, 'amount');
+  // input bars (thin ink) + labels in left mono column
+  ins.forEach((inp, i) => {
+    const via = inp._agg ? inp._label : (inp.via === 'checkpoint' ? 'via checkpoint' : inp.via === 'batch' ? 'via batch' : inp.via);
+    const amtTxt = inp.amt != null ? `${sats(inp.amt)} sat` : '—';
+    const pct = totalIn ? ((inp.amt ?? 0) / totalIn * 100).toFixed(1) : '0';
+    s += `<text class="tick-label" x="${x1 - 8}" y="${inp._cy + 3}" text-anchor="end">in ${i + 1} · ${amtTxt} · ${pct}% · ${esc(via)}</text>`;
+    s += `<rect x="${x1}" y="${inp._y}" width="${barW}" height="${Math.max(inp._h, 2)}" fill="var(--ink)"/>`;
+  });
+  // output bars (channel colour) + labels in right mono column
+  outs.forEach((o, i) => {
+    const st = o.vtxo?.state ?? (o._agg ? 'aggregate' : '');
+    const amtTxt = o.amount != null ? `${sats(o.amount)} sat` : '—';
+    const pct = totalOut ? ((o.amount ?? 0) / totalOut * 100).toFixed(1) : '0';
+    const voutTxt = o._agg ? `${o.count} outputs` : `vout ${o.vout}`;
+    s += `<text class="tick-label" x="${x2 + barW + 8}" y="${o._cy + 3}" text-anchor="start">${voutTxt} · ${amtTxt} · ${pct}% · ${esc(st)}</text>`;
+    s += `<rect x="${x2 - barW}" y="${o._y}" width="${barW}" height="${Math.max(o._h, 2)}" fill="var(--ch-a)"/>`;
+  });
+  // anchors — thin ink bars, zero value
+  anchors.forEach((o, i) => {
+    s += `<text class="tick-label" x="${x2 + barW + 8}" y="${20 + PLOT_H + 12 + i * 11}" text-anchor="start" fill="var(--ink-3)">vout ${o.vout} · anchor · 0 sat · zero-value</text>`;
+  });
+  s += `</svg>`;
+  // single caption below
+  const cap = [`in ${sat(totalIn || null)}`, `out ${sat(totalOut || null)}`];
+  if (anchors.length) cap.push(`${anchors.length} anchor output${anchors.length === 1 ? '' : 's'} (zero-value)`);
+  if (hasNull) cap.push('▲ some amounts not indexed');
+  return `<div class="chart-wrap">${s}</div>` + `<div class="flow-cap">${cap.join(' · ')}</div>`;
+}
+function resolveBatchAmount(inp) {
+  if (inp.via !== 'batch' || !inp.outpoint) return null;
+  const [txid, vout] = inp.outpoint.split(':');
+  const c = D.commitmentTxs[txid];
+  const b = c?.batches?.find(b => b.vout === +vout);
+  return b ? b.amount : null;
+}
+
+/* ============================================================
+   SPEC COMPARISON — § 04 Operators
+   ============================================================ */
+function celToSentence(expr) {
+  if (!expr) return null;
+  // inputType == 'vtxo' && expiry - now() > 2505216.0 ? amount * 0.002 : 0.0
+  const m = expr.match(/inputType == 'vtxo' && expiry - now\(\) > ([\d.]+) \? amount \* ([\d.]+) : ([\d.]+)/);
+  if (m) {
+    const daysNum = parseFloat(m[1]) / 86400;
+    const days = Number.isInteger(daysNum) ? String(daysNum) : daysNum.toFixed(1).replace(/\.0$/, '');
+    const pct = (parseFloat(m[2]) * 100).toFixed(1).replace(/\.0$/, '');
+    const flat = parseFloat(m[3]);
+    return flat === 0
+      ? `${pct} % of the input amount when the VTXO has more than ${days} days left, otherwise free`
+      : `${pct} % of the input amount when the VTXO has more than ${days} days left, otherwise ${flat} sat`;
+  }
+  return expr;
+}
+function specRows() {
+  const A = D.operators.arkade, S = D.operators.second;
+  // Second's block-denominated params convert at Bitcoin's nominal 600 s/block
+  const NOMINAL_BLOCK_SEC = 600;
+  // Arkade VTXO lifetime: batch expiresAt − commitment end ≈ 30 d across all observed batches
+  const arkLifeSec = (() => {
+    const ds = [];
+    for (const c of Object.values(D.commitmentTxs)) for (const b of c.batches) if (b.expiresAt && c.endedAt) ds.push(b.expiresAt - c.endedAt);
+    return ds.length ? ds.sort((a, b) => a - b)[Math.floor(ds.length / 2)] : null;
+  })();
+  const secLifeSec = S.vtxoLifetimeBlocks * NOMINAL_BLOCK_SEC;
+  const arkExit = A.unilateralExitDelaySec;
+  const secExit = S.exitDeltaBlocks * NOMINAL_BLOCK_SEC;
+  const fmtDur = sec => {
+    const d = Math.floor(sec / 86400), h = Math.round((sec % 86400) / 3600);
+    return d >= 1 ? `${d} d${h ? ' ' + h + ' h' : ''}` : dur(sec);
+  };
+  const em = '—';
+  const rows = [
+    { p: 'Implementation', a: 'Arkade', b: 'Second', r: 'Two independent operators running the Ark protocol on Bitcoin mainnet.', ra: null, rb: null },
+    { p: 'Version', a: A.version ?? '—', b: em, r: 'Arkade exposes a version string; Second does not publish one on its public endpoint.', ra: null, rb: null },
+    { p: 'Cadence', a: `${dur(A.sessionDurationSec)} sessions`, b: `${dur(S.roundIntervalSec)} rounds`, r: `Arkade seals batches in ${dur(A.sessionDurationSec)} sessions; Second settles once per ${dur(S.roundIntervalSec)} round.`, ra: `session ${NFMT.format(A.sessionDurationSec)} s`, rb: `round ${NFMT.format(S.roundIntervalSec)} s` },
+    { p: 'VTXO lifetime', a: arkLifeSec ? `${fmtDur(arkLifeSec)}` : '—', b: `${fmtDur(secLifeSec)} ≈ ${NFMT.format(S.vtxoLifetimeBlocks)} blk`, r: `Both expire VTXOs at roughly 28–30 days; Arkade ties expiry to its commitment batch, Second to a ${NFMT.format(S.vtxoLifetimeBlocks)}-block count.`, ra: arkLifeSec ? `${NFMT.format(arkLifeSec)} s` : null, rb: `${NFMT.format(S.vtxoLifetimeBlocks)} blk @ 600 s` },
+    { p: 'Exit window', a: fmtDur(arkExit), b: fmtDur(secExit), r: `Arkade gives holders ${fmtDur(arkExit)} to exit unilaterally; Second allows only ${fmtDur(secExit)} — a much shorter renewal deadline.`, ra: `${NFMT.format(A.unilateralExitDelaySec)} s`, rb: `${NFMT.format(S.exitDeltaBlocks)} blk` },
+    { p: 'Boarding exit delay', a: fmtDur(A.boardingExitDelaySec), b: em, r: 'Arkade delays boarding exits by ~90 days; Second has no equivalent published parameter.', ra: `${NFMT.format(A.boardingExitDelaySec)} s`, rb: null },
+    { p: 'VTXO min / max', a: `${sat(A.vtxoMinSat)} – ${sat(A.vtxoMaxSat)}`, b: `≤ ${sat(S.maxVtxoSat)}`, r: `Arkade bounds VTXOs at ${sat(A.vtxoMinSat)}–${sat(A.vtxoMaxSat)}; Second caps at ${sat(S.maxVtxoMaxSat ?? S.maxVtxoSat)} with no published minimum.`, ra: null, rb: null },
+    { p: 'Min board', a: em, b: sat(S.minBoardSat), r: 'Second requires a minimum board amount to enter a round; Arkade has no equivalent threshold.', ra: null, rb: null },
+    { p: 'Board confirmations', a: em, b: NFMT.format(S.boardConfirmations), r: 'Second waits for block confirmations before crediting a board; Arkade settles in its next session.', ra: null, rb: null },
+    { p: 'Max exit depth', a: em, b: NFMT.format(S.maxVtxoExitDepth), r: `Second caps the unroll path at ${NFMT.format(S.maxVtxoExitDepth)} transactions; Arkade publishes no cap.`, ra: null, rb: null },
+    { p: 'Off-chain fee', a: celToSentence(A.fees.offchainInputExpr) ?? em, b: em, r: 'Arkade charges a fee on VTXO inputs defined as a CEL expression; Second does not publish an off-chain fee schedule.', ra: A.fees.offchainInputExpr, rb: null },
+    { p: 'On-chain output', a: `${sat(A.fees.onchainOutputSat)} / batch`, b: em, r: 'Arkade pays a fixed on-chain output per commitment; Second embeds its round fee in the settlement transaction.', ra: null, rb: null },
+    { p: 'Signer / server key', a: midHash(A.signerPubkey, 12, 8), b: midHash(S.serverPubkey, 12, 8), r: 'The operator’s public key — Arkade a signer, Second the server key.', ra: null, rb: null, ca: A.signerPubkey, cb: S.serverPubkey },
+  ];
+  return rows;
+}
+function renderSpec() {
+  const rows = specRows();
+  let h = `<table class="ds spec-table"><thead><tr><th>Parameter</th><th>Arkade</th><th>Second</th><th>Reading</th></tr></thead><tbody>`;
+  for (const r of rows) {
+    h += `<tr><td data-th="Parameter">${esc(r.p)}</td><td data-th="Arkade" class="mono" style="font-size:12px">${esc(r.a)}${r.ra ? `<span class="raw">${esc(r.ra)}</span>` : ''}${r.ca ? ` ${copyBtn(r.ca, 'pubkey')}` : ''}</td><td data-th="Second" class="mono" style="font-size:12px">${esc(r.b)}${r.rb ? `<span class="raw">${esc(r.rb)}</span>` : ''}${r.cb ? ` ${copyBtn(r.cb, 'pubkey')}` : ''}</td><td data-th="Reading" class="reading-cell">${esc(r.r)}</td></tr>`;
+  }
+  h += `</tbody></table>`;
+  return h;
+}
+
+/* ============================================================
+   LEDGER — § 06 Activity
+   ============================================================ */
+let ledgerFilter = 'all', ledgerShown = 25;
+function ledgerRows(f) {
+  let rows = D.activity.slice();
+  if (f === 'arkade') rows = rows.filter(a => a.network === 'arkade');
+  else if (f === 'second') rows = rows.filter(a => a.network === 'second');
+  else if (f === 'virtual') rows = rows.filter(a => a.layer === 'virtual');
+  else if (f === 'onchain') rows = rows.filter(a => a.layer === 'onchain');
+  else if (f === 'action') rows = rows.filter(a => a.state === 'renew' || a.state === 'expired');
+  return rows;
+}
+function renderLedger() {
+  const counts = {
+    all: D.activity.length,
+    arkade: D.activity.filter(a => a.network === 'arkade').length,
+    second: D.activity.filter(a => a.network === 'second').length,
+    virtual: D.activity.filter(a => a.layer === 'virtual').length,
+    onchain: D.activity.filter(a => a.layer === 'onchain').length,
+    action: D.activity.filter(a => a.state === 'renew' || a.state === 'expired').length,
+  };
+  const filters = [['all', 'All'], ['arkade', 'Arkade'], ['second', 'Second'], ['virtual', 'Virtual'], ['onchain', 'On-chain'], ['action', 'Needs action']];
+  let h = `<div class="ledger-filters">` + filters.map(([k, l]) =>
+    `<button type="button" data-lf="${k}" class="${ledgerFilter === k ? 'on' : ''}">${l}<span class="cnt">${counts[k]}</span></button>`).join('') + `</div>`;
+  const rows = ledgerRows(ledgerFilter);
+  const shown = rows.slice(0, ledgerShown);
+  h += `<table class="ds"><thead><tr><th>Time</th><th>Event</th><th>Network</th><th class="num">Amount</th><th>State</th><th>Anchor</th></tr></thead><tbody>`;
+  for (const a of shown) {
+    const kindTxt = a.kind === 'payment' ? 'Payment' : a.kind === 'onboard' ? 'Onboarding' : a.kind === 'refresh' ? 'Refresh' : a.kind === 'batch' ? 'Commitment batch' : a.kind === 'server-in' ? 'Second in' : a.kind === 'server-out' ? 'Second out' : a.kind;
+    const io = a.layer === 'virtual' ? `${a.inputs} in → ${a.outputs} out` : `${a.inputs} in → ${a.outputs} out`;
+    const anchor = a.blockHeight ? `#${blkNum(a.blockHeight)}` : (a.commitmentTxid ? midHash(a.commitmentTxid, 8, 6) : '—');
+    const txLink = a.network === 'arkade' && a.layer === 'virtual' ? `<a href="#/tx/${a.txid}" class="mono">${midHash(a.txid)}</a>`
+      : a.kind === 'batch' ? `<a href="#/commitment/${a.txid}" class="mono">${midHash(a.txid)}</a>`
+      : `<a href="https://mempool.space/tx/${a.txid}" target="_blank" rel="noopener" class="mono">${midHash(a.txid)} ↗</a>`;
+    const isAction = a.state === 'renew' || a.state === 'expired';
+    h += `<tr${isAction ? ' class="row-action"' : ''}>
+      <td data-th="Time"><span class="mono" style="font-size:11px">${fmtTime(a.time).slice(0, 16)}</span><br><span class="dim mono" style="font-size:11px">${ago(a.time)}</span></td>
+      <td data-th="Event"><span class="kind-tag">${esc(kindTxt)}</span> · <span class="dim mono">${esc(io)}</span><br>${txLink}</td>
+      <td data-th="Network">${netTag(a.network)}</td>
+      <td data-th="Amount" class="num">${a.amount != null ? sat(a.amount) : '—'}</td>
+      <td data-th="State">${stateTag(a.state)}</td>
+      <td data-th="Anchor" class="mono" style="font-size:11px">${esc(anchor)}</td>
+    </tr>`;
+  }
+  h += `</tbody></table>`;
+  if (rows.length > ledgerShown) {
+    h += `<div class="ledger-more"><button class="btn-quiet" id="ledger-more" type="button">Show ${Math.min(25, rows.length - ledgerShown)} more of ${NFMT.format(rows.length - ledgerShown)}</button></div>`;
+  }
+  $('#ledger').innerHTML = h;
+  $$('#ledger [data-lf]').forEach(b => b.addEventListener('click', () => { ledgerFilter = b.getAttribute('data-lf'); ledgerShown = 25; renderLedger(); }));
+  const more = $('#ledger-more');
+  if (more) more.addEventListener('click', () => { ledgerShown += 25; renderLedger(); });
+}
+
+/* ============================================================
+   WATCHLIST — § 07
+   ============================================================ */
+function renderWatchSection() {
+  const w = getWatch();
+  const el = $('#watchlist'); if (!el) return;
+  if (!w.length) {
+    el.innerHTML = `<div class="watch-empty">Nothing watched yet. Use the <span class="mono">○ watch</span> button on any address or VTXO to pin it here — stored locally in this browser only.</div>`;
+    return;
+  }
+  const t = now();
+  const items = w.map(item => {
+    const id = item.id;
+    let exp = null, label = item.label, sub = '';
+    if (id.startsWith('ark1') || id.startsWith('bc1')) {
+      const a = D.addresses[id];
+      if (a) { exp = a.summary.nearestExpiry; sub = `${a.totalVtxos} VTXOs`; }
+    } else if (id.includes(':')) {
+      // outpoint
+      const v = D.observedVtxos.find(x => x.outpoint === id);
+      if (v) { exp = v.expiresAt; sub = sat(v.amount); }
+    } else {
+      // txid → find expiresAt
+      const tx = D.virtualTxs[id];
+      if (tx) exp = tx.expiresAt;
+    }
+    const expTxt = exp ? (exp - t > 0 ? fmtDate(exp) + ' · ' + durShort(exp - t) : 'expired ' + fmtDate(exp)) : '—';
+    const urgent = exp && exp - t < D.operators.arkade.unilateralExitDelaySec;
+    return `<div class="watch-item">
+      <span class="wi-id mono">${esc(midHash(id, 20, 14))}</span>
+      <span class="wi-exp mono ${urgent ? 'tri' : ''}">${urgent ? '▲ ' : ''}${esc(expTxt)}${sub ? ' · ' + esc(sub) : ''}</span>
+      <button type="button" data-watch-id="${esc(id)}" data-watch-label="${esc(label)}">remove</button>
+    </div>`;
+  }).join('');
+  el.innerHTML = items;
+}
+
+/* ============================================================
+   VIEWS
+   ============================================================ */
+function secMargin(num, label, prov) {
+  return `<div class="sec-margin"><span class="sec-num">§ ${num}</span><span class="sec-label">${label}</span>${prov ? `<span class="prov">${prov}</span>` : ''}</div>`;
+}
+const provLineRaw = (...ps) => ps.filter(Boolean).map(p => `<div class="prov-after">${p}</div>`).join('');
+const provLine = (...ps) => provLineRaw(...ps.map(p => `${p} <span class="dim" style="opacity:.7">· <a href="#/" style="color:inherit">source key in overview § 08</a></span>`));
+function sec(num, label, prov, body, provAfter) {
+  return `<section class="section">${secMargin(num, label, prov)}<div class="sec-body">${body}${provAfter || ''}</div></section>`;
+}
+
+/* ---------- OVERVIEW ---------- */
+function viewOverview() {
+  const t = now();
+  const s24 = D.stats.arkade24h, s2 = D.stats.second24h;
+  const A = D.operators.arkade, S = D.operators.second;
+  // figures
+  const volChg = s24.volumeChangePct;
+  const txChg = s24.txCountChangePct;
+  const chgArrow = v => v == null ? '' : v < 0 ? ` <span class="tri">▼</span> ${Math.abs(v).toFixed(1)}%` : ` ▲ ${v.toFixed(1)}%`;
+  // spark: arkadeHourly volume
+  const hrs = D.stats.arkadeHourly;
+  const sparkVol = hrs.map(h => h.virtualTxVolumeBtc);
+  const sparkMax = Math.max(...sparkVol, 0.0001);
+  const sparkPath = sparkVol.map((v, i) => `${(i / (sparkVol.length - 1)) * 100},${26 - (v / sparkMax) * 22}`).join(' ');
+  const sparkTx = hrs.map(h => h.virtualTxCount);
+  const sparkTxMax = Math.max(...sparkTx, 1);
+  const sparkTxPath = sparkTx.map((v, i) => `${(i / (sparkTx.length - 1)) * 100},${26 - (v / sparkTxMax) * 22}`).join(' ');
+  // second spark: server txs per day? use activity second count per 6h bucket — simpler: last 12 activity second rows? Use hourly from activity
+  const secRows = D.activity.filter(a => a.network === 'second');
+  const secSpark = [];
+  for (let i = 11; i >= 0; i--) {
+    const hStart = t - (i + 1) * 3600, hEnd = t - i * 3600;
+    secSpark.push(secRows.filter(a => a.time >= hStart && a.time < hEnd).length);
+  }
+  const secMax = Math.max(...secSpark, 1);
+  const secPath = secSpark.map((v, i) => `${(i / 11) * 100},${26 - (v / secMax) * 22}`).join(' ');
+  // fee spark: block medianFee last 24
+  const feeRows = D.chain.blocks.filter(b => b.time >= t - 86400).slice(0, 24);
+  const feeMax = Math.max(...feeRows.map(b => b.medianFee), 0.1);
+  const feePath = feeRows.map((b, i) => `${(i / Math.max(feeRows.length - 1, 1)) * 100},${26 - (b.medianFee / feeMax) * 22}`).join(' ');
+
+  const figures = `
+  <div class="figures">
+    <div class="figure">
+      <div class="fig-label"><span>24 h virtual tx</span><span>arkade</span></div>
+      <div class="fig-val num">${NFMT.format(s24.virtualTxCount)}</div>
+      <div class="fig-sub">${txChg != null ? (txChg < 0 ? `<span class="tri">▼</span> ${Math.abs(txChg).toFixed(1)} % vs prev. day` : `▲ ${txChg.toFixed(1)} % vs prev. day`) : '—'}<br>${NFMT.format(D.activity.filter(a => a.time >= t - 86400 && a.network === 'arkade' && a.layer === 'virtual').length)} observed</div>
+      <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none"><path d="M0 25 L100 25" class="base"/><path d="${sparkTxPath.replace(/ /g, ' L').replace(/^/, 'M')}"/></svg>
+    </div>
+    <div class="figure">
+      <div class="fig-label"><span>24 h volume</span><span>arkade</span></div>
+      <div class="fig-val num">${btcAgg(s24.virtualTxVolumeBtc)}</div>
+      <div class="fig-sub">${volChg != null ? (volChg < 0 ? `<span class="tri">▼</span> ${Math.abs(volChg).toFixed(1)} % vs prev. day` : `▲ ${volChg.toFixed(1)} % vs prev. day`) : '—'}<br>onboard ${btcAgg(s24.onboardingVolumeBtc)}</div>
+      <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none"><path d="M0 25 L100 25" class="base"/><path d="${sparkPath.replace(/ /g, ' L').replace(/^/, 'M')}"/></svg>
+    </div>
+    <div class="figure">
+      <div class="fig-label"><span>Network liquidity</span><span>pool</span></div>
+      <div class="fig-val num">${btcAgg(s24.networkLiquidityBtc)}</div>
+      <div class="fig-sub">in VTXOs + UTXOs held by operator<br>offboard 24 h: ${btcAgg(s24.offboardingVolumeBtc)}</div>
+    </div>
+    <div class="figure">
+      <div class="fig-label"><span>Next round</span><span>second</span></div>
+      <div class="fig-val num"><span data-round-countdown>${durShort(roundInSec())}</span></div>
+      <div class="fig-sub">round interval ${dur(S.roundIntervalSec)}<br>last event: ${esc(S.lastRoundEvent?.kind ?? '—')} · seq ${NFMT.format(S.lastRoundEvent?.roundSeq ?? 0)}</div>
+      <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none"><path d="M0 25 L100 25" class="base"/><path d="${secPath.replace(/ /g, ' L').replace(/^/, 'M')}"/></svg>
+    </div>
+    <div class="figure">
+      <div class="fig-label"><span>Chain tip</span><span>bitcoin</span></div>
+      <div class="fig-val num">${blkNum(D.chain.tipHeight)}</div>
+      <div class="fig-sub">${fmtTime(D.chain.tipTime).slice(0, 16)} UTC<br>mempool ${NFMT.format(D.chain.mempool.count)} tx · ${NFMT.format(D.chain.mempool.vsize)} vB</div>
+    </div>
+    <div class="figure">
+      <div class="fig-label"><span>Median fee</span><span>last 24 h</span></div>
+      <div class="fig-val num">${feeRows.length ? feeRows[0].medianFee.toFixed(2) : '—'}<span class="unit">sat/vB</span></div>
+      <div class="fig-sub">fastest now ${D.chain.fees.fastestFee} sat/vB<br>hour ${D.chain.fees.hourFee} · economy ${D.chain.fees.economyFee}</div>
+      <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none"><path d="M0 25 L100 25" class="base"/><path d="${feePath.replace(/ /g, ' L').replace(/^/, 'M')}"/></svg>
+    </div>
+  </div>`;
+
+  const prov1 = `¹ Arkade operator <span class="mono">/v1/info</span> + activity archive aggregate, fetched ${fmtTime(A.fetchedAt ? Date.parse(A.fetchedAt) / 1000 : t).slice(11, 16)} UTC`;
+  const prov2 = `² Same source; liquidity = sum of indexed VTXO + UTXO value`;
+  const prov3 = `³ This snapshot's activity feed — a sample, not the full stream`;
+  const prov4 = `⁴ Second gRPC endpoint + mempool.space Esplora`;
+
+  return `
+  ${sec('01', 'Reading', '', `
+    <p class="reading">${readingOverview()}</p>
+  `, provLineRaw(prov1, prov2, prov3, prov4))}
+  ${sec('02', 'Figures', 'Computed from stats.arkade24h, stats.second24h, chain.tip, chain.fees', `
+    ${figures}
+  `)}
+  ${sec('03', 'Rhythm', 'activity[] feed · 45-day span · block axis estimated for older rows', `
+    <div class="window-toggle" id="seismo-win">
+      <button type="button" data-w="86400" class="on">24 h</button>
+      <button type="button" data-w="604800">7 d</button>
+      <button type="button" data-w="3888000">45 d</button>
+    </div>
+    <div id="seismo"></div>
+    <div class="expiry-note">Strokes rise ∝ log(amount); ◇ = commitment batch on the axis. Hover for a readout, click a stroke to open its page. Block positions before the observed 180-block window are estimated at ~${Math.round(SEC_PER_BLOCK)} s/block.</div>
+  `)}
+  ${sec('04', 'Operators', 'operators.arkade /v1/info · operators.second gRPC-web', `
+    ${renderSpec()}
+  `)}
+  ${sec('05', 'Expiry', `observedVtxos[] · ${NFMT.format(expiryStats().total)} unspent VTXOs · ${NFMT.format(expiryStats().inWin)} in the exit window`, `
+    <div id="expiry"></div>
+  `)}
+  ${sec('06', 'Ledger', 'activity[] · unified feed, newest first', `
+    <div id="ledger"></div>
+  `)}
+  ${sec('07', 'Watchlist', 'localStorage · this browser only', `
+    <div id="watchlist"></div>
+  `)}
+  ${sec('08', 'Sources &amp; method', 'numbered references · glossary', `
+    <ol class="src-list">
+      <li value="1">Arkade operator — <span class="mono">https://arkade.computer/v1/info</span> &amp; <span class="mono">/v1/indexer</span><span class="src-url">fetched ${esc(A.fetchedAtIso ?? fmtTime(Date.parse(A.fetchedAt) / 1000))} · version ${esc(A.version)} · signer ${esc(midHash(A.signerPubkey, 16, 12))}</span></li>
+      <li value="2">Second — <span class="mono">https://ark.second.tech</span> (gRPC-web)<span class="src-url">fetched ${esc(S.fetchedAtIso ?? '')} · server key ${esc(midHash(S.serverPubkey, 16, 12))} · server address ${esc(midHash(S.serverAddress, 20, 14))} (${NFMT.format(S.serverAddressTxCount)} txs seen)</span></li>
+      <li value="3">Arkade activity archive — <span class="mono">https://arkexplorer.blockonomics.co/api</span><span class="src-url">third-party aggregate; 24 h stats &amp; hourly series · may lag the operator</span></li>
+      <li value="4">Bitcoin chain — <span class="mono">https://mempool.space/api</span> (Esplora)<span class="src-url">tip ${blkNum(D.chain.tipHeight)} · ${D.chain.blocks.length} recent blocks with fees &amp; pools</span></li>
+      <li value="5">Virtual transactions — operator indexer sample<span class="src-url">${NFMT.format(Object.keys(D.virtualTxs).length)} Ark txs · ${NFMT.format(Object.keys(D.commitmentTxs).length)} commitments · ${NFMT.format(Object.keys(D.vtxoChains).length)} unroll paths · ${NFMT.format(Object.keys(D.addresses).length)} addresses</span></li>
+    </ol>
+    <div class="glossary" style="margin-top:28px">
+      <dl>
+        <dt>VTXO</dt><dd>Virtual transaction output — an off-chain UTXO that expires and must be renewed or spent before its deadline.</dd>
+        <dt>Batch / commitment</dt><dd>A Bitcoin transaction that anchors a set of VTXOs on-chain. Arkade calls them batches; Second calls them rounds.</dd>
+        <dt>Checkpoint</dt><dd>Intermediate Arkade transaction between a VTXO and the transaction that spends it; it bounds the exit path.</dd>
+        <dt>Forfeit</dt><dd>Pre-signed transaction letting the operator claim a refreshed VTXO's old funds if they are ever exited unilaterally.</dd>
+        <dt>Preconfirmed</dt><dd>Cosigned by the operator but not yet anchored in a Bitcoin block — safe to treat as final only after settlement.</dd>
+      </dl>
+      <dl>
+        <dt>Exit window</dt><dd>The final stretch before expiry, as long as the operator's unilateral exit delay (Arkade ${dur(D.operators.arkade.unilateralExitDelaySec)}, Second ${dur(D.operators.second.exitDeltaBlocks * 600)}). A VTXO inside it should be renewed or exited now — state <span class="tri">▲ renew</span>.</dd>
+        <dt>Sweep</dt><dd>An operator collecting expired or dust VTXOs back into its wallet.</dd>
+        <dt>Exit depth / unroll path</dt><dd>Number of transactions a holder must broadcast to exit unilaterally — the chain from the VTXO back to its on-chain commitment.</dd>
+        <dt>Connector</dt><dd>Commitment output that makes those forfeits valid only once the new batch confirms.</dd>
+      </dl>
+    </div>
+  `)}
+  `;
+}
+
+/* ---------- VIRTUAL TX ---------- */
+function viewTx(txid) {
+  const tx = D.virtualTxs[txid];
+  if (!tx) return viewNotFound(txid, 'virtual');
+  const t = now();
+  const kindLabel = { payment: 'Payment', onboard: 'Onboarding', refresh: 'Refresh' }[tx.kind] ?? tx.kind;
+  const inSum = tx.inputs.reduce((s, i) => s + (i.amount ?? resolveBatchAmount(i) ?? 0), 0);
+  const outVtxo = tx.outputs.filter(o => o.kind === 'vtxo');
+  const outSum = outVtxo.reduce((s, o) => s + (o.amount ?? 0), 0);
+  const anchor = tx.outputs.filter(o => o.kind === 'anchor');
+  // chain for stratigraphy — use first output vtxo outpoint
+  const firstOut = outVtxo[0]?.vtxo?.outpoint;
+  const chain = firstOut ? D.vtxoChains[firstOut] : null;
+  // psbt appendix
+  const psbt = tx.psbt ? `<div class="psbt-box">${esc(tx.psbt)}</div><div class="expiry-note" style="margin-top:6px"><button class="copy" data-copy="${esc(tx.psbt)}" type="button">copy raw PSBT</button> · ${NFMT.format(tx.psbt.length)} chars · base64</div>` : `<div class="expiry-note">No PSBT in this snapshot for this transaction.</div>`;
+
+  // outputs table
+  let outRows = '';
+  tx.outputs.forEach((o, i) => {
+    const v = o.vtxo;
+    const st = v ? stateTag(v.state) : '<span class="dim">—</span>';
+    const exp = v?.expiresAt ? fmtDate(v.expiresAt) + ' · ' + durShort(v.expiresAt - t) : '—';
+    const spent = v?.spentByTx ? `spent by ${linkTx(v.spentByTx)}` : (v?.isPreconfirmed ? 'preconfirmed' : '');
+    outRows += `<tr>
+      <td data-th="Vout" class="mono">${o.vout}</td>
+      <td data-th="Kind" class="kind-tag">${esc(o.kind)}</td>
+      <td data-th="Amount" class="num">${o.amount != null ? sat(o.amount) : '—'}</td>
+      <td data-th="Address">${o.address ? linkAddr(o.address) : '<span class="dim">—</span>'}</td>
+      <td data-th="State">${st}${spent ? `<br><span class="dim" style="font-size:10.5px">${spent}</span>` : ''}</td>
+      <td data-th="Expiry" class="mono" style="font-size:11px">${exp}</td>
+      <td data-th="Outpoint" class="id">${v ? linkOutpoint(v.outpoint) : '<span class="dim">—</span>'}</td>
+    </tr>`;
+  });
+  // inputs table
+  let inRows = '';
+  tx.inputs.forEach((inp, i) => {
+    const amt = inp.amount ?? resolveBatchAmount(inp);
+    const via = inp.via === 'checkpoint' ? 'checkpoint' : inp.via === 'batch' ? 'batch output' : inp.via;
+    const v = inp.vtxo;
+    inRows += `<tr>
+      <td data-th="#" class="mono">${i + 1}</td>
+      <td data-th="Via" class="kind-tag">${esc(via)}</td>
+      <td data-th="Amount" class="num">${amt != null ? sat(amt) : '—'}</td>
+      <td data-th="Address">${inp.address ? linkAddr(inp.address) : '<span class="dim">—</span>'}</td>
+      <td data-th="Outpoint" class="id">${linkOutpoint(inp.outpoint)}</td>
+      <td data-th="Note" class="dim" style="font-size:11.5px">${inp.checkpointTxid ? 'ckpt ' + linkTx(inp.checkpointTxid) : (v ? 'state ' + v.state : '')}</td>
+    </tr>`;
+  });
+
+  const prov = `operator indexer · virtualTxs[${txid.slice(0, 8)}…] · chain ${chain ? 'vtxoChains[' + firstOut.split(':')[1] + ']' : '—'}`;
+  return `
+  <div class="detail-head">
+    <div class="detail-kind">${esc(kindLabel)} · virtual transaction · Arkade</div>
+    <div class="detail-title">${esc(kindLabel)}</div>
+    <div class="detail-id">
+      <span class="mono">${esc(txid)}</span>
+      ${copyBtn(txid, 'txid')}
+      <button class="watch-btn ${isWatched(txid) ? 'on' : ''}" data-watch-id="${esc(txid)}" data-watch-label="${esc(kindLabel)} tx" type="button" aria-pressed="${isWatched(txid)}">${isWatched(txid) ? '● watching' : '○ watch'}</button>
+    </div>
+    <div class="detail-meta">
+      <span>created <b>${fmtTime(tx.createdAt).slice(0, 16)}</b> UTC · ${ago(tx.createdAt)}</span>
+      <span>state <b>${stateTag(tx.state)}</b></span>
+      <span>expires <b>${tx.expiresAt ? fmtDate(tx.expiresAt) + ' · ' + durShort(tx.expiresAt - t) : '—'}</b></span>
+      <span>commitment <b>${tx.commitmentTxids?.length ? linkTx(tx.commitmentTxids[0]) : '—'}</b></span>
+    </div>
+  </div>
+  ${sec('01', 'Reading', '', `<p class="reading">${readingTx(tx)}</p>`, provLine(prov))}
+  ${sec('02', 'Flow', 'inputs → outputs · width ∝ amount', renderFlow(tx))}
+  ${sec('03', 'Stratigraphy', 'unroll path · exit depth', renderStrata(chain, txid))}
+  ${sec('04', 'Inputs', 'what this transaction spends', `
+    <table class="ds"><thead><tr><th>#</th><th>Via</th><th class="num">Amount</th><th>Address</th><th>Outpoint</th><th>Note</th></tr></thead><tbody>${inRows}</tbody></table>
+  `)}
+  ${sec('05', 'Outputs', 'what this transaction creates', `
+    <table class="ds"><thead><tr><th>Vout</th><th>Kind</th><th class="num">Amount</th><th>Address</th><th>State</th><th>Expiry</th><th>Outpoint</th></tr></thead><tbody>${outRows}</tbody></table>
+  `)}
+  ${sec('06', 'Appendix', 'raw PSBT · machine-readable', psbt)}
+  `;
+}
+
+/* ---------- COMMITMENT ---------- */
+function viewCommit(txid) {
+  const c = D.commitmentTxs[txid];
+  if (!c) return viewNotFound(txid, 'commitment');
+  const t = now();
+  const oc = c.onchain;
+  const sess = c.endedAt - c.startedAt;
+  const minedAgo = oc.blockTime ? ago(oc.blockTime, t) : '—';
+  // timing ruler
+  const t0 = c.startedAt, t1 = c.endedAt, t2 = oc.blockTime;
+  const tEnd = t2 || t1; // fall back to session end if not yet mined
+  const span = Math.max(tEnd - t0, 1);
+  const posN = tt => (tt == null || !isFinite(tt)) ? null : Math.min(97, Math.max(3, (tt - t0) / span * 100));
+  const p0 = posN(t0), p1 = posN(t1), p2 = posN(t2);
+  const mid = (a, b) => (a == null || b == null) ? null : ((a + b) / 2).toFixed(1);
+  const timing = `
+  <div class="timing">
+    <div class="tcell"><div class="tl">Session opened</div><div class="tv mono">${fmtTime(t0).slice(0, 16)}</div><div class="ts">${ago(t0)}</div></div>
+    <div class="tcell"><div class="tl">Session closed · ${durShort(sess)}</div><div class="tv mono">${fmtTime(t1).slice(0, 16)}</div><div class="ts">${ago(t1)}</div></div>
+    <div class="tcell"><div class="tl">Mined in block ${oc.confirmed ? blkNum(oc.blockHeight) : '—'}</div><div class="tv mono">${t2 ? fmtTime(t2).slice(0, 16) : '—'}</div><div class="ts">${minedAgo} · ${oc.confirmations} confirmations</div></div>
+  </div>
+  <div class="truler">
+    <div class="tr-line"></div>
+    ${p0 != null ? `<div class="tr-dot" style="left:${p0.toFixed(1)}%"></div>` : ''}
+    ${p1 != null ? `<div class="tr-dot tr-close" style="left:${p1.toFixed(1)}%"></div>` : ''}
+    ${p2 != null ? `<div class="tr-dot" style="left:${p2.toFixed(1)}%"></div>` : ''}
+    ${mid(p0, p2) != null && t2 ? `<div class="tr-dur" style="left:${mid(p0, p2)}%">open → mined · ${durShort(t2 - t0)}</div>` : ''}
+    ${p0 != null ? `<div class="tr-lab" style="left:${p0.toFixed(1)}%">open</div>` : ''}
+    ${p1 != null ? `<div class="tr-lab" style="left:${p1.toFixed(1)}%">close</div>` : ''}
+    ${p2 != null ? `<div class="tr-lab" style="left:${p2.toFixed(1)}%">mined</div>` : ''}
+  </div>`;
+  // batches table
+  let batchRows = '';
+  c.batches.forEach(b => {
+    batchRows += `<tr>
+      <td data-th="Vout" class="mono">${b.vout}</td>
+      <td data-th="Amount" class="num">${sat(b.amount)}</td>
+      <td data-th="VTXOs" class="num">${NFMT.format(b.vtxoCount)}</td>
+      <td data-th="Expires" class="mono" style="font-size:11px">${fmtDate(b.expiresAt)} · ${durShort(b.expiresAt - t)}</td>
+      <td data-th="Swept" class="state">${b.swept ? '<span class="st-swept">✕ swept</span>' : '<span class="st-settled">● live</span>'}</td>
+    </tr>`;
+  });
+  // tree
+  let treeHtml = '';
+  for (const [vout, leaves] of Object.entries(c.trees || {})) {
+    const flat = JSON.stringify(leaves);
+    if (leaves.length <= 3 && !flat.includes('children":{"')) {
+      treeHtml += leaves.map(l => `<div class="watch-item"><span class="wi-id mono">${midHash(l.txid)}</span><span class="dim" style="font-size:11px">leaf · vout ${vout}</span></div>`).join('');
+    } else {
+      treeHtml += `<div class="watch-item"><span class="wi-id mono">vout ${vout}</span><span class="dim" style="font-size:11px">${leaves.length} leaves · compressed</span></div>`;
+    }
+  }
+  // onchain facts
+  const ocFacts = `
+  <table class="ds" style="margin-top:8px"><tbody>
+    <tr><td data-th="Confirmed" style="width:160px;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);text-transform:uppercase">status</td><td>${oc.confirmed ? '● confirmed' : '◌ unconfirmed'} · ${oc.confirmations} confirmations</td></tr>
+    <tr><td style="font-family:var(--mono);font-size:10.5px;color:var(--ink-3);text-transform:uppercase">block</td><td class="mono">${oc.blockHeight ? `<a href="https://mempool.space/block/${oc.blockHash}" target="_blank" rel="noopener">#${blkNum(oc.blockHeight)}</a> · ${esc(midHash(oc.blockHash ?? '', 16, 12))}` : '—'}</td></tr>
+    <tr><td style="font-family:var(--mono);font-size:10.5px;color:var(--ink-3);text-transform:uppercase">fee</td><td class="num">${sat(oc.fee)} · ${oc.feeRate} sat/vB · weight ${NFMT.format(oc.weight)} WU · vsize ${NFMT.format(oc.vsize)}</td></tr>
+    <tr><td style="font-family:var(--mono);font-size:10.5px;color:var(--ink-3);text-transform:uppercase">connectors / forfeits</td><td class="num">${c.connectorCount} / ${c.forfeitCount}${c.forfeitTxids?.length ? ' · ' + c.forfeitTxids.map(f => `<span class="mono" style="font-size:11px">${midHash(f, 10, 6)}</span>`).join(', ') : ''}</td></tr>
+  </tbody></table>`;
+  // onchain inputs/outputs
+  let ocIn = '', ocOut = '';
+  oc.inputs?.forEach(i => { ocIn += `<tr><td data-th="Txid" class="id">${linkTx(i.txid)}</td><td data-th="Vout" class="mono">${i.vout}</td><td data-th="Amount" class="num">${sat(i.amount)}</td><td data-th="Address" class="mono" style="font-size:11px">${esc(midHash(i.address ?? '', 18, 12))}</td></tr>`; });
+  oc.outputs?.forEach(o => { ocOut += `<tr><td data-th="Vout" class="mono">${o.vout}</td><td data-th="Amount" class="num">${sat(o.amount)}</td><td data-th="Type" class="kind-tag">${esc(o.type)}</td><td data-th="Address" class="mono" style="font-size:11px">${esc(midHash(o.address ?? '', 18, 12))}</td></tr>`; });
+  const prov = `commitmentTxs[${txid.slice(0, 8)}…] · onchain via Esplora · block ${blkNum(oc.blockHeight)}`;
+  return `
+  <div class="detail-head">
+    <div class="detail-kind">Commitment batch · Arkade · on-chain</div>
+    <div class="detail-title">Batch ${midHash(txid, 12, 10)}</div>
+    <div class="detail-id">
+      <span class="mono">${esc(txid)}</span>
+      ${copyBtn(txid, 'commitment txid')}
+      <a class="btn-quiet" href="https://mempool.space/tx/${txid}" target="_blank" rel="noopener" style="text-decoration:none">mempool.space ↗</a>
+    </div>
+    <div class="detail-meta">
+      <span>session <b>${durShort(sess)}</b></span>
+      <span>VTXOs in/out <b>${NFMT.format(c.totalInputVtxos)} → ${NFMT.format(c.totalOutputVtxos)}</b></span>
+      <span>value <b>${sat(c.totalInputAmount)}</b></span>
+      <span>block <b>${oc.confirmed ? '#' + blkNum(oc.blockHeight) : 'pending'}</b></span>
+    </div>
+  </div>
+  ${sec('01', 'Reading', '', `<p class="reading">${readingCommit(c)}</p>`, provLine(prov))}
+  ${sec('02', 'Timing', 'session open → close → mined', timing)}
+  ${sec('03', 'Batch outputs', 'what this commitment created', `
+    <table class="ds"><thead><tr><th>Vout</th><th class="num">Amount</th><th class="num">VTXOs</th><th>Expires</th><th>Status</th></tr></thead><tbody>${batchRows}</tbody></table>
+  `)}
+  ${sec('04', 'On-chain facts', 'Esplora · fee, weight, confirmations', ocFacts)}
+  ${sec('05', 'Tree', 'Merkle leaves → batch outputs', `<div style="margin-top:6px">${treeHtml || '<span class="dim">No tree data.</span>'}</div>`)}
+  ${sec('06', 'On-chain inputs', 'what the commitment spends', `
+    <table class="ds"><thead><tr><th>Txid</th><th>Vout</th><th class="num">Amount</th><th>Address</th></tr></thead><tbody>${ocIn}</tbody></table>
+  `)}
+  ${sec('07', 'On-chain outputs', 'what the commitment creates', `
+    <table class="ds"><thead><tr><th>Vout</th><th class="num">Amount</th><th>Type</th><th>Address</th></tr></thead><tbody>${ocOut}</tbody></table>
+  `)}
+  `;
+}
+
+/* ---------- ADDRESS ---------- */
+function viewAddress(addrStr) {
+  let addr = D.addresses[addrStr];
+  let partial = false;
+  if (!addr) {
+    // synthesize partial from virtualTxs
+    const vtxos = [];
+    const seen = new Set();
+    for (const t of Object.values(D.virtualTxs)) {
+      for (const o of t.outputs) if (o.address === addrStr && o.vtxo && !seen.has(o.vtxo.outpoint)) { seen.add(o.vtxo.outpoint); vtxos.push(o.vtxo); }
+      for (const i of t.inputs) if (i.address === addrStr && i.vtxo && !seen.has(i.vtxo.outpoint)) { seen.add(i.vtxo.outpoint); vtxos.push(i.vtxo); }
+    }
+    if (!vtxos.length) return viewNotFound(addrStr, 'address');
+    vtxos.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    const counts = {};
+    let spendable = 0, renew = 0, expired = 0, received = 0;
+    for (const v of vtxos) {
+      counts[v.state] = (counts[v.state] || 0) + 1;
+      if (v.state === 'spent' || v.state === 'swept') {} else if (v.state === 'renew') renew += v.amount; else spendable += v.amount;
+      if (v.state === 'expired') expired += v.amount;
+      received += v.amount;
+    }
+    const nearest = vtxos.filter(v => v.expiresAt && (v.state === 'preconfirmed' || v.state === 'settled' || v.state === 'renew')).map(v => v.expiresAt).sort((a, b) => a - b)[0];
+    addr = { address: addrStr, script: null, totalVtxos: vtxos.length, listedVtxos: vtxos.length, vtxos, summary: { spendable, renew, expired, received, counts, nearestExpiry: nearest }, _partial: true };
+    partial = true;
+  }
+  const t = now();
+  const s = addr.summary;
+  const counts = s.counts || {};
+  // state bar — VTXO counts by state over ALL VTXOs (summary covers the full set)
+  const cnt = k => counts[k] ?? 0;
+  const totalCnt = addr.totalVtxos || Object.values(counts).reduce((a, b) => a + b, 0) || 1;
+  const groups = [
+    { label: 'outside window', n: cnt('preconfirmed') + cnt('settled'), amt: s.spendable, col: 'var(--ch-a)' },
+    { label: 'renew (exit window)', n: cnt('renew'), amt: s.renew, col: 'var(--alert)' },
+    { label: 'expired', n: cnt('expired'), amt: s.expired, col: 'var(--ink-3)' },
+    { label: 'expiry unknown', n: cnt('unknown'), amt: null, col: 'var(--ink-2)' },
+    { label: 'spent / swept / refreshed', n: cnt('spent') + cnt('swept') + cnt('refreshed'), amt: null, col: 'var(--rule)' },
+  ];
+  // min visible segment so a tiny-but-important state (e.g. renew) is not invisible
+  const MINW = 0.9;
+  let bar = '';
+  for (const g of groups) {
+    if (!g.n) continue;
+    const exact = g.n / totalCnt * 100;
+    const w = Math.max(exact, MINW).toFixed(2);
+    bar += `<div style="width:${w}%;background:${g.col}" title="${g.label} · ${NFMT.format(g.n)} VTXOs${g.amt != null ? ' · ' + sat(g.amt) : ''}${exact < MINW ? ' (min width)' : ''}"></div>`;
+  }
+  const barLabels = groups.filter(g => g.n).map(g =>
+    `<span><i class="sw" style="background:${g.col}"></i> ${g.label} <span class="dim">${NFMT.format(g.n)}${g.amt != null && g.n ? ' · ' + sat(g.amt) : ''}</span></span>`).join('');
+  // expiry ruler for this address — hatch the region whose expiry is inside Arkade's exit window now
+  const expVtxos = addr.vtxos.filter(v => v.expiresAt && (v.state === 'preconfirmed' || v.state === 'settled' || v.state === 'renew'));
+  const minExp = Math.min(...expVtxos.map(v => v.expiresAt), t + 86400);
+  const maxExp = Math.max(...expVtxos.map(v => v.expiresAt), minExp + 86400 * 30);
+  const span = maxExp - minExp;
+  const exitWin = D.operators.arkade.unilateralExitDelaySec;
+  const winRight = Math.min(t + exitWin, maxExp); // expiry dates ≤ this are inside the window now
+  let ruler = '';
+  if (expVtxos.length) {
+    const W = 960, H = 96, padL = 44, padR = 40;
+    const xOf = e => padL + ((e - minExp) / span) * (W - padL - padR);
+    ruler = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="Expiry distribution for this address">`;
+    ruler += `<defs><pattern id="addrhatch" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="var(--paper-2)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--alert)" stroke-width="1" opacity="0.5"/></pattern></defs>`;
+    // exit-window hatch: expiry dates from minExp up to winRight
+    if (winRight > minExp) {
+      const wx0 = xOf(minExp), wx1 = xOf(winRight);
+      ruler += `<rect x="${wx0}" y="${H - 56}" width="${wx1 - wx0}" height="24" fill="url(#addrhatch)"/>`;
+      ruler += `<text class="chart-anno" x="${Math.min((wx0 + wx1) / 2, W - padR - 70)}" y="${H - 60}" text-anchor="middle" fill="var(--alert-ink)">Arkade exit window ${dur(exitWin)}</text>`;
+    }
+    ruler += `<line class="axis" x1="${padL}" y1="${H - 20}" x2="${W - padR}" y2="${H - 20}"/>`;
+    for (let i = 0; i <= 4; i++) {
+      const e = minExp + span * i / 4;
+      const x = xOf(e);
+      const anchor = i === 0 ? 'start' : i === 4 ? 'end' : 'middle';
+      const lx = i === 0 ? x - 2 : i === 4 ? x + 2 : x;
+      ruler += `<line class="axis-tick" x1="${x}" y1="${H - 20}" x2="${x}" y2="${H - 16}"/><text class="tick-label" x="${lx}" y="${H - 6}" text-anchor="${anchor}">${fmtDate(e).slice(5)}</text>`;
+    }
+    // deterministic vertical jitter + smallest-on-top so same-day expiries don't fully stack
+    const jittered = expVtxos.slice().sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
+    for (const v of jittered) {
+      const x = xOf(v.expiresAt);
+      const inWin = v.expiresAt - t <= exitWin;
+      const r = 3 + Math.sqrt((v.amount ?? 0) / Math.max(...expVtxos.map(z => z.amount ?? 0), 1)) * 6;
+      const cy = (H - 34) - hash01(v.outpoint) * 14;
+      ruler += `<circle cx="${x}" cy="${cy}" r="${r}" fill="${inWin || v.state === 'renew' ? 'var(--alert)' : 'var(--ch-a)'}" opacity="0.8"/>`;
+      ruler += `<circle class="stroke-hit" data-addr-vtxo="${esc(v.outpoint)}" cx="${x}" cy="${cy}" r="${r + 5}" fill="transparent"/>`;
+    }
+    ruler += `</svg>`;
+  }
+  // vtxo ledger sorted by urgency (expiresAt asc, unspent first)
+  const urgency = v => {
+    if (v.state === 'expired') return 0;
+    if (v.state === 'renew') return 1;
+    if (v.state === 'preconfirmed' || v.state === 'settled' || v.state === 'unknown') return 2;
+    return 3;
+  };
+  const sorted = [...addr.vtxos].sort((a, b) => urgency(a) - urgency(b) || (a.expiresAt ?? 9e15) - (b.expiresAt ?? 9e15) || (b.amount ?? 0) - (a.amount ?? 0));
+  let vtxoRows = '';
+  for (const v of sorted.slice(0, 60)) {
+    // meaningful notes only: who spent it / which batch anchored it
+    const note = v.spentByTx ? `spent by ${linkTx(v.spentByTx)}`
+      : v.commitmentTxid ? `anchored in ${linkTx(v.commitmentTxid)}`
+      : (v.state === 'refreshed' ? 'refreshed' : '');
+    vtxoRows += `<tr>
+      <td data-th="Outpoint" class="id">${linkOutpoint(v.outpoint)}</td>
+      <td data-th="Amount" class="num">${sat(v.amount)}</td>
+      <td data-th="State">${stateTag(v.state)}</td>
+      <td data-th="Created" class="mono" style="font-size:11px">${fmtDate(v.createdAt)}</td>
+      <td data-th="Expires" class="mono" style="font-size:11px">${v.expiresAt ? fmtDate(v.expiresAt) + ' · ' + durShort(v.expiresAt - t) : '—'}</td>
+      <td data-th="Note" class="dim" style="font-size:11px">${note}</td>
+    </tr>`;
+  }
+  const prov = `addresses[…] · ${addr._partial ? 'synthesized partial view from virtualTxs' : 'operator indexer'} · summary over all ${NFMT.format(addr.totalVtxos)} VTXOs`;
+  const listedNote = addr.totalVtxos > addr.listedVtxos
+    ? `<div class="expiry-note" style="margin-top:10px">${NFMT.format(addr.listedVtxos)} of ${NFMT.format(addr.totalVtxos)} listed — every unspent VTXO plus the newest history; older spent history is not in this snapshot.</div>` : '';
+  return `
+  <div class="detail-head">
+    <div class="detail-kind">Address statement · Arkade${partial ? ' · partial' : ''}</div>
+    <div class="detail-title mono" style="font-size:clamp(18px,2.4vw,30px);word-break:break-all">${esc(addr.address)}</div>
+    <div class="detail-id">
+      ${copyBtn(addr.address, 'address')}
+      <button class="watch-btn ${isWatched(addr.address) ? 'on' : ''}" data-watch-id="${esc(addr.address)}" data-watch-label="address ${midHash(addr.address, 8, 6)}" type="button" aria-pressed="${isWatched(addr.address)}">${isWatched(addr.address) ? '● watching' : '○ watch'}</button>
+      ${addr.script ? `<span class="dim mono" style="font-size:11px">script ${esc(midHash(addr.script, 20, 10))}</span>` : ''}
+    </div>
+    <div class="detail-meta">
+      <span>VTXOs <b>${NFMT.format(addr.totalVtxos)}</b> total · <b>${NFMT.format(addr.listedVtxos)}</b> listed</span>
+      <span>received <b>${sat(s.received)}</b></span>
+      ${partial ? '<span class="tri">▲ partial view — not in the address index</span>' : ''}
+    </div>
+  </div>
+  <div class="stmt-head" style="margin-top:22px">
+    <div class="stmt-balance">
+      <div class="lbl">Unspent</div>
+      <div class="val num">${btc((s.spendable ?? 0) + (s.renew ?? 0) + (s.expired ?? 0))}<span class="unit">BTC</span></div>
+      <div class="stmt-sub">
+        outside window <span class="mono">${sat(s.spendable)}</span> · exit window <span class="mono tri">▲ ${sat(s.renew)}</span> · expired <span class="mono">${sat(s.expired)}</span><br>
+        ${s.nearestExpiry ? `next expiry ${fmtDate(s.nearestExpiry)} · ${durShort(s.nearestExpiry - t)}` : 'no indexed expiry'}
+      </div>
+    </div>
+    <div>
+      <div class="lbl" style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px">VTXO states · all ${NFMT.format(addr.totalVtxos)}${addr.totalVtxos > addr.listedVtxos ? ` · ${NFMT.format(addr.listedVtxos)} listed` : ''} · widths by count${groups.some(g => g.n && g.n / totalCnt * 100 < MINW) ? ' · &lt;1% at min width' : ''}</div>
+      <div class="state-bar">${bar || '<div style="width:100%;background:var(--rule)"></div>'}</div>
+      <div class="sb-labels">${barLabels}</div>
+    </div>
+  </div>
+  ${sec('01', 'Reading', '', `<p class="reading">${readingAddress(addr)}</p>`, provLine(prov))}
+  ${sec('02', 'Expiry', 'unspent VTXOs by expiry date · dot size ∝ amount · hatched = inside Arkade exit window', ruler || '<div class="expiry-note">No unspent VTXOs with indexed expiry.</div>')}
+  ${sec('03', 'VTXO ledger', 'listed VTXOs sorted by urgency — action needed first', `
+    <table class="ds"><thead><tr><th>Outpoint</th><th class="num">Amount</th><th>State</th><th>Created</th><th>Expires</th><th>Note</th></tr></thead><tbody>${vtxoRows}</tbody></table>
+    ${listedNote}
+  `)}
+  `;
+}
+
+/* ---------- VTXO ---------- */
+function viewVtxo(outpoint) {
+  const chain = D.vtxoChains[outpoint];
+  if (!chain) return viewNotFound(outpoint, 'vtxo');
+  const [txid, vout] = outpoint.split(':');
+  const tx = D.virtualTxs[txid];
+  const vtxo = tx?.outputs?.find(o => o.vout === +vout)?.vtxo;
+  const t = now();
+  return `
+  <div class="detail-head">
+    <div class="detail-kind">VTXO · unroll path · Arkade</div>
+    <div class="detail-title mono" style="font-size:clamp(18px,2.4vw,30px);word-break:break-all">${esc(outpoint)}</div>
+    <div class="detail-id">
+      ${copyBtn(outpoint, 'outpoint')}
+      ${vtxo ? `<button class="watch-btn ${isWatched(outpoint) ? 'on' : ''}" data-watch-id="${esc(outpoint)}" data-watch-label="vtxo ${midHash(outpoint, 10, 6)}" type="button">${isWatched(outpoint) ? '● watching' : '○ watch'}</button>` : ''}
+    </div>
+    <div class="detail-meta">
+      ${vtxo ? `<span>amount <b>${sat(vtxo.amount)}</b></span><span>state <b>${stateTag(vtxo.state)}</b></span><span>expires <b>${vtxo.expiresAt ? fmtDate(vtxo.expiresAt) + ' · ' + durShort(vtxo.expiresAt - t) : '—'}</b></span>` : ''}
+      <span>depth <b>${NFMT.format(chain.length)}</b></span>
+    </div>
+  </div>
+  ${sec('01', 'Reading', '', `<p class="reading">${readingVtxoChain(chain, outpoint)}</p>`, provLine('vtxoChains[' + esc(outpoint) + ']'))}
+  ${sec('02', 'Stratigraphy', 'full unroll path · Bitcoin at the base', renderStrata(chain, txid))}
+  ${sec('03', 'Path', 'every hop · click to open', `
+    <div class="strata">${(() => { let depth = 0; return chain.entries.slice().reverse().map((e) => {
+      if (e.gap) { depth += e.gap; return `<div class="stratum band compressed" style="height:26px"><span class="lvl">···</span><span class="desc" style="font-family:var(--mono);font-size:11px;letter-spacing:.03em">${NFMT.format(e.gap)} layers compressed</span><span class="cnt">gap</span></div>`; }
+      depth += 1;
+      const num = String(depth).padStart(2, '0');
+      const label = e.type === 'ark' ? 'Ark tx' : e.type === 'checkpoint' ? 'Checkpoint' : e.type === 'tree' ? 'Tree node' : 'Commitment';
+      const href = e.type === 'commitment' ? '#/commitment/' + e.txid : e.type === 'ark' && D.virtualTxs[e.txid] ? '#/tx/' + e.txid : null;
+      return `<div class="stratum band ${href ? 'link' : 'compressed'}" style="height:30px" ${href ? `data-href="${href}" role="link" tabindex="0"` : ''}>
+        <span class="lvl">${num}</span>
+        <span class="desc"><span class="t">${label}</span> — <span class="mono" style="font-size:11px">${midHash(e.txid)}</span>${href ? '' : ' <span class="dim">(not in snapshot)</span>'}</span>
+        <span class="cnt">${esc(e.type)}</span>
+      </div>`;
+    }).join(''); })()}</div>
+  `)}
+  `;
+}
+
+/* ---------- BLOCK / SCRIPT / NOT FOUND ---------- */
+function viewBlock(h) {
+  const b = D.chain.blocks.find(x => x.height === +h);
+  if (!b) return viewNotFound(h, 'block');
+  return `
+  <div class="detail-head">
+    <div class="detail-kind">Bitcoin block</div>
+    <div class="detail-title">Block ${blkNum(b.height)}</div>
+    <div class="detail-meta">
+      <span>time <b>${fmtTime(b.time)}</b></span><span>txs <b>${NFMT.format(b.txCount)}</b></span>
+      <span>size <b>${(b.size / 1e6).toFixed(2)} MB</b></span><span>median fee <b>${b.medianFee.toFixed(2)} sat/vB</b></span>
+      <span>pool <b>${esc(b.pool ?? '—')}</b></span>
+    </div>
+  </div>
+  ${sec('01', 'Reading', '', `<p class="reading">Block ${blkNum(b.height)} was mined ${ago(b.time)} containing ${NFMT.format(b.txCount)} transactions (${(b.size / 1e6).toFixed(2)} MB) at a median fee of ${b.medianFee.toFixed(2)} sat/vB${b.pool ? ', found by ' + esc(b.pool) : ''}.</p>`, provLine('chain.blocks[] · Esplora'))}
+  `;
+}
+function viewScript(hex) {
+  // find outputs with this script
+  const matches = [];
+  for (const t of Object.values(D.virtualTxs)) for (const o of t.outputs) if (o.script === hex) matches.push({ txid: t.txid, vout: o.vout, amount: o.amount });
+  return `
+  <div class="detail-head">
+    <div class="detail-kind">Script · Taproot output</div>
+    <div class="detail-title mono" style="font-size:clamp(16px,2vw,26px);word-break:break-all">${esc(hex)}</div>
+  </div>
+  ${sec('01', 'Reading', '', `<p class="reading">${matches.length ? `This script appears on ${matches.length} output${matches.length === 1 ? '' : 's'} in the snapshot.` : 'No outputs in this snapshot carry this script.'}</p>`, provLine('virtualTxs outputs[].script'))}
+  ${matches.length ? sec('02', 'Matches', '', `<table class="ds"><thead><tr><th>Txid</th><th>Vout</th><th class="num">Amount</th></tr></thead><tbody>${matches.map(m => `<tr><td class="id">${linkTx(m.txid)}</td><td class="mono">${m.vout}</td><td class="num">${sat(m.amount)}</td></tr>`).join('')}</tbody></table>`) : ''}
+  `;
+}
+function viewNotFound(id, kind) {
+  const isTxid = /^[0-9a-f]{64}$/i.test(id);
+  return `
+  <div class="notfound">
+    <div class="nf-title">Not in this snapshot</div>
+    <p>The ${esc(kind ?? 'identifier')} <span class="mono">${esc(midHash(id, 24, 16))}</span> does not appear in the captured data pack. It may be too old, too new, or belong to a part of the network this snapshot did not sample.</p>
+    <p>${isTxid ? `You can still look it up on <a href="https://mempool.space/tx/${esc(id)}" target="_blank" rel="noopener">mempool.space ↗</a> — or search above for something that is indexed.` : 'Try a different identifier — txid, ark address, outpoint, or block height.'}</p>
+    <p><a class="btn-quiet" href="#/">← back to overview</a></p>
+  </div>
+  `;
+}
+
+/* ---------- ROUTER ---------- */
+function route() {
+  const hash = location.hash || '#/';
+  const parts = hash.slice(2).split('/');
+  const view = $('#view');
+  window.scrollTo(0, 0);
+  suggest.hidden = true;
+  if (!parts[0] || parts[0] === '') { view.innerHTML = viewOverview(); afterRender(); return; }
+  const kind = parts[0], id = parts.slice(1).join('/');
+  if (kind === 'tx') { view.innerHTML = viewTx(id); afterRender(); }
+  else if (kind === 'commitment') { view.innerHTML = viewCommit(id); afterRender(); }
+  else if (kind === 'address') { view.innerHTML = viewAddress(id); afterRender(); }
+  else if (kind === 'vtxo') { view.innerHTML = viewVtxo(id); afterRender(); }
+  else if (kind === 'block') { view.innerHTML = viewBlock(id); afterRender(); }
+  else if (kind === 'script') { view.innerHTML = viewScript(id); afterRender(); }
+  else { view.innerHTML = viewNotFound(hash.replace(/^#\//, ''), null); afterRender(); }
+}
+function afterRender() {
+  // seismo
+  if ($('#seismo')) {
+    let win = 86400;
+    $$('#seismo-win button').forEach(b => b.addEventListener('click', () => {
+      $$('#seismo-win button').forEach(x => x.classList.toggle('on', x === b));
+      mountSeismo(+b.getAttribute('data-w'));
+    }));
+    mountSeismo(win);
+  }
+  if ($('#expiry')) mountExpiry();
+  if ($('#ledger')) renderLedger();
+  if ($('#watchlist')) renderWatchSection();
+  // watch buttons state
+  $$('[data-watch-id]').forEach(b => {
+    const on = isWatched(b.getAttribute('data-watch-id'));
+    b.classList.toggle('on', on);
+    if (b.classList.contains('watch-btn')) { b.textContent = on ? '● watching' : '○ watch'; b.setAttribute('aria-pressed', on); }
+  });
+  // address expiry ruler hover
+  const rulerSvg = $('#view svg');
+  if (rulerSvg) {
+    const ro = document.createElement('div'); ro.className = 'readout'; ro.hidden = true;
+    const host = rulerSvg.parentElement; host.style.position = 'relative'; host.appendChild(ro);
+    rulerSvg.addEventListener('mousemove', e => {
+      const hit = e.target.closest('[data-addr-vtxo]'); if (!hit) { ro.hidden = true; return; }
+      const op = hit.getAttribute('data-addr-vtxo');
+      const v = D.observedVtxos.find(x => x.outpoint === op) || addr_vtxo_lookup(op);
+      if (!v) { ro.hidden = true; return; }
+      ro.innerHTML = `<div class="rt">${esc(op)}</div><div>${sat(v.amount)} · ${esc(v.state)} · expires ${fmtDate(v.expiresAt)}</div>`;
+      ro.hidden = false;
+      const wr = host.getBoundingClientRect();
+      ro.style.left = Math.min(e.clientX - wr.left + 12, wr.width - 240) + 'px'; ro.style.top = '8px';
+    });
+    rulerSvg.addEventListener('mouseleave', () => ro.hidden = true);
+    rulerSvg.addEventListener('click', e => {
+      const hit = e.target.closest('[data-addr-vtxo]'); if (hit) location.hash = '#/vtxo/' + hit.getAttribute('data-addr-vtxo');
+    });
+  }
+}
+function addr_vtxo_lookup(op) {
+  for (const a of Object.values(D.addresses)) { const v = a.vtxos.find(x => x.outpoint === op); if (v) return v; }
+  return null;
+}
+
+/* ---------- INIT ---------- */
+initMasthead();
+initSwitcher();
+window.addEventListener('hashchange', route);
+route();
+$('#print-btn').addEventListener('click', () => window.print());
+</script>
+</body>
+</html>

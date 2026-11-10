@@ -1,29 +1,56 @@
-import { useState } from "react";
-import { Copy, Check } from "lucide-react";
-import { copyToClipboard } from "@/lib/utils";
+import { useEffect, useRef, useState } from "react";
+import { Copy, Check, X } from "lucide-react";
+import { copyToClipboard, cn } from "@/lib/utils";
 
 interface CopyButtonProps {
     text: string;
     className?: string;
+    /** Accessible name of the copied value, e.g. "transaction id". */
+    label?: string;
 }
 
-export function CopyButton({ text, className = "" }: CopyButtonProps) {
-    const [copied, setCopied] = useState(false);
+type CopyState = "idle" | "copied" | "failed";
+
+export function CopyButton({ text, className, label = "value" }: CopyButtonProps) {
+    const [state, setState] = useState<CopyState>("idle");
+    const timer = useRef<number | undefined>(undefined);
+
+    useEffect(() => () => clearTimeout(timer.current), []);
 
     const handleCopy = () => {
-        copyToClipboard(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        copyToClipboard(text).then(
+            () => setState("copied"),
+            () => setState("failed"),
+        );
+        clearTimeout(timer.current);
+        timer.current = window.setTimeout(() => setState("idle"), 2000);
     };
+
+    const name =
+        state === "copied"
+            ? `Copied ${label}`
+            : state === "failed"
+              ? `Could not copy ${label}`
+              : `Copy ${label}`;
 
     return (
         <button
+            type="button"
             onClick={handleCopy}
-            className={`p-1 text-muted-foreground hover:text-primary transition-colors duration-200 active:scale-[0.97] ${className}`}
-            title="Copy to clipboard"
-            aria-label={copied ? "Copied to clipboard" : "Copy to clipboard"}
+            className={cn(
+                "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-faint transition-colors hover:bg-secondary hover:text-foreground",
+                className,
+            )}
+            title={name}
+            aria-label={name}
         >
-            {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+            {state === "copied" ? (
+                <Check size={13} className="text-ok" aria-hidden="true" />
+            ) : state === "failed" ? (
+                <X size={13} className="text-alert" aria-hidden="true" />
+            ) : (
+                <Copy size={13} aria-hidden="true" />
+            )}
         </button>
     );
 }

@@ -3,21 +3,22 @@
 @import "./themes/midnight.css";
 
 @layer base {
+    /* Atlas type: Instrument Sans for UI, Martian Mono for ids, amounts and
+       micro-labels. Both SIL OFL 1.1, bundled through Vite so a sub-path
+       deploy (VITE_BASE_PATH) resolves them. */
     @font-face {
-        font-family: "Geist";
-        src:
-            url("/fonts/geist.woff2") format("woff2"),
-            url("/fonts/GeistVF.ttf") format("truetype");
-        font-weight: 100 900;
+        font-family: "Instrument Sans";
+        src: url("./assets/fonts/instrument-sans-var.woff2") format("woff2");
+        font-weight: 400 700;
+        font-stretch: 75% 100%;
         font-display: swap;
     }
 
     @font-face {
-        font-family: "TT Firs Neue";
-        src:
-            url("/fonts/tt_firs_neue.woff2") format("woff2"),
-            url("/fonts/TT Firs Neue Trial Var Roman.ttf") format("truetype");
-        font-weight: 100 900;
+        font-family: "Martian Mono";
+        src: url("./assets/fonts/martian-mono-var.woff2") format("woff2");
+        font-weight: 100 800;
+        font-stretch: 75% 112.5%;
         font-display: swap;
     }
 
@@ -29,10 +30,12 @@
         background-color: hsl(var(--background));
         color: hsl(var(--foreground));
         font-family:
-            "Geist",
+            "Instrument Sans",
             system-ui,
             -apple-system,
             sans-serif;
+        font-size: 14px;
+        line-height: 1.45;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
@@ -43,7 +46,11 @@
     h4,
     h5,
     h6 {
-        font-family: "TT Firs Neue", system-ui, sans-serif;
+        letter-spacing: -0.01em;
+    }
+
+    ::selection {
+        background: hsl(var(--line-strong));
     }
 }
 
@@ -72,6 +79,21 @@
     --color-success: hsl(var(--success));
     --color-warning: hsl(var(--warning));
     --radius: var(--radius);
+
+    /* Atlas layer colours: on-chain (chain), virtual (virt), checkpoint (cp),
+       exit window (alert = destructive), settled/healthy (ok = success). */
+    --color-chain: hsl(var(--chain));
+    --color-virt: hsl(var(--virt));
+    --color-cp: hsl(var(--cp));
+    --color-alert: hsl(var(--destructive));
+    --color-ok: hsl(var(--success));
+    --color-faint: hsl(var(--faint));
+    --color-line-strong: hsl(var(--line-strong));
+    --color-canvas: hsl(var(--canvas));
+    --color-grid: hsl(var(--grid));
+
+    --font-sans: "Instrument Sans", system-ui, -apple-system, sans-serif;
+    --font-mono: "Martian Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
     /* --- @arkade-os/exit-ui theming contract ---------------------------------
        The package styles itself only against these names, so the exit flow
@@ -125,11 +147,28 @@
 @source "../node_modules/@arkade-os/exit-ui/dist";
 
 @utility font-heading {
-    font-family: "TT Firs Neue", system-ui, sans-serif;
+    font-family:
+        "Instrument Sans",
+        system-ui,
+        -apple-system,
+        sans-serif;
 }
 
+/* Martian Mono is wide; every mono run (ids, amounts, exit-ui's MONO) uses the
+   87.5% width so dense rows keep their measure. */
 @utility font-mono {
-    font-family: "Courier New", monospace;
+    font-family: "Martian Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-stretch: 87.5%;
+}
+
+/* Uppercase mono micro-label used for section heads, legends and table heads. */
+@utility micro {
+    font-family: "Martian Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-stretch: 87.5%;
+    font-size: 10px;
+    line-height: 1.4;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 
 @media (prefers-reduced-motion: reduce) {

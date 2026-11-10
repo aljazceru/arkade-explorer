@@ -37,7 +37,9 @@ export function loadBarkdConnection(): BarkdConnection | null {
             return null;
         }
 
-        return { baseUrl: value.baseUrl, token: value.token };
+        const validated = validateBarkdBaseUrl(value.baseUrl);
+        if (!validated.ok) return null;
+        return { baseUrl: validated.url, token: value.token };
     } catch {
         return null;
     }
@@ -62,15 +64,55 @@ export function normalizeBarkdBaseUrl(input: string): string {
     return withScheme.replace(/\/+$/, "");
 }
 
+const LOOPBACK_HOSTS: Record<string, true> = {
+    localhost: true,
+    "127.0.0.1": true,
+    "::1": true,
+    "[::1]": true,
+};
+
+/**
+ * The barkd bearer token is sent as an Authorization header on every request.
+ * Plaintext HTTP is only acceptable to loopback daemons; anything else must
+ * use HTTPS so the token is not exposed on the wire. Non-http(s) schemes are
+ * rejected outright.
+ */
+export function validateBarkdBaseUrl(
+    input: string,
+): { ok: true; url: string } | { ok: false; error: string } {
+    const url = normalizeBarkdBaseUrl(input);
+    if (url === "") return { ok: false, error: "Base URL is required." };
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return { ok: false, error: "Base URL is not a valid URL." };
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return { ok: false, error: "Base URL must use http:// or https://." };
+    }
+    if (parsed.protocol === "http:" && LOOPBACK_HOSTS[parsed.hostname] !== true) {
+        return {
+            ok: false,
+            error: "Refusing plaintext http:// for a non-localhost barkd — the auth token would be sent unencrypted. Use https:// or a loopback address.",
+        };
+    }
+    return { ok: true, url };
+}
+
 function redactToken(value: string, token: string): string {
     return token ? value.split(token).join("[redacted]") : value;
 }
 
 async function requestText(connection: BarkdConnection, path: string): Promise<string> {
+    const validated = validateBarkdBaseUrl(connection.baseUrl);
+    if (!validated.ok) {
+        throw new Error(validated.error);
+    }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-        const response = await fetch(`${normalizeBarkdBaseUrl(connection.baseUrl)}${path}`, {
+        const response = await fetch(`${validated.url}${path}`, {
             method: "GET",
             headers: {
                 Accept: "application/json",
@@ -215,18 +257,13 @@ export async function fetchBarkdVtxos(
 }
 
 export async function fetchBarkdNextRoundAt(connection: BarkdConnection): Promise<string | null> {
-    const path = "/api/v1/wallet/next-round-time";
-    const text = await requestText(connection, path);
-    let value: unknown;
-    try {
-        value = JSON.parse(text) as unknown;
-    } catch {
-        value = text.trim();
-    }
-    if (typeof value !== "string" || value.length === 0 || !Number.isFinite(Date.parse(value))) {
-        return null;
-    }
-    return value;
+    const path = "/api/v1/wallet/next-round";
+    const value = parseJson(await requestText(connection, path), path);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+    const startTime = (value as Record<string, unknown>).start_time;
+    return typeof startTime === "string" && Number.isFinite(Date.parse(startTime))
+        ? startTime
+        : null;
 }
 
 export async function checkBarkdConnection(

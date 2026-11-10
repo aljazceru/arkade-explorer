@@ -1,7 +1,12 @@
 const env = import.meta.env as unknown as Record<string, string | undefined>;
 
 export const SERVER_GRPC = env.VITE_SECOND_GRPC || "https://ark.second.tech";
-export const SERVER_P2TR = env.VITE_SECOND_SERVER_P2TR || "";
+// BIP341-tweaked P2TR derived from Second's advertised GetArkInfo
+// server_pubkey 0375b2e4f6abe5b00736359de211c35d9e72b615e5fd424d8ad1e68a8b300b97b5
+// (verified via @scure/btc-signer p2tr on 2026-11-07). Server wallet address;
+// txs touching it are its public footprint — not proof of individual rounds.
+export const SERVER_P2TR =
+    env.VITE_SECOND_SERVER_P2TR || "bc1pyj5t7f9afs2t2yyeld0fja3hswtzxwhdw3kgl0943azy02mx07fqzz2c9e";
 export const ESPLORA = env.VITE_ESPLORA_URL || "https://mempool.space/api";
 
 const REQUEST_TIMEOUT_MS = 12_000;
@@ -25,11 +30,20 @@ export type SecondInfo = {
     exitDeltaBlocks: number | null;
 };
 
+/**
+ * A transaction touching the Second server P2TR address (the BIP341-tweaked
+ * key derived from the advertised server_pubkey), as reported by the Esplora
+ * indexer. The address is the server's on-chain wallet; individual rows are
+ * boards, refresh consolidations, sweeps, or payments — the vin/vout
+ * direction label is a heuristic, not a protocol classification. These are
+ * NOT round events and NOT a VTXO index.
+ */
 export type SecondServerTx = {
     txid: string;
     blockHeight: number | null;
     blockTimeSeconds: number | null;
     direction: "to_server" | "from_server" | "other";
+    /** Sum of ALL output values — not the amount that touched the server address. */
     totalSats: number;
 };
 
@@ -193,8 +207,15 @@ export async function fetchSecondInfo(signal: AbortSignal): Promise<SecondInfo> 
         const response = await grpcWebCall("GetArkInfo", new Uint8Array(0), signal);
         const fields = decodeFields(response);
         return {
-            roundIntervalSeconds: null,
+            // ArkInfo.round_interval_secs (proto field 3) — server-configured
+            // seconds between rounds; schedule is not guaranteed (docs warn
+            // servers may implement flexible/demand-based rounds).
+            roundIntervalSeconds: firstVarint(fields, 3),
+            // vtxo_lifetime (field 21) is current; vtxo_expiry_delta (field 6)
+            // is the deprecated alias populated with the same value.
             vtxoLifetimeBlocks: firstVarint(fields, 21) || firstVarint(fields, 6),
+            // vtxo_exit_delta (field 5): blocks that must pass after exit
+            // transactions confirm before the coins become spendable.
             exitDeltaBlocks: firstVarint(fields, 5),
         };
     } catch (error) {
@@ -211,38 +232,16 @@ export async function fetchNextRoundAt(signal: AbortSignal): Promise<number | nu
     try {
         const response = await grpcWebCall("NextRoundTime", new Uint8Array(0), signal);
         const fields = decodeFields(response);
+        // NextRoundTimeResponse.timestamp (proto field 1): "the next round
+        // start timestamp in seconds since unix epoch" — the server's
+        // scheduled start, authoritative until it passes. Sanity-check the
+        // window so a malformed/misdecoded field can't produce a bogus date.
+        const value = firstVarint(fields, 1);
         const now = Math.floor(Date.now() / 1000);
-        const latestPlausibleTime = now + SECOND_DAY_SECONDS;
-        let nextRoundAt: number | null = null;
-
-        function consider(value: ProtoValue): void {
-            if (
-                typeof value === "number" &&
-                value >= now &&
-                value <= latestPlausibleTime &&
-                (nextRoundAt === null || value < nextRoundAt)
-            ) {
-                nextRoundAt = value;
-            }
+        if (value === null || value < now || value > now + SECOND_DAY_SECONDS) {
+            return null;
         }
-
-        for (const values of fields.values()) {
-            for (const value of values) {
-                if (typeof value === "number") {
-                    consider(value);
-                    continue;
-                }
-                try {
-                    for (const nestedValues of decodeFields(value).values()) {
-                        for (const nestedValue of nestedValues) consider(nestedValue);
-                    }
-                } catch {
-                    // Non-message length-delimited fields cannot contain a timestamp candidate.
-                }
-            }
-        }
-
-        return nextRoundAt;
+        return value;
     } catch (error) {
         if (signal.aborted) throw signal.reason;
         if (error instanceof LiveSecondError) throw error;

@@ -1,0 +1,2290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ark.observer — signal</title>
+<style>
+@font-face{font-family:'Geist';src:url('../fonts/geist.woff2') format('woff2');font-weight:100 900;font-display:swap}
+@font-face{font-family:'Geist Mono';src:url('fonts/geist-mono-var.woff2') format('woff2');font-weight:100 900;font-display:swap}
+:root{
+  --bg:#0A0A0B; --panel:#101012; --raise:#16161A; --line:#222227; --line-2:#2D2D33;
+  --text:#EDEDEF; --text-2:#A0A0A8; --text-3:#686870;
+  --signal:#FF6A2B; --live:#4CC38A; --pre:#7AA7FF; --muted-state:#686870;
+  --mono:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --ui:'Geist',-apple-system,'Segoe UI',sans-serif;
+  --r:6px; --shadow:0 8px 30px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.4);
+  --headH:46px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{color-scheme:dark}
+body{background:var(--bg);color:var(--text);font:13px/1.45 var(--ui);-webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input{font:inherit;color:inherit}
+::selection{background:rgba(255,106,43,.25)}
+:focus-visible{outline:1.5px solid var(--pre);outline-offset:1px;border-radius:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.micro{font:500 10.5px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+.dim{color:var(--text-2)} .dim3{color:var(--text-3)}
+
+/* ---------- shell ---------- */
+#app{display:flex;flex-direction:column;min-height:100vh}
+.topbar{display:flex;align-items:center;gap:14px;height:46px;padding:0 14px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:60;flex:none}
+.brand{display:flex;align-items:center;gap:9px;font:500 13px var(--mono);letter-spacing:-.01em;white-space:nowrap}
+.brand svg{display:block}
+.netchip{font:500 10.5px var(--mono);letter-spacing:.08em;color:var(--text-2);border:1px solid var(--line-2);border-radius:4px;padding:3px 7px;text-transform:uppercase}
+.omni-wrap{flex:1;display:flex;justify-content:center;min-width:0}
+#omni{position:relative;width:min(560px,100%)}
+#omni-input{width:100%;height:32px;background:var(--bg);border:1px solid var(--line-2);border-radius:6px;padding:0 12px;font:12.5px var(--mono);color:var(--text);caret-color:var(--signal)}
+#omni-input::placeholder{color:var(--text-3)}
+#omni-input:focus{border-color:var(--text-3);outline:none}
+#omni-list{position:absolute;top:36px;left:0;right:0;background:var(--raise);border:1px solid var(--line-2);border-radius:6px;box-shadow:var(--shadow);max-height:320px;overflow:auto;display:none;z-index:80}
+#omni-list.open{display:block}
+.sug{display:flex;align-items:center;gap:9px;padding:7px 11px;cursor:pointer;font:12px var(--mono)}
+.sug.sel,.sug:hover{background:var(--line)}
+.sug .tag{flex:none;font-size:10px;color:var(--text-3);border:1px solid var(--line-2);border-radius:3px;padding:1px 5px;letter-spacing:.05em}
+.sug .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sug .sub{margin-left:auto;color:var(--text-3);font-size:10.5px;flex:none}
+.top-right{display:flex;align-items:center;gap:8px;flex:none}
+.seg-mini{display:flex;border:1px solid var(--line-2);border-radius:5px;overflow:hidden}
+.seg-mini button{font:500 11px var(--mono);padding:5px 9px;color:var(--text-3)}
+.seg-mini button.on{background:var(--raise);color:var(--text)}
+.propseg{display:flex;border:1px solid var(--line-2);border-radius:5px;overflow:hidden;flex:none}
+.propseg a{font:500 10px var(--mono);padding:5px 8px;color:var(--text-3);border-left:1px solid var(--line);letter-spacing:.03em;white-space:nowrap}
+.propseg a:first-child{border-left:0}
+.propseg a:hover{color:var(--text);background:var(--raise)}
+.propseg a.cur{color:var(--signal);background:rgba(255,106,43,.08)}
+.iconbtn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:5px;color:var(--text-2);position:relative}
+.iconbtn:hover{background:var(--raise);color:var(--text)}
+.iconbtn .cnt{position:absolute;top:2px;right:2px;font:600 9px var(--mono);background:var(--signal);color:#0A0A0B;border-radius:7px;padding:1px 4px;line-height:1}
+
+/* ---------- live tape ---------- */
+.tape{display:flex;align-items:stretch;height:28px;border-bottom:1px solid var(--line);background:var(--panel);overflow-x:auto;scrollbar-width:none;flex:none}
+.tape::-webkit-scrollbar{display:none}
+.tape.overflow{mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent)}
+.tseg{display:flex;align-items:center;gap:7px;padding:0 14px;border-right:1px solid var(--line);white-space:nowrap;font:11.5px var(--mono);color:var(--text-2);cursor:default;flex:none}
+.tseg b{color:var(--text);font-weight:500}
+.tseg .dot{width:6px;height:6px;border-radius:50%;flex:none}
+.tseg .dot.live{background:var(--live);box-shadow:0 0 0 0 rgba(76,195,138,.4);animation:pulse 2s infinite}
+.tseg .dot.pre{background:var(--pre)}
+.tseg .dot.sig{background:var(--signal)}
+.tseg.down{color:var(--text-3)}
+.tseg .warn{color:var(--signal)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(76,195,138,.35)}70%{box-shadow:0 0 0 5px rgba(76,195,138,0)}100%{box-shadow:0 0 0 0 rgba(76,195,138,0)}}
+
+/* ---------- workspace ---------- */
+.workspace{display:grid;grid-template-columns:minmax(0,1fr) 420px;flex:1;align-items:start}
+.workspace.noinsp{grid-template-columns:minmax(0,1fr)}
+#main{min-width:0;padding:0 0 60px}
+#insp{position:sticky;top:var(--headH,74px);max-height:calc(100vh - var(--headH,74px));overflow-y:auto;border-left:1px solid var(--line);background:var(--panel);align-self:stretch}
+#insp::-webkit-scrollbar{width:8px}
+#insp::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px}
+
+.sec-head{display:flex;align-items:baseline;gap:10px;padding:18px 18px 10px}
+.sec-head h1{font:600 14px var(--ui);letter-spacing:-.01em}
+.sec-head .count{font:11px var(--mono);color:var(--text-3)}
+.sec-head .note{margin-left:auto;font:10.5px var(--mono);color:var(--text-3);text-align:right;max-width:340px}
+
+/* ---------- time strip ---------- */
+#timestrip{margin:2px 18px 0;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:8px 10px 4px;user-select:none}
+#timestrip svg{display:block;width:100%;height:64px}
+.ts-controls{display:flex;align-items:center;gap:8px;padding:2px 2px 6px;flex-wrap:wrap}
+.ts-range{display:flex;border:1px solid var(--line-2);border-radius:5px;overflow:hidden}
+.ts-range button{font:500 10.5px var(--mono);padding:4px 9px;color:var(--text-3);letter-spacing:.04em}
+.ts-range button.on{background:var(--raise);color:var(--text)}
+.ts-brush-chip{display:inline-flex;align-items:center;gap:6px;font:11px var(--mono);color:var(--signal);border:1px solid rgba(255,106,43,.35);background:rgba(255,106,43,.08);border-radius:5px;padding:3px 8px}
+.ts-brush-chip button{color:var(--signal);font-size:13px;line-height:1;padding:0 2px}
+.ts-hint{margin-left:auto;font:10px var(--mono);color:var(--text-3)}
+
+/* ---------- query bar ---------- */
+#querybar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 18px 6px}
+#qinput{flex:1 1 100%;min-width:180px;height:28px;background:var(--bg);border:1px solid var(--line-2);border-radius:6px;padding:0 10px;font:12px var(--mono);color:var(--text)}
+#qinput:focus{border-color:var(--text-3);outline:none}
+#qinput::placeholder{color:var(--text-3)}
+.qseg{display:flex;align-items:center;gap:0;border:1px solid var(--line-2);border-radius:6px;overflow:hidden;flex-wrap:wrap}
+.qseg .qk{font:500 9.5px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);padding:0 7px;border-right:1px solid var(--line);height:28px;display:flex;align-items:center}
+.qseg button{font:500 10.5px var(--mono);padding:0 8px;height:28px;color:var(--text-3);border-right:1px solid var(--line);white-space:nowrap}
+.qseg button:last-child{border-right:0}
+.qseg button.on{background:var(--raise);color:var(--text)}
+.qseg button .n{color:var(--text-3);margin-left:3px}
+.qseg button.on .n{color:var(--text-2)}
+.qseg button.needs.on{color:var(--signal)}
+.qclear{font:500 10.5px var(--mono);color:var(--text-3);border:1px solid var(--line-2);border-radius:6px;padding:0 9px;height:28px}
+.qclear:hover{color:var(--text);border-color:var(--text-3)}
+
+/* ---------- activity table ---------- */
+#tablewrap{margin:6px 18px 0;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+.atable{width:100%;border-collapse:collapse;table-layout:fixed}
+.atable th{position:sticky;top:var(--headH,74px);background:var(--raise);z-index:2;text-align:left}
+.atable th,.atable td{padding:0 10px;height:33px;border-bottom:1px solid var(--line);font:11.5px var(--mono);color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.atable th{font:500 9.5px var(--ui);letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);height:28px}
+.atable td.num,.atable th.num{text-align:right}
+.atable tbody tr{cursor:pointer}
+.atable tbody tr:hover{background:rgba(255,255,255,.025)}
+.atable tbody tr.sel{background:rgba(122,167,255,.07);box-shadow:inset 2px 0 0 var(--pre)}
+.atable tbody tr.sel:hover{background:rgba(122,167,255,.1)}
+.atable tbody tr.flash{animation:rowflash .12s ease-out}
+@keyframes rowflash{from{background:rgba(122,167,255,.22)}to{background:transparent}}
+.atable .t-rel{color:var(--text)}
+.atable .t-abs{display:none;color:var(--text-3);font-size:10.5px}
+.atable tr:hover .t-rel{display:none}
+.atable tr:hover .t-abs{display:inline}
+.col-time{width:78px}.col-kind{width:118px}.col-tx{width:0}.col-net{width:46px}.col-flow{width:56px}
+.col-amt{width:110px}.col-exp{width:92px}.col-state{width:132px}
+.monogram{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid var(--line-2);border-radius:3px;font:600 9px var(--mono);color:var(--text-2);flex:none;vertical-align:-3px}
+.monogram.a{color:var(--text)}
+.kindcell{display:flex;align-items:center;gap:6px}
+.kindglyph{width:14px;text-align:center;color:var(--text-3);flex:none}
+.statecell{display:flex;align-items:center;gap:6px}
+.sglyph{width:13px;text-align:center;flex:none;font-size:11px}
+.sg-live{color:var(--live)} .sg-pre{color:var(--pre)} .sg-sig{color:var(--signal)} .sg-mut{color:var(--text-3)}
+.exbar{position:relative;display:block;height:17px;margin-top:0}
+.exbar .lbl{position:absolute;left:0;top:0;font:500 9.5px var(--mono);color:var(--text-3);z-index:1;line-height:10px}
+.exbar .lbl.hot{color:var(--signal)}
+.exbar .track{position:absolute;left:0;right:0;top:12px;height:3px;background:var(--line);border-radius:2px}
+.exbar .fill{position:absolute;top:12px;height:3px;border-radius:2px;background:var(--pre)}
+.exbar .fill.ok{background:var(--live)}
+.exbar .win{position:absolute;top:12px;height:3px;background:rgba(255,106,43,.55);border-radius:2px}
+.morebtn{display:block;width:100%;padding:9px;font:500 11px var(--mono);color:var(--text-3);letter-spacing:.05em;text-align:center;border-top:1px solid var(--line)}
+.morebtn:hover{color:var(--text);background:var(--raise)}
+.empty{padding:38px 20px;text-align:center;color:var(--text-3);font:12px var(--mono)}
+
+/* ---------- hash chip ---------- */
+.chip{display:inline-flex;align-items:center;gap:6px;font:11.5px var(--mono);color:var(--pre);cursor:pointer;max-width:100%;vertical-align:middle}
+.chip .ident{display:flex;flex-direction:column;gap:1.5px;flex:none}
+.chip .ident i{display:block;height:2px;border-radius:1px}
+.chip .txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip:hover .txt{text-decoration:underline;text-underline-offset:2px}
+.chip .cp{opacity:0;font-size:9px;color:var(--text-3);flex:none}
+.chip:hover .cp,.chip:focus-visible .cp{opacity:1}
+.chip.big .txt{font-size:12.5px}
+.chip.addr .txt{color:var(--text-2)}
+.outpt{font-family:var(--mono);font-size:11px;color:var(--text-2)}
+
+/* ---------- inspector ---------- */
+.insp-empty{padding:22px}
+.insp-sec{padding:14px 16px;border-bottom:1px solid var(--line)}
+.insp-sec:last-child{border-bottom:0}
+.insp-head{display:flex;flex-direction:column;gap:8px}
+.insp-kind{display:flex;align-items:center;gap:8px}
+.insp-amt{font:500 34px/1.1 var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.insp-amt small{font-size:13px;color:var(--text-3);font-weight:400;margin-left:6px}
+.lifecycle{padding:16px}
+.lc-title{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.lc-track{position:relative;height:48px;margin:6px 0 4px}
+.lc-line{position:absolute;left:0;right:0;top:16px;height:2px;background:var(--line-2)}
+.lc-win{position:absolute;top:16px;height:2px;background:rgba(255,106,43,.5)}
+.lc-node{position:absolute;top:11px;width:12px;height:12px;border-radius:50%;background:var(--raise);border:2px solid var(--line-2);transform:translateX(-50%)}
+.lc-node.done{border-color:var(--live);background:var(--live)}
+.lc-node.now{border-color:var(--pre);background:var(--pre);box-shadow:0 0 0 3px rgba(122,167,255,.18)}
+.lc-node.act{border-color:var(--signal);background:var(--signal)}
+.lc-lbl{position:absolute;top:27px;transform:translateX(-50%);font:500 9px var(--mono);letter-spacing:.05em;color:var(--text-3);white-space:nowrap}
+.lc-lbl.act{color:var(--signal)}
+.lc-lbl.l2{top:38px}
+.lc-lbl.lft{transform:none}
+.lc-lbl.rgt{transform:translateX(-100%)}
+.lc-now{position:absolute;top:4px;width:2px;height:19px;background:var(--text);transform:translateX(-50%)}
+.lc-meta{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+.minirow{display:flex;justify-content:space-between;gap:10px;font:11px var(--mono);color:var(--text-2);padding:3px 0;border-bottom:1px dashed var(--line)}
+.minirow:last-child{border-bottom:0}
+.minirow .k{color:var(--text-3);flex:none}
+.minirow .v{text-align:right;overflow:hidden;text-overflow:ellipsis}
+.ledger{display:flex;flex-direction:column}
+.lrow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font:11px var(--mono)}
+.lrow:last-child{border-bottom:0}
+.lrow .amt{margin-left:auto;color:var(--text);font-variant-numeric:tabular-nums}
+.lrow .sub{color:var(--text-3);font-size:10px;display:block}
+.lbar{height:3px;background:var(--line);border-radius:2px;flex:1;min-width:30px;max-width:90px;position:relative;overflow:hidden}
+.lbar i{position:absolute;left:0;top:0;bottom:0;background:var(--text-3);border-radius:2px;opacity:.6}
+.insp-actions{display:flex;gap:6px;flex-wrap:wrap;padding:12px 16px}
+.abtn{font:500 10.5px var(--mono);letter-spacing:.04em;color:var(--text-2);border:1px solid var(--line-2);border-radius:5px;padding:6px 10px;display:inline-flex;align-items:center;gap:6px}
+.abtn:hover{color:var(--text);border-color:var(--text-3);background:var(--raise)}
+.abtn.on{color:var(--signal);border-color:rgba(255,106,43,.4)}
+
+/* ---------- operators diff ---------- */
+.ops{margin:26px 18px 0;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);overflow:hidden}
+.ops-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.ops-head h2{font:600 13px var(--ui)}
+.ops table{width:100%;border-collapse:collapse}
+.ops th,.ops td{padding:8px 14px;text-align:left;font:11px var(--mono);border-bottom:1px solid var(--line);color:var(--text-2);vertical-align:top}
+.ops th{font:500 9.5px var(--ui);letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);background:var(--raise);height:26px}
+.ops td:first-child{color:var(--text-3);width:170px;font-size:10.5px}
+.ops td .raw{display:block;font-size:9.5px;color:var(--text-3);margin-top:2px}
+.ops tr.diff td{color:var(--signal)}
+.ops tr.diff td:first-child{color:var(--text-2)}
+.ops .dnote{font-size:10px;color:var(--signal)}
+
+/* ---------- expiry radar ---------- */
+.radar{margin:26px 18px 0;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:14px 16px}
+.radar h2{font:600 13px var(--ui);margin-bottom:4px}
+.radar .sub{font:10.5px var(--mono);color:var(--text-3);margin-bottom:12px}
+.radar-track{position:relative;height:44px;border-bottom:1px solid var(--line-2)}
+.radar-track .ruler{position:absolute;top:22px;left:0;right:0;height:2px;background:var(--line-2)}
+.radar-track .tick{position:absolute;top:16px;width:2px;height:14px;background:var(--text-3);opacity:.5}
+.radar-track .tick.renew{background:var(--signal);opacity:1}
+.radar-track .tick.done{top:24px;height:10px;background:var(--live);opacity:.7}
+.radar-scale{display:flex;justify-content:space-between;font:9.5px var(--mono);color:var(--text-3);margin-top:4px}
+.radar-list{display:flex;flex-direction:column;gap:4px;margin-top:12px;max-height:180px;overflow:auto}
+.radar-row{display:flex;align-items:center;gap:8px;font:10.5px var(--mono);color:var(--text-2);padding:3px 0;border-bottom:1px dashed var(--line)}
+.radar-row .amt{margin-left:auto;color:var(--text)}
+.radar-row .hot{color:var(--signal)}
+
+/* ---------- detail pages ---------- */
+.detail{padding:0 18px 80px}
+.dhead{padding:18px 0 0;border-bottom:1px solid var(--line)}
+.dtop{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.dleft{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.dkind{font:600 13px var(--ui);letter-spacing:-.01em}
+.dnum{font:500 34px/1 var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em;text-align:right;white-space:nowrap}
+.dnum small{display:block;font:500 9.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-top:5px}
+.dhead .meta{display:flex;gap:18px;flex-wrap:wrap;font:11px var(--mono);color:var(--text-2);margin:12px 0 14px}
+.dhead .meta b{color:var(--text);font-weight:500}
+.psbt{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px;font:10.5px/1.6 var(--mono);color:var(--text-2);word-break:break-all;overflow-wrap:anywhere;max-height:220px;overflow:auto;white-space:pre-wrap}
+.dsec{padding:20px 0;border-bottom:1px solid var(--line)}
+.dsec h2{font:600 12px var(--ui);letter-spacing:.02em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.dsec h2 .n{font:500 10px var(--mono);color:var(--text-3)}
+.fhead{display:grid;grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr);align-items:baseline;padding:13px 18px 0}
+.fhead .micro:first-child{text-align:right;padding-right:16px}
+.fhead .micro:last-child{padding-left:16px}
+.flow2{position:relative;border-top:1px solid var(--line);margin-top:8px}
+.frow{display:grid;grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr);align-items:stretch}
+.frow+.frow{border-top:1px solid var(--line)}
+.fin,.fout{padding:9px 12px;min-width:0}
+.fin{text-align:right;padding-right:16px}
+.fout{text-align:left;padding-left:16px}
+.fgap{position:relative}
+.fgap::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
+.fgap::after{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line-2)}
+.fnode{position:absolute;left:50%;top:50%;width:8px;height:8px;transform:translate(-50%,-50%) rotate(45deg);background:var(--bg);border:1px solid var(--text-3);z-index:1;pointer-events:none}
+.fline{display:block}
+.flabel{font:500 9.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-right:7px}
+.famt{font:500 15px var(--mono);font-variant-numeric:tabular-nums;margin-top:3px}
+.famt.hot{color:var(--signal)}
+.fvia{font:10px var(--mono);color:var(--text-3);margin-top:3px}
+.fkind{font:500 10px var(--mono);color:var(--text-3)}
+.fexp{font:500 10px var(--mono);color:var(--text-3)}
+.fexp.hot{color:var(--signal)}
+.fout.hot{box-shadow:inset 2px 0 0 var(--signal)}
+.fout.dead .fbar i{background:var(--text-3)}
+.fmeta{font:10px var(--mono);color:var(--text-3);margin-top:4px;display:flex;flex-wrap:wrap;gap:3px 10px;align-items:center}
+.fbar{height:3px;background:var(--line);border-radius:2px;margin-top:6px;overflow:hidden;max-width:200px}
+.fbar i{display:block;height:100%;background:var(--pre);opacity:.55;border-radius:2px}
+.fin .fbar{margin-left:auto}
+.fin .fbar i{float:right}
+.fin[data-sel],.fout[data-sel]{cursor:pointer}
+.fin[data-sel]:hover,.fout[data-sel]:hover{background:rgba(255,255,255,.02)}
+.stag{font-size:9.5px}
+.unroll summary{cursor:pointer;font:500 11px var(--mono);color:var(--pre);list-style:none;display:flex;align-items:center;gap:6px}
+.unroll summary::-webkit-details-marker{display:none}
+.unroll summary::before{content:'▸';color:var(--text-3)}
+.unroll[open] summary::before{content:'▾'}
+.unroll .entries{margin-top:8px;border:1px solid var(--line);border-radius:var(--r);max-height:300px;overflow:auto}
+.uent{display:flex;align-items:center;gap:8px;padding:5px 11px;font:10.5px var(--mono);border-bottom:1px solid var(--line);color:var(--text-2)}
+.uent:last-child{border-bottom:0}
+.uent .tt{flex:none;width:52px;color:var(--text-3);font-size:9.5px;letter-spacing:.05em}
+.uent.gap{color:var(--text-3);justify-content:center;letter-spacing:.05em}
+.uent .tx{overflow:hidden;text-overflow:ellipsis}
+.factgrid{display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.fact{background:var(--panel);padding:10px 12px;flex:1 1 148px;min-width:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.fact .k{font:500 9.5px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px}
+.fact .v{font:12px var(--mono);color:var(--text);font-variant-numeric:tabular-nums;word-break:normal;overflow-wrap:break-word}
+.batches{width:100%;border-collapse:collapse;font:11px var(--mono)}
+.batches th,.batches td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--line);color:var(--text-2)}
+.batches th{font:500 9.5px var(--ui);letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);background:var(--raise);height:26px}
+.batches td.num,.batches th.num{text-align:right}
+.trees{display:flex;flex-direction:column;gap:10px}
+.tree-node{border:1px solid var(--line);border-radius:var(--r);padding:9px 11px;background:var(--panel)}
+.tree-node .tlabel{font:500 9.5px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);margin-bottom:6px}
+.tree-leaf{display:flex;align-items:center;gap:8px;padding:4px 0;font:10.5px var(--mono);border-bottom:1px dashed var(--line)}
+.tree-leaf:last-child{border-bottom:0}
+.callout{border:1px solid rgba(255,106,43,.4);background:rgba(255,106,43,.07);border-radius:var(--r);padding:13px 15px;margin-bottom:14px}
+.callout .ct{display:flex;align-items:center;gap:8px;font:600 12px var(--ui);color:var(--signal);margin-bottom:5px}
+.callout .cb{font:11.5px var(--mono);color:var(--text-2)}
+.statebar{display:flex;height:10px;border-radius:5px;overflow:hidden;border:1px solid var(--line);margin:12px 0 8px}
+.statebar i{display:block;height:100%}
+.sbar-legend{display:flex;flex-wrap:wrap;gap:12px;font:10px var(--mono);color:var(--text-3)}
+.sbar-legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.vtable{width:100%;border-collapse:collapse;font:11px var(--mono)}
+.vtable th,.vtable td{padding:7px 12px;text-align:left;border-bottom:1px solid var(--line);color:var(--text-2);white-space:nowrap}
+.vtable th{font:500 9.5px var(--ui);letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);background:var(--raise);position:sticky;top:0;height:26px;cursor:pointer;user-select:none}
+.vtable th:hover{color:var(--text)}
+.vtable td.num{text-align:right}
+.vtable tr:hover{background:rgba(255,255,255,.02)}
+.vtable tbody tr{cursor:pointer}
+.vtable tbody tr.sel{background:rgba(122,167,255,.07);box-shadow:inset 2px 0 0 var(--pre)}
+.vtable tr.hot{background:rgba(255,106,43,.06)}
+.vtable .sort-arrow{color:var(--text-3);font-size:9px}
+.scriptbox{font:10px var(--mono);color:var(--text-3);word-break:break-all;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:8px 11px}
+
+/* ---------- not-found ---------- */
+.nf{max-width:560px;margin:80px auto;padding:0 20px;text-align:center}
+.nf h1{font:600 16px var(--ui);margin-bottom:10px}
+.nf p{font:12px var(--mono);color:var(--text-2);margin-bottom:20px;line-height:1.7}
+.nf .chip{font-size:12px}
+
+/* ---------- watchlist panel ---------- */
+#watchpanel{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:60px 16px}
+#watchpanel.open{display:flex}
+.wp-box{width:min(640px,100%);background:var(--panel);border:1px solid var(--line-2);border-radius:8px;box-shadow:var(--shadow);max-height:70vh;display:flex;flex-direction:column}
+.wp-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
+.wp-head h2{font:600 13px var(--ui)}
+.wp-head .n{font:500 10px var(--mono);color:var(--text-3)}
+.wp-head button{margin-left:auto}
+.wp-list{overflow:auto;padding:6px 0}
+.wp-item{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--line);font:11px var(--mono)}
+.wp-item .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.wp-item .exp{color:var(--text-3);font-size:10px}
+.wp-item .exp.hot{color:var(--signal)}
+.wp-empty{padding:30px;text-align:center;color:var(--text-3);font:11.5px var(--mono)}
+
+/* ---------- shortcuts overlay ---------- */
+#kbdhelp{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:90px 16px}
+#kbdhelp.open{display:flex}
+.kh-box{width:min(520px,100%);background:var(--panel);border:1px solid var(--line-2);border-radius:8px;box-shadow:var(--shadow);padding:20px 22px}
+.kh-box h2{font:600 13px var(--ui);margin-bottom:14px}
+.kh-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 26px}
+.kh-row{display:flex;align-items:center;justify-content:space-between;font:11.5px var(--mono);color:var(--text-2);padding:4px 0}
+kbd{font:500 10.5px var(--mono);background:var(--raise);border:1px solid var(--line-2);border-bottom-width:2px;border-radius:4px;padding:3px 7px;color:var(--text)}
+
+/* ---------- toast ---------- */
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--raise);border:1px solid var(--line-2);border-radius:6px;box-shadow:var(--shadow);padding:8px 14px;font:11.5px var(--mono);color:var(--text);opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:200}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ---------- trail ---------- */
+.trail{display:flex;align-items:center;gap:0;padding:0 18px;height:30px;border-bottom:1px solid var(--line);background:var(--panel);overflow-x:auto;scrollbar-width:none;flex:none}
+.trail::-webkit-scrollbar{display:none}
+.trail a,.trail span{font:10.5px var(--mono);color:var(--text-3);white-space:nowrap;padding:0 4px}
+.trail a:hover{color:var(--text)}
+.trail .sep{color:var(--line-2);padding:0}
+.trail .cur{color:var(--text-2)}
+
+/* ---------- footer provenance ---------- */
+.prov{padding:22px 18px 8px;font:10px var(--mono);color:var(--text-3);line-height:1.9}
+.prov a{color:var(--text-2)}
+.prov a:hover{color:var(--text)}
+.prov b{color:var(--text-2);font-weight:500}
+
+/* ---------- mobile inspector sheet ---------- */
+.sheet-bar{position:sticky;top:0;z-index:6;display:flex;justify-content:flex-end;padding:4px 8px 2px;background:var(--panel)}
+.sheet-x{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line-2);border-radius:5px;background:var(--raise);color:var(--text-2);font-size:12px}
+.sheet-x:hover{color:var(--text);border-color:var(--text-3)}
+
+@media (max-width:1100px){
+  .workspace{grid-template-columns:minmax(0,1fr)}
+  #insp{display:none}
+  #insp.sheet{display:block;position:fixed;left:0;right:0;bottom:0;top:auto;max-height:72vh;border-left:0;border-top:1px solid var(--line-2);z-index:95;border-radius:10px 10px 0 0;box-shadow:var(--shadow)}
+}
+@media (max-width:760px){
+  :root{--headH:79px}
+  .topbar{gap:8px;padding:6px 10px;height:auto;min-height:46px;flex-wrap:wrap;row-gap:6px}
+  .omni-wrap{order:3;flex-basis:100%}
+  .brand .wtag,.netchip,.top-right .hide-m{display:none}
+  .propseg a{padding:5px 6px;font-size:9.5px}
+  #omni-input{height:30px;font-size:12px}
+  .sec-head{padding:12px 12px 8px}
+  .sec-head h1{font-size:15px}
+  .sec-head .note{display:none}
+  #timestrip,#querybar,#tablewrap{margin-left:10px;margin-right:10px}
+  .col-kind,.col-flow,.col-net,.col-exp{display:none}
+  .atable th:nth-child(2),.atable td:nth-child(2),
+  .atable th:nth-child(4),.atable td:nth-child(4),
+  .atable th:nth-child(5),.atable td:nth-child(5),
+  .atable th:nth-child(7),.atable td:nth-child(7){display:none}
+  .atable td{padding:0 8px}
+  .detail{padding:0 10px 80px}
+  .dhead{padding:14px 0 10px}
+  .dnum{font-size:26px}
+  .fhead{display:none}
+  .frow{grid-template-columns:1fr}
+  .fgap,.fnode{display:none}
+  .fin,.fout{text-align:left;padding:8px 12px}
+  .fout{border-top:1px dashed var(--line)}
+  .fin .fbar{margin-left:0}
+  .fin .fbar i{float:none}
+  .fbar{max-width:none}
+  .ops table,.ops thead,.ops tbody,.ops tr,.ops th,.ops td{display:block}
+  .ops thead{display:none}
+  .ops tr{display:grid;grid-template-columns:86px 1fr 1fr;border-bottom:1px solid var(--line);padding:7px 0}
+  .ops td{border:0;padding:2px 14px}
+  .kh-grid{grid-template-columns:1fr}
+  .vtable tr{cursor:pointer}
+  .vtable tbody tr.sel{background:rgba(122,167,255,.07);box-shadow:inset 2px 0 0 var(--pre)}
+}
+
+@media (max-width:480px){
+  /* activity rows become two-line: kind+tx on top, time·amount·state below */
+  .atable thead{display:none}
+  .atable tbody tr{display:grid;grid-template-columns:90px minmax(0,1fr) auto;column-gap:8px;row-gap:2px;align-items:center;padding:8px;border-bottom:1px solid var(--line)}
+  .atable td{border-bottom:0;padding:0;height:auto;white-space:normal;overflow:visible;width:auto}
+  .atable td:nth-child(1){grid-column:1;grid-row:2}
+  .atable td:nth-child(2){grid-column:1;grid-row:1}
+  .atable td:nth-child(3){grid-column:2/4;grid-row:1}
+  .atable td:nth-child(6){grid-column:2;grid-row:2}
+  .atable td:nth-child(8){grid-column:3;grid-row:2}
+  .atable th:nth-child(2),.atable td:nth-child(2){display:block} /* kind back on ≤480 (hidden by ≤760 rule) */
+  .atable td .kindcell{font-size:10.5px;white-space:nowrap}
+  .atable td .chip{max-width:100%}
+  .atable td.num{text-align:right}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <a class="brand" href="#/" aria-label="ark.observer home">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="6.4" stroke="#FF6A2B" stroke-width="1.1" opacity=".9"/>
+        <circle cx="8" cy="8" r="2.6" stroke="#EDEDEF" stroke-width="1.1"/>
+        <line x1="8" y1="1.6" x2="8" y2="4.4" stroke="#EDEDEF" stroke-width="1.1"/>
+      </svg>
+      <span>ark.observer</span>
+    </a>
+    <span class="netchip">mainnet</span>
+    <div class="omni-wrap"><div id="omni">
+      <input id="omni-input" type="text" autocomplete="off" spellcheck="false" placeholder="txid · outpoint · ark1… address · 5120… script · block height" aria-label="Search ark.observer snapshot">
+      <div id="omni-list" role="listbox" aria-label="Suggestions"></div>
+    </div></div>
+    <div class="top-right">
+      <div class="seg-mini" id="unitseg" role="group" aria-label="Amount unit">
+        <button data-unit="sat" class="on">sats</button><button data-unit="btc">BTC</button>
+      </div>
+      <button class="iconbtn hide-m" id="watchbtn" aria-label="Watchlist">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 12.2S1.8 8.9 1.8 5.2A2.9 2.9 0 0 1 7 3.4a2.9 2.9 0 0 1 5.2 1.8c0 3.7-5.2 7-5.2 7Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+        <span class="cnt" id="watchcnt" hidden>0</span>
+      </button>
+      <button class="iconbtn" id="helpbtn" aria-label="Keyboard shortcuts">?</button>
+      <nav class="propseg" aria-label="Proposals">
+        <a href="signal.html" data-file="signal.html" class="cur" title="01 · Signal">01</a><a href="datasheet.html" data-file="datasheet.html" title="02 · Datasheet">02</a><a href="atlas.html" data-file="atlas.html" title="03 · Atlas">03</a><a href="index.html" data-file="index.html" title="All proposals">All</a>
+      </nav>
+    </div>
+  </header>
+  <div class="tape" id="tape" aria-label="Network status tape"></div>
+  <div class="trail" id="trail" aria-label="Navigation trail"></div>
+  <div class="workspace" id="workspace">
+    <main id="main"></main>
+    <aside id="insp" aria-label="Inspector"></aside>
+  </div>
+  <div class="prov" id="prov"></div>
+</div>
+<div id="watchpanel" role="dialog" aria-label="Watchlist"><div class="wp-box">
+  <div class="wp-head"><h2>Watchlist</h2><span class="n" id="wpcnt"></span><button class="iconbtn" id="wpclose" aria-label="Close">✕</button></div>
+  <div class="wp-list" id="wplist"></div>
+</div></div>
+<div id="kbdhelp" role="dialog" aria-label="Keyboard shortcuts"><div class="kh-box">
+  <h2>Keyboard</h2>
+  <div class="kh-grid" id="khgrid"></div>
+</div></div>
+<div id="toast" role="status"></div>
+<script src="data.js"></script>
+<script>
+'use strict';
+/* ============================================================
+   SIGNAL — proposal 01 · everything live, nothing decorative
+   ============================================================ */
+const D = window.ARK_OBSERVER_DATA;
+const T0 = performance.now();
+const now = () => D.meta.generatedAt + (performance.now() - T0) / 1000;
+const $ = s => document.querySelector(s);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- formatting ---------- */
+const NF = new Intl.NumberFormat('en-US');
+const sats = n => n == null ? '—' : NF.format(Math.round(n));
+let UNIT = 'sat';
+function amt(n, opts){
+  if (n == null) return '—';
+  if (UNIT === 'btc') {
+    const neg = n < 0; n = Math.abs(n);
+    const b = n / 1e8;
+    const s = b.toFixed(b >= 1 ? 4 : 8);
+    const [i, f] = s.split('.');
+    const intPart = NF.format(+i);
+    if (i === '0'){
+      const zeros = (f.match(/^0+/)||[''])[0].length;
+      return (neg?'-':'')+`<span class="mono">${intPart}</span>.<span class="dim3">${'0'.repeat(zeros)}</span>${f.slice(zeros)}`;
+    }
+    return (neg?'-':'')+`<span class="mono">${intPart}</span>.${f}`;
+  }
+  return `<span class="mono">${sats(n)}</span><span class="dim3"> sat</span>`;
+}
+function amtPlain(n){ // text version for tooltips/copy
+  if (n == null) return '—';
+  return UNIT === 'btc' ? (n/1e8).toFixed(8) + ' BTC' : sats(n) + ' sats';
+}
+function btcFmt(n){ if (n == null) return '—'; const b=n; return b.toLocaleString('en-US',{minimumFractionDigits:b>=1?2:4,maximumFractionDigits:b>=1?4:8}); }
+function amtCell(n){ return n == null ? '—' : (UNIT === 'btc' ? btcFmt(n/1e8) : sats(n)); }
+const unitLabel = () => UNIT === 'btc' ? 'BTC' : 'sats';
+function btcT(n){ if (n == null) return '—'; return n >= 1 ? n.toLocaleString('en-US',{maximumFractionDigits:2}) : n.toFixed(4); }
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function d2(t){ const d=new Date(t*1000); return `${String(d.getDate()).padStart(2,'0')} ${MONTHS[d.getMonth()]}`; }
+function t2(t){ const d=new Date(t*1000); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function dT(t){ const d=new Date(t*1000); return `${d2(t)} ${t2(t)}`; }
+function rel(t, n){
+  n = n || now(); const s = n - t;
+  const a = Math.abs(s);
+  const sign = s >= 0 ? '' : '-';
+  if (a < 90) return sign + Math.round(a) + 's';
+  if (a < 3600) return sign + Math.round(a/60) + 'm';
+  if (a < 86400) return sign + (a/3600).toFixed(a<36000?1:0).replace(/\.0$/,'') + 'h';
+  if (a < 86400*45) return sign + Math.round(a/86400) + 'd';
+  return sign + Math.round(a/86400/30) + 'mo';
+}
+function dur(sec){
+  if (sec == null) return '—';
+  const a = Math.abs(sec);
+  const sign = sec < 0 ? '-' : '';
+  if (a < 90) return sign + Math.round(a) + 's';
+  if (a < 3600) return sign + Math.round(a/60) + 'm';
+  if (a < 86400) return sign + Math.round(a/3600) + 'h';
+  const d = a/86400;
+  if (d < 60) return sign + (d >= 10 ? Math.round(d) : d.toFixed(1).replace(/\.0$/,'')) + ' d';
+  return sign + (d/30).toFixed(1).replace(/\.0$/,'') + ' mo';
+}
+function durLong(sec){
+  if (sec == null) return '—';
+  const a = Math.abs(sec), sign = sec<0?'-':'';
+  if (a < 60) return `${sign}${Math.round(a)} s`;
+  const d = Math.floor(a/86400), h = Math.floor((a%86400)/3600), m = Math.floor((a%3600)/60);
+  if (d > 0) return h>0 ? `${sign}${d} d ${h} h` : `${sign}${d} d`;
+  if (h > 0) return m>0&&m>=30 ? `${sign}${h} h ${m} m` : `${sign}${h} h`;
+  return `${sign}${m} m`;
+}
+
+/* ---------- lookups ---------- */
+const VT = D.virtualTxs, CT = D.commitmentTxs, ADDR = D.addresses, CH = D.vtxoChains;
+const byTxid = id => VT[id] || CT[id] || null;
+const actById = {}; D.activity.forEach(a => actById[a.id] = a);
+const commitBlock = {};
+Object.values(CT).forEach(c => { if (c.onchain && c.onchain.blockHeight != null) commitBlock[c.txid] = c.onchain; });
+// a tx is anchored only by a commitment whose merkle tree lists it as a leaf —
+// VT.commitmentTxids also carries inherited input-batch context, so it can't be trusted alone
+const commitHasTx = {};
+Object.values(CT).forEach(c => {
+  Object.values(c.trees || {}).forEach(leaves => leaves.forEach(l => {
+    if (l && l.txid) (commitHasTx[l.txid] = commitHasTx[l.txid] || []).push(c.txid);
+  }));
+});
+function anchorInfo(txid){
+  const ids = commitHasTx[txid] || ((VT[txid] && VT[txid].commitmentTxids) || []).filter(c => {
+    // fallback for txs absent from trees (e.g. settled outputs settledBy-style records)
+    const ct = CT[c]; return ct && ct.onchain && ct.onchain.blockTime >= ((VT[txid]||{}).createdAt || 0);
+  });
+  for (const c of ids){ const b = commitBlock[c]; if (b) return {commitment: c, block: b.blockHeight, conf: b.confirmations, blockTime: b.blockTime}; }
+  return ids.length ? {commitment: ids[0], block: null, conf: null, blockTime: null} : null;
+}
+function blkTime(h){ const b = D.chain.blocks.find(b => b.height === h); return b ? b.time : null; }
+function blkConf(h){ const t = h ? blkTime(h) : null; return t ? Math.max(1, Math.round((now()-t)/600)) : null; }
+
+/* ---------- state & kind vocab ---------- */
+const STATES = {
+  preconfirmed:{g:'◔',c:'pre',l:'preconfirmed'},
+  settled:{g:'◑',c:'live',l:'settled'},
+  renew:{g:'!',c:'sig',l:'needs renewal'},
+  expired:{g:'⌛',c:'sig',l:'expired'},
+  spent:{g:'×',c:'mut',l:'spent'},
+  refreshed:{g:'↻',c:'mut',l:'refreshed'},
+  swept:{g:'⌧',c:'mut',l:'swept'},
+  unknown:{g:'?',c:'mut',l:'unknown'},
+  confirmed:{g:'●',c:'live',l:'confirmed'},
+  mempool:{g:'◌',c:'pre',l:'mempool'}
+};
+const KINDS = {
+  payment:{g:'⇄',l:'payment'}, onboard:{g:'↓',l:'onboard'}, refresh:{g:'↻',l:'refresh'},
+  batch:{g:'⛓',l:'batch'}, 'server-in':{g:'→',l:'to server'}, 'server-out':{g:'←',l:'from server'}
+};
+const stateOf = s => STATES[s] || {g:'·',c:'mut',l:s||'—'};
+const kindOf = k => KINDS[k] || {g:'·',l:k||'—'};
+function stateBadge(s){ const st=stateOf(s); return `<span class="statecell"><span class="sglyph sg-${st.c}">${st.g}</span><span>${st.l}</span></span>`; }
+const NEEDS = new Set(['renew','expired']);
+
+/* ---------- amounts / exit windows ---------- */
+const EXIT_DELAY = {arkade: D.operators.arkade.unilateralExitDelaySec, second: null}; // second: 144 blocks ≈ 1d (not computable in seconds)
+const SECOND_EXIT_SEC = D.operators.second.exitDeltaBlocks * 600; // ~10 min/block estimate
+function exitDelaySec(net){ return net === 'second' ? SECOND_EXIT_SEC : EXIT_DELAY.arkade; }
+function vtxoDeadline(v){ // absolute time when the exit window closes = expiresAt - delay (approx for arkade; block-based for second n/a)
+  return v.expiresAt != null ? v.expiresAt - exitDelaySec('arkade') : null;
+}
+function lifeInfo(createdAt, expiresAt, net){
+  // returns {total, remain, winStartFrac, nowFrac} fractions 0..1 for bars; null-safe
+  if (expiresAt == null || createdAt == null) return null;
+  const total = Math.max(1, expiresAt - createdAt);
+  const n = now();
+  const remain = expiresAt - n;
+  const win = exitDelaySec(net || 'arkade') / total; // fraction of lifetime that is exit window
+  const nowF = Math.min(1, Math.max(0, (n - createdAt) / total));
+  return {total, remain, winFrac: Math.min(0.5, win), nowFrac: nowF, expired: remain <= 0};
+}
+
+/* ---------- identicon ---------- */
+function ident(h){
+  // 4-cell mini identicon from first bytes; low-chroma HSL
+  let seed = 0; const s = String(h);
+  for (let i = 0; i < Math.min(s.length, 16); i++) seed = (seed * 31 + s.charCodeAt(i)) >>> 0;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const hue = Math.floor(rnd() * 40) + 10; // 10..50 warm-neutral range
+  const sat = 18 + Math.floor(rnd() * 22);
+  const lit = 38 + Math.floor(rnd() * 26);
+  let bars = '';
+  for (let i = 0; i < 4; i++){
+    const w = 3 + Math.floor(rnd() * 9);
+    const l = 30 + Math.floor(rnd() * 45);
+    bars += `<i style="width:${w}px;background:hsl(${hue} ${sat}% ${l}%)"></i>`;
+  }
+  return `<span class="ident" aria-hidden="true">${bars}</span>`;
+}
+function midHash(h, keep=4){
+  h = String(h);
+  if (h.length <= keep*2+1) return h;
+  return `${h.slice(0,keep)}…${h.slice(-keep)}`;
+}
+function chipHTML(id, cls){
+  cls = cls || '';
+  return `<span class="chip ${cls}" data-chip="${esc(id)}" title="${esc(id)}" role="button" tabindex="0">${ident(id)}<span class="txt">${esc(midHash(id))}</span><span class="cp">copy</span></span>`;
+}
+function addrChipHTML(a){
+  return `<span class="chip addr" data-chip="${esc(a)}" title="${esc(a)}" role="button" tabindex="0">${ident(a)}<span class="txt">${esc(midHash(a,6))}</span><span class="cp">copy</span></span>`;
+}
+function outpointChip(op){
+  const [t,v] = String(op).split(':');
+  return `<span class="outpt" title="${esc(op)}"><span class="chip" data-chip="${esc(op)}" data-op="1" role="button" tabindex="0">${ident(t)}<span class="txt">${esc(midHash(t))}:${esc(v)}</span><span class="cp">copy</span></span></span>`;
+}
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1800);
+}
+async function copyText(txt, label){
+  try { await navigator.clipboard.writeText(txt); }
+  catch(e){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  toast(label || `copied ${midHash(txt)}`);
+}
+
+/* ---------- watchlist ---------- */
+const WKEY = 'ark-observer-proto-signal-watchlist';
+let watch = new Set();
+try { watch = new Set(JSON.parse(localStorage.getItem(WKEY) || '[]')); } catch(e){}
+function saveWatch(){ try { localStorage.setItem(WKEY, JSON.stringify([...watch])); } catch(e){} renderWatchBadge(); }
+function isWatched(id){ return watch.has(id); }
+function toggleWatch(id, label){
+  if (watch.has(id)){ watch.delete(id); toast(`unwatched ${midHash(id)}`); }
+  else { watch.add(id); toast(`watching ${midHash(id)}`); }
+  saveWatch(); renderWatchPanel(); refreshWatchButtons(); if(!inspItem) renderInspectorEmpty();
+}
+function watchInfo(id){
+  // best-effort expiry for a watched item
+  if (VT[id] && VT[id].expiresAt) return {exp: VT[id].expiresAt, label: 'virtual tx'};
+  if (ADDR[id]) { const n = ADDR[id].summary.nearestExpiry; return n ? {exp:n,label:'nearest vtxo'} : null; }
+  const [t,v] = String(id).split(':');
+  if (CT[id]) { const b = CT[id].batches && CT[id].batches[0]; return b && b.expiresAt ? {exp:b.expiresAt,label:'anchor batch'} : null; }
+  if (CH[id]) { const e = CH[id].anchorCommitments[0]; const c = CT[e]; const b = c && c.batches && c.batches[0]; return b && b.expiresAt ? {exp:b.expiresAt,label:'anchor batch'} : null; }
+  const ov = D.observedVtxos.find(o => o.outpoint === id);
+  if (ov) return {exp: ov.expiresAt, label:'vtxo'};
+  return null;
+}
+function renderWatchBadge(){
+  const c = $('#watchcnt'); c.hidden = !watch.size; c.textContent = watch.size;
+  $('#watchbtn').classList.toggle('on', !!watch.size);
+}
+
+/* ---------- trail ---------- */
+const trail = []; // [{hash,label}]
+let trailKey = '';
+function pushTrail(hash, label){
+  const sig = hash;
+  if (trailKey === sig) return;
+  trailKey = sig;
+  const last = trail[trail.length-1];
+  if (last && last.hash === hash) return;
+  trail.push({hash, label});
+  if (trail.length > 8) trail.shift();
+  renderTrail();
+}
+function renderTrail(){
+  const t = $('#trail');
+  if (trail.length <= 1){ t.innerHTML=''; t.style.display='none'; return; }
+  t.innerHTML = '';
+  trail.forEach((p,i)=>{
+    if (i) t.appendChild(el('span','sep','›'));
+    const a = el('a', i===trail.length-1?'cur':'', esc(p.label));
+    a.href = p.hash;
+    t.appendChild(a);
+  });
+  t.style.display='flex';
+}
+
+/* ---------- hash routing ---------- */
+function classifyHash(h){
+  h = h.trim();
+  if (/^[0-9a-f]{64}$/i.test(h)){
+    if (VT[h]) return {type:'tx', id:h};
+    if (CT[h]) return {type:'commitment', id:h};
+    const a = D.activity.find(x => x.txid === h && x.network === 'second');
+    if (a) return {type:'second', id:h, kind:a.kind};
+    return {type:'unknown-tx', id:h};
+  }
+  if (/^[0-9a-f]{64}:[0-9]+$/i.test(h)){
+    const [t,v] = h.split(':');
+    if (VT[t] || CH[h]) return {type:'vtxo', id:h, tx:t, vout:+v};
+    return {type:'unknown-outpoint', id:h};
+  }
+  if (/^ark1[02-9ac-hj-np-z]{20,}$/i.test(h)){
+    if (ADDR[h]) return {type:'address', id:h, full:true};
+    return {type:'address-partial', id:h};
+  }
+  if (/^5120[0-9a-f]+$/i.test(h)) return {type:'script', id:h.toLowerCase()};
+  if (/^\d{1,7}$/.test(h)) return {type:'block', id:+h};
+  return {type:'search', id:h};
+}
+function syncPropseg(){
+  const h = location.hash && location.hash !== '#/' ? location.hash : '';
+  document.querySelectorAll('.propseg a').forEach(a=>{
+    const f = a.getAttribute('data-file');
+    a.setAttribute('href', f + h);
+  });
+}
+function route(hash){
+  syncPropseg(); phSync();
+  hash = decodeURIComponent((hash||'').replace(/^#\/?/, ''));
+  const parts = hash.split('/').filter(Boolean);
+  if (!parts.length) return renderOverview();
+  const [kind, ...rest] = parts;
+  const arg = rest.join('/');
+  if (kind === 'tx' && arg) return renderTx(arg);
+  if (kind === 'commitment' && arg) return renderCommitment(arg);
+  if (kind === 'address' && arg) return renderAddress(arg);
+  if (kind === 'vtxo' && arg) return renderVtxo(arg);
+  // bare id or unknown kind → classify
+  const c = classifyHash(kind === 'tx'||kind==='commitment'||kind==='address'||kind==='vtxo' ? arg : parts.join('/'));
+  switch(c.type){
+    case 'tx': location.hash = '#/tx/' + c.id; return;
+    case 'commitment': location.hash = '#/commitment/' + c.id; return;
+    case 'vtxo': location.hash = '#/vtxo/' + c.id; return;
+    case 'address': case 'address-partial': location.hash = '#/address/' + c.id; return;
+    case 'second': case 'unknown-tx': case 'unknown-outpoint': case 'script': case 'block': case 'search':
+      renderNotFound(c); return;
+  }
+}
+
+/* ============================================================
+   OVERVIEW
+   ============================================================ */
+let tableState = {rows:[], shown:25, sel:-1, filters:null, brush:null};
+let timeRange = 24; // hours window for strip: 24 | 168 | 1080
+let inspItem = null; // {kind:'activity'|'tx'|'commitment'|'address'|'vtxo'|'vtxoitem'|'flowio', ref}
+let pageId = null;   // id of the entity the current detail page shows (for self-aware inspector)
+let pageSel = null; // detail-page row selection {items, idx, pick, open}
+
+/* mobile inspector bottom-sheet */
+function closeSheet(){
+  const ins = $('#insp'); ins.classList.remove('sheet');
+  const b = ins.querySelector('.sheet-bar'); if (b) b.remove();
+}
+function openSheet(){
+  if (window.innerWidth > 1100) return;
+  const ins = $('#insp'); ins.classList.add('sheet'); ensureSheetClose(ins); ins.scrollTop = 0;
+  requestAnimationFrame(()=>fixLcLabels(ins));
+}
+function ensureSheetClose(ins){
+  if (!ins.classList.contains('sheet')) return;
+  if (ins.querySelector('.sheet-bar')) return;
+  ins.insertAdjacentHTML('afterbegin','<div class="sheet-bar"><button class="sheet-x" aria-label="Close inspector">✕</button></div>');
+  ins.querySelector('.sheet-x').addEventListener('click', ()=>{ closeSheet(); });
+}
+
+function renderOverview(){
+  workspace.classList.remove('noinsp');
+  closeSheet(); pageSel = null; pageId = null;
+  document.title = 'ark.observer — signal';
+  pushTrail('#/','Overview');
+  const m = $('#main'); m.innerHTML = '';
+  // section head
+  const head = el('div','sec-head');
+  head.innerHTML = `<h1>Activity</h1><span class="count" id="actcount"></span><span class="note">sampled feed · Second = on-chain only</span>`;
+  m.appendChild(head);
+  // time strip
+  const ts = el('div'); ts.id='timestrip';
+  ts.innerHTML = `<div class="ts-controls"><div class="ts-range" id="tsrange">
+      <button data-r="24" class="on">24h</button><button data-r="168">7d</button><button data-r="1080">45d</button>
+    </div><span id="tsbrush"></span><span class="ts-hint">drag to filter · hover for block</span></div>
+    <svg id="tsvg" viewBox="0 0 1000 64" preserveAspectRatio="none" role="img" aria-label="Activity timeline"></svg>`;
+  m.appendChild(ts);
+  // query bar
+  const qb = el('div'); qb.id='querybar';
+  qb.innerHTML = `<input id="qinput" type="text" autocomplete="off" spellcheck="false" placeholder="filter: net:arkade kind:payment state:renew amt>10000 — or type an id" aria-label="Filter activity">
+    <div class="qseg" id="segnet"><span class="qk">Net</span><button data-t="net:arkade">Arkade<span class="n"></span></button><button data-t="net:second">Second<span class="n"></span></button></div>
+    <div class="qseg" id="seglayer"><span class="qk">Layer</span><button data-t="layer:virtual">Virtual<span class="n"></span></button><button data-t="layer:onchain">On-chain<span class="n"></span></button></div>
+    <div class="qseg" id="segstate"><span class="qk">State</span><button data-t="state:renew" class="needs">Needs action<span class="n"></span></button><button data-t="state:preconfirmed">Preconf<span class="n"></span></button><button data-t="state:settled">Settled<span class="n"></span></button><button data-t="state:confirmed">Confirmed<span class="n"></span></button><button data-t="state:spent">Spent<span class="n"></span></button></div>
+    <button class="qclear" id="qclear" hidden>clear ×</button>`;
+  m.appendChild(qb);
+  // table
+  const tw = el('div'); tw.id='tablewrap';
+  tw.innerHTML = `<table class="atable" id="atable"><thead><tr>
+      <th class="col-time">Time</th><th class="col-kind">Kind</th><th>Tx</th><th class="col-net">Net</th><th class="col-flow">Flow</th>
+      <th class="num col-amt">Amount · ${unitLabel()}</th><th class="col-exp">Expiry</th><th class="col-state">State</th></tr></thead>
+    <tbody id="atbody"></tbody></table><button class="morebtn" id="morebtn" hidden></button>`;
+  m.appendChild(tw);
+  // operators diff
+  const ops = buildOpsDiff(); m.appendChild(ops);
+  // expiry radar
+  const radar = buildRadar(); m.appendChild(radar);
+  // provenance
+  $('#prov').innerHTML = provHTML();
+
+  bindTimeStrip(); bindQueryBar(); renderTable(); renderStrip();
+  // restore inspector
+  if (!inspItem) renderInspectorEmpty(); else renderInspector();
+  refreshWatchButtons();
+}
+
+/* ---------- activity filtering ---------- */
+function parseQuery(q){
+  const f = {net:null, layer:null, kind:null, state:null, needs:false, amt:null, since:null, before:null, text:''};
+  const parts = q.trim().split(/\s+/).filter(Boolean);
+  const text = [];
+  for (const p of parts){
+    const m = p.match(/^(net|layer|kind|state|amt|since|before):(.+)$/i);
+    if (m){
+      const k=m[1].toLowerCase(), v=m[2].toLowerCase();
+      if (k==='net') f.net = v==='a'?'arkade':v==='s'?'second':v;
+      else if (k==='layer') f.layer = v==='on-chain'?'onchain':v;
+      else if (k==='kind') f.kind = v;
+      else if (k==='state'){
+        if (v==='needs'||v==='action'||v==='needs-action'){ f.needs=true; }
+        else if (v==='renew') f.needs=true; // renew ⊂ needs action
+        else if (v==='expired'){ f.state='expired'; }
+        else f.state = v;
+      }
+      else if (k==='amt'){
+        const mm=v.match(/^(>=|<=|>|<)?(\d+(?:\.\d+)?)(sat|sats|btc)?$/);
+        if(mm){ let val=+mm[2]; if(mm[3]==='btc') val=Math.round(val*1e8); f.amt={op:mm[1]||'>=',v:val}; }
+      }
+      else if (k==='since'){ const s=parseDur(v); if(s!=null) f.since=now()-s; }
+      else if (k==='before'){ const s=parseDur(v); if(s!=null) f.before=now()-s; }
+    } else if (/^\d+$/.test(p)) {
+      // bare number → minimum amount sats? treat as text instead
+      text.push(p);
+    } else text.push(p);
+  }
+  f.text = text.join(' ').toLowerCase();
+  return f;
+}
+function parseDur(s){
+  const m = String(s).match(/^(\d+(?:\.\d+)?)(s|m|h|d|w)$/i);
+  if (!m) return null;
+  const u = {s:1,m:60,h:3600,d:86400,w:604800}[m[2].toLowerCase()];
+  return +m[1]*u;
+}
+function rowMatches(a, f, brush){
+  if (!f && !brush) return true;
+  if (f){
+    if (f.net && a.network !== f.net) return false;
+    if (f.layer && a.layer !== f.layer) return false;
+    if (f.kind && a.kind !== f.kind) return false;
+    if (f.needs){ if (!(a.state==='renew'||a.state==='expired')) return false; }
+    else if (f.state){
+      if (f.state === 'renew') { if (!(a.state==='renew'||a.state==='expired')) return false; }
+      else if (a.state !== f.state) return false;
+    }
+    if (f.amt){ const v=a.amount||0; const t=f.amt.v;
+      if (f.amt.op==='>='&&v<t) return false; if (f.amt.op==='<='&&v>t) return false;
+      if (f.amt.op==='>'&&v<=t) return false; if (f.amt.op==='<'&&v>=t) return false; }
+    if (f.since && a.time < f.since) return false;
+    if (f.before && a.time > f.before) return false;
+    if (f.text){
+      const hay = (a.txid+' '+(a.commitmentTxid||'')+' '+a.kind+' '+a.state+' '+a.network).toLowerCase();
+      if (!f.text.split(' ').every(w => hay.includes(w))) return false;
+    }
+  }
+  if (brush && (a.time < brush[0] || a.time > brush[1])) return false;
+  return true;
+}
+function filteredRows(){
+  const f = parseQuery($('#qinput').value);
+  const brush = tableState.brush;
+  return D.activity.filter(a => rowMatches(a, f, brush));
+}
+
+function renderTable(){
+  const rows = filteredRows();
+  tableState.rows = rows; tableState.shown = Math.min(25, rows.length); tableState.sel = -1;
+  const tb = $('#atbody'); tb.innerHTML = '';
+  $('#actcount').textContent = `${rows.length} / ${D.activity.length} rows`;
+  if (!rows.length){
+    tb.innerHTML = `<tr><td colspan="8"><div class="empty">no activity matches this filter</div></td></tr>`;
+    $('#morebtn').hidden = true; return;
+  }
+  rows.slice(0, tableState.shown).forEach((a,i) => tb.appendChild(rowEl(a,i)));
+  updateMoreBtn();
+}
+function rowEl(a, i){
+  const tr = el('tr');
+  tr.dataset.i = i; tr.dataset.id = a.id;
+  const st = stateOf(a.state), kd = kindOf(a.kind);
+  const net = a.network === 'arkade' ? 'A' : 'S';
+  const exp = a.expiresAt ? expiryCell(a) : `<td class="col-exp dim3">—</td>`;
+  const flow = a.inputs && a.outputs ? `<td class="col-flow">${a.inputs}→${a.outputs}</td>` : `<td class="col-flow dim3">—</td>`;
+  tr.innerHTML = `
+    <td class="col-time"><span class="t-rel">${rel(a.time)}</span><span class="t-abs">${dT(a.time)}</span></td>
+    <td class="col-kind"><span class="kindcell"><span class="kindglyph">${kd.g}</span>${kd.l}</span></td>
+    <td>${chipHTML(a.txid)}</td>
+    <td class="col-net"><span class="monogram ${a.network==='arkade'?'a':''}" title="${a.network}">${net}</span></td>
+    ${flow}
+    <td class="num col-amt">${amtCell(a.amount)}</td>
+    ${exp}
+    <td class="col-state"><span class="statecell"><span class="sglyph sg-${st.c}">${st.g}</span>${st.l}</span></td>`;
+  tr.addEventListener('click', () => selectRow(i, true));
+  tr.addEventListener('dblclick', () => openRow(i));
+  return tr;
+}
+function exbarHTML(created, exp, network, state){
+  // mini expiry bar: fill = remaining lifetime, tail = exit window (clipped to remaining)
+  const n = now();
+  if (exp == null) return '';
+  created = created || (exp - 30*86400);
+  const net = network || 'arkade';
+  const total = Math.max(1, exp - created);
+  const remain = exp - n;
+  const nowF = Math.min(1, Math.max(0, (n - created)/total));
+  const winF = Math.min(0.5, exitDelaySec(net)/total);
+  const pct = x => Math.round(Math.min(100,Math.max(0,x*100)));
+  const hot = NEEDS.has(state) || remain <= exitDelaySec(net);
+  const lbl = remain <= 0 ? 'expired' : remain < 86400 ? dur(remain) : Math.floor(remain/86400)+' d';
+  const wL = Math.max(1-winF, nowF), wW = Math.max(0, 1-wL);
+  return `<div class="exbar"><span class="lbl ${hot?'hot':''}">${lbl}</span>
+    <span class="track"></span>
+    <span class="fill ${remain>exitDelaySec(net)?'ok':''}" style="left:${pct(nowF)}%;width:${pct(Math.max(0,1-nowF))}%"></span>
+    <span class="win" style="left:${pct(wL)}%;width:${pct(wW)}%"></span>
+    </div>`;
+}
+function expiryCell(a){
+  const vt = VT[a.txid];
+  const created = vt ? vt.createdAt : null; // expiry bars only make sense for virtual txs
+  const exp = a.expiresAt;
+  if (!created || !exp){ return `<td class="col-exp dim3">—</td>`; }
+  return `<td class="col-exp">${exbarHTML(created, exp, a.network, a.state)}</td>`;
+}
+function vtxoExpiryBar(v){
+  if (v.expiresAt == null) return '';
+  return exbarHTML(v.createdAt, v.expiresAt, 'arkade', v.state);
+}
+function updateMoreBtn(){
+  const b = $('#morebtn');
+  const left = tableState.rows.length - tableState.shown;
+  b.hidden = left <= 0;
+  b.textContent = left > 0 ? `show ${Math.min(25,left)} more · ${left} remaining` : '';
+}
+
+/* ---------- selection / inspector ---------- */
+function selectRow(i, scroll){
+  const rows = tableState.rows;
+  if (i < 0 || i >= rows.length) return;
+  tableState.sel = i;
+  document.querySelectorAll('#atbody tr').forEach(tr => tr.classList.toggle('sel', +tr.dataset.i === i));
+  const a = rows[i];
+  inspItem = {kind:'activity', ref:a};
+  renderInspector();
+  if (window.innerWidth <= 1100) openSheet();
+  if (scroll){ const tr = document.querySelector(`#atbody tr[data-i="${i}"]`); if (tr) tr.scrollIntoView({block:'nearest'}); }
+}
+function openRow(i){
+  const a = tableState.rows[i]; if (!a) return;
+  if (a.network === 'second'){
+    window.open('https://mempool.space/tx/' + a.txid, '_blank', 'noopener');
+    toast('Second tx → mempool.space ↗');
+    return;
+  }
+  if (VT[a.txid]) location.hash = '#/tx/' + a.txid;
+  else if (CT[a.txid]) location.hash = '#/commitment/' + a.txid;
+  else if (a.kind === 'batch') location.hash = '#/commitment/' + a.txid;
+  else location.hash = '#/tx/' + a.txid;
+}
+
+/* ---------- inspector ---------- */
+function renderInspectorEmpty(){
+  inspItem = null;
+  const ins = $('#insp');
+  ins.innerHTML = `<div class="insp-empty">
+    <div class="micro" style="margin-bottom:12px">inspector</div>
+    <div class="micro" style="margin-bottom:14px;color:var(--text-2)">Network at a glance</div>
+    <div id="glance-ops"></div>
+    <div class="micro" style="margin:16px 0 8px">Nearest observed expiries</div>
+    <div id="glance-exp"></div>
+    ${watch.size?`<div class="micro" style="margin:18px 0 8px">Watching · ${watch.size}</div><div id="glance-watch"></div>`:''}
+    <div class="micro" style="margin:18px 0 8px">Keys</div>
+    <div style="font:10.5px var(--mono);color:var(--text-3);line-height:2">j / k move · Enter open · c copy · w watch<br>/ search · g o overview · g w watchlist · ? help</div>
+  </div>`;
+  // embed condensed ops diff + radar bits
+  $('#glance-ops').appendChild(miniOps());
+  $('#glance-exp').appendChild(miniExpiry());
+  const gw = $('#glance-watch');
+  if (gw){
+    [...watch].forEach(id=>{
+      const info = watchInfo(id);
+      const hot = info && info.exp!=null && info.exp-now() <= exitDelaySec('arkade');
+      const row = el('div','minirow');
+      row.innerHTML = `<span class="k" title="${esc(id)}">${esc(midHash(id))} <span class="dim3">${info?info.label:''}</span></span><span class="v" ${hot?'style="color:var(--signal)"':''}>${info&&info.exp?(info.exp>now()?'in '+remainLabel(info.exp):'expired '+rel(info.exp)+' ago'):'—'}</span>`;
+      gw.appendChild(row);
+    });
+  }
+  ensureSheetClose(ins);
+}
+function miniOps(){
+  const d = el('div');
+  d.innerHTML = `<div class="minirow"><span class="k">Arkade</span><span class="v">${esc(D.operators.arkade.version||'—')} · exit ${durLong(D.operators.arkade.unilateralExitDelaySec)}</span></div>
+  <div class="minirow"><span class="k">Second</span><span class="v">round ${durLong(D.operators.second.roundIntervalSec)} · exit ≈${durLong(SECOND_EXIT_SEC)}</span></div>
+  <div class="minirow"><span class="k">Tip</span><span class="v">block ${NF.format(D.chain.tipHeight)}</span></div>
+  <div class="minirow"><span class="k">Fees</span><span class="v">${D.chain.fees.fastestFee} / ${D.chain.fees.halfHourFee} / ${D.chain.fees.hourFee} sat/vB</span></div>`;
+  return d;
+}
+function miniExpiry(){
+  const d = el('div');
+  const renew = D.observedVtxos.filter(v=>v.state==='renew').slice(0,4);
+  const rest = D.observedVtxos.filter(v=>v.state!=='renew').slice(0,4);
+  const row = v => `<div class="minirow"><span class="k"><span class="sglyph sg-${stateOf(v.state).c}">${stateOf(v.state).g}</span> ${midHash(v.outpoint)}</span><span class="v" style="${v.state==='renew'?'color:var(--signal)':''}">${v.expiresAt>now()?'in '+remainLabel(v.expiresAt):'expired '+rel(v.expiresAt)+' ago'}</span></div>`;
+  renew.forEach(v=>d.appendChild(el('div','',row(v))));
+  rest.slice(0,3).forEach(v=>d.appendChild(el('div','',row(v))));
+  return d;
+}
+
+function renderInspector(){
+  const ins = $('#insp');
+  if (!inspItem){ renderInspectorEmpty(); return; }
+  const it = inspItem;
+  let html = '';
+  if (it.kind === 'activity'){
+    const a = it.ref;
+    const st = stateOf(a.state), kd = kindOf(a.kind);
+    const vt = VT[a.txid], ct = CT[a.txid];
+    const big = a.amount;
+    html = `<div class="insp-sec insp-head">
+      <div class="insp-kind"><span class="kindglyph" style="font-size:13px">${kd.g}</span><b style="font:600 12px var(--ui)">${kd.l}</b>
+      <span style="margin-left:auto">${stateBadge(a.state)}</span></div>
+      ${chipHTML(a.txid,'big')}
+      <div class="insp-amt">${amt(big)}<small>${a.network==='second'?'whole tx out':'vtxo out'}</small></div>
+      <div class="micro">${a.network==='arkade'?'Arkade':'Second'} · ${a.layer} · ${rel(a.time)} ago · ${dT(a.time)}</div>
+    </div>`;
+    html += lifecycleHTML(a);
+    html += `<div class="insp-sec"><div class="micro" style="margin-bottom:8px">ledger</div><div class="ledger">`;
+    html += `<div class="lrow"><span>in</span><span class="dim3">${a.inputs??'—'}</span><span class="amt">${amt(null)}</span></div>`;
+    html += `<div class="lrow"><span>out</span><span class="dim3">${a.outputs??'—'}</span><span class="amt">${amt(big)}</span></div>`;
+    if (a.blockHeight) html += `<div class="lrow"><span>block</span><span></span><span class="amt">${NF.format(a.blockHeight)} · ${blkConf(a.blockHeight) ?? '—'} conf</span></div>`;
+    if (a.vtxoCount != null) html += `<div class="lrow"><span>vtxos</span><span></span><span class="amt">${a.vtxoCount}</span></div>`;
+    html += `</div></div>`;
+    html += anchorsHTML(a.txid);
+    html += `<div class="insp-actions">${actionsHTML(a.txid, a.network)}</div>`;
+  } else if (it.kind === 'tx'){
+    const v = it.ref;
+    const st = stateOf(v.state);
+    html = `<div class="insp-sec insp-head">
+      <div class="insp-kind"><span class="kindglyph" style="font-size:13px">${kindOf(v.kind).g}</span><b style="font:600 12px var(--ui)">${kindOf(v.kind).l}</b>
+      <span style="margin-left:auto">${stateBadge(v.state)}</span></div>
+      ${chipHTML(v.txid,'big')}
+      ${pageId===v.txid?'':`<div class="insp-amt">${amt(v.totalOut)}<small>total out</small></div>`}
+      <div class="micro">created ${rel(v.createdAt)} ago · ${dT(v.createdAt)}</div>
+    </div>`;
+    html += lifecycleHTML({txid:v.txid, state:v.state, expiresAt:v.expiresAt, time:v.createdAt, network:'arkade', amount:v.totalOut});
+    // related: anchor, parent txs (via input outpoints), spending txs (via output vtxos), unroll depth
+    const anch = anchorInfo(v.txid);
+    const parents = [...new Set((v.inputs||[]).map(i=>i.outpoint?i.outpoint.split(':')[0]:null).filter(t=>t&&VT[t]))];
+    const spenders = [...new Set((v.outputs||[]).map(o=>o.vtxo&&o.vtxo.spentByTx).filter(t=>t&&VT[t]))];
+    const chKey = Object.keys(CH).find(k=>k.startsWith(v.txid+':'));
+    const ch = chKey ? CH[chKey] : null;
+    const offchain = ch ? Math.max(0, ch.length - (ch.counts?ch.counts.commitment:1)) : null;
+    html += `<div class="insp-sec"><div class="micro" style="margin-bottom:8px">related</div><div class="ledger">`;
+    if (anch) html += `<div class="lrow"><span>anchor</span>${chipHTML(anch.commitment)}<span class="amt">${anch.block?('blk '+NF.format(anch.block)):'—'}</span></div>`;
+    parents.slice(0,4).forEach(t => html += `<div class="lrow"><span>parent</span>${chipHTML(t)}<span class="amt">${kindOf(VT[t].kind).l}</span></div>`);
+    if (parents.length>4) html += `<div class="lrow"><span class="dim3">…</span><span></span><span class="amt dim3">+${parents.length-4} more</span></div>`;
+    spenders.slice(0,4).forEach(t => html += `<div class="lrow"><span>spent by</span>${chipHTML(t)}<span class="amt">${stateOf(VT[t].state).l}</span></div>`);
+    if (spenders.length>4) html += `<div class="lrow"><span class="dim3">…</span><span></span><span class="amt dim3">+${spenders.length-4} more</span></div>`;
+    if (offchain!=null) html += `<div class="lrow"><span>unroll</span><span class="dim3">exit depth ${offchain} · ${ch.counts.commitment} anchor${ch.counts.commitment>1?'s':''}${ch.truncated?' · compressed':''}</span><span class="amt"></span></div>`;
+    if (!anch && !parents.length && !spenders.length && offchain==null) html += `<div class="lrow"><span class="dim3">no links in snapshot</span><span></span><span class="amt"></span></div>`;
+    html += `</div></div>`;
+    html += `<div class="insp-actions">${actionsHTML(v.txid,'arkade')}</div>`;
+  } else if (it.kind === 'commitment'){
+    const c = it.ref;
+    const oc = c.onchain || {};
+    html = `<div class="insp-sec insp-head">
+      <div class="insp-kind"><span class="kindglyph" style="font-size:13px">⛓</span><b style="font:600 12px var(--ui)">commitment · batch</b>
+      <span style="margin-left:auto">${stateBadge('confirmed')}</span></div>
+      ${chipHTML(c.txid,'big')}
+      ${pageId===c.txid?'':`<div class="insp-amt">${amt(c.totalOutputAmount)}<small>batch out</small></div>`}
+      <div class="micro">block ${oc.blockHeight?NF.format(oc.blockHeight):'—'} · ${oc.confirmations??'—'} conf · ${oc.feeRate??'—'} sat/vB</div>
+    </div>`;
+    html += `<div class="insp-sec"><div class="micro" style="margin-bottom:8px">batch</div><div class="ledger">
+      <div class="lrow"><span>vtxos</span><span></span><span class="amt">${c.totalOutputVtxos}</span></div>
+      <div class="lrow"><span>inputs</span><span></span><span class="amt">${c.totalInputVtxos} vtxo${c.totalInputVtxos===1?'':'s'}</span></div>
+      <div class="lrow"><span>connectors</span><span></span><span class="amt">${c.connectorCount}</span></div>
+      <div class="lrow"><span>forfeits</span><span></span><span class="amt">${c.forfeitCount}</span></div>
+      <div class="lrow"><span>duration</span><span></span><span class="amt">${dur(c.endedAt-c.startedAt)}</span></div>
+    </div></div>`;
+    html += `<div class="insp-sec"><div class="micro" style="margin-bottom:8px">batches</div><div class="ledger">`;
+    (c.batches||[]).forEach(b=>{
+      html += `<div class="lrow"><span>vout ${b.vout}</span><span class="dim3">${b.vtxoCount} vtxo${b.swept?' · swept':''}</span><span class="amt">${amt(b.amount)}<span class="dim3" style="font-size:9.5px"> exp ${b.expiresAt>now()?remainLabel(b.expiresAt):'expired'}</span></span></div>`;
+    });
+    html += `</div></div>`;
+    // leaf vtxo txs from merkle trees
+    const leafTxs = [...new Set(Object.values(c.trees||{}).flat().map(l=>l.txid))];
+    const leafKnown = leafTxs.filter(t=>VT[t]);
+    html += `<div class="insp-sec"><div class="micro" style="margin-bottom:8px">leaf txs · ${leafTxs.length}</div><div class="ledger">`;
+    leafKnown.slice(0,6).forEach(t => html += `<div class="lrow"><span>${kindOf(VT[t].kind).l}</span>${chipHTML(t)}<span class="amt">${stateOf(VT[t].state).l}</span></div>`);
+    if (leafKnown.length>6) html += `<div class="lrow"><span class="dim3">…</span><span></span><span class="amt dim3">+${leafKnown.length-6} more indexed</span></div>`;
+    if (!leafKnown.length) html += `<div class="lrow"><span class="dim3">none indexed in snapshot</span><span></span><span class="amt"></span></div>`;
+    html += `</div></div>`;
+    // neighbouring blocks around the anchor
+    if (oc.blockHeight){
+      const near = D.chain.blocks.filter(b=>Math.abs(b.height-oc.blockHeight)<=2).sort((x,y)=>x.height-y.height);
+      html += `<div class="insp-sec"><div class="micro" style="margin-bottom:8px">neighbouring blocks</div><div class="ledger">`;
+      near.forEach(b=>html += `<div class="lrow"><span>blk ${NF.format(b.height)}${b.height===oc.blockHeight?' · this':''}</span><span class="dim3">${esc(b.pool||'')} · ${NF.format(b.txCount)} tx</span><span class="amt">${t2(b.time)}</span></div>`);
+      html += `</div></div>`;
+    }
+    html += `<div class="insp-actions">${actionsHTML(c.txid,'arkade')}</div>`;
+  } else if (it.kind === 'address'){
+    const a = it.ref;
+    const s = a.summary || {};
+    html = `<div class="insp-sec insp-head">
+      <div class="insp-kind"><b style="font:600 12px var(--ui)">address</b>
+      <button class="abtn ${isWatched(a.address)?'on':''}" data-watch="${esc(a.address)}" style="margin-left:auto">${isWatched(a.address)?'● watching':'watch'}</button></div>
+      ${addrChipHTML(a.address)}
+      <div class="micro">${NF.format(a.totalVtxos)} vtxo${a.totalVtxos===1?'':'s'} · ${NF.format(a.listedVtxos)} listed</div>
+    </div>`;
+    html += `<div class="insp-sec"><div class="micro" style="margin-bottom:8px">summary · all vtxos</div><div class="ledger">
+      <div class="lrow"><span>unspent</span><span></span><span class="amt">${amt((s.spendable||0)+(s.renew||0)+(s.expired||0))}</span></div>
+      <div class="lrow"><span>healthy</span><span></span><span class="amt">${amt(s.spendable)}</span></div>
+      <div class="lrow"><span>in exit window</span><span></span><span class="amt" style="color:${s.renew?'var(--signal)':'inherit'}">${s.renew?`${(s.counts&&s.counts.renew)||0} vtxo${((s.counts&&s.counts.renew)||0)===1?'':'s'} · ${amt(s.renew)}`:'0'}</span></div>
+      <div class="lrow"><span>expired</span><span></span><span class="amt">${amt(s.expired||0)}</span></div>
+      <div class="lrow"><span>received</span><span></span><span class="amt">${amt(s.received)}</span></div>
+    </div></div>`;
+    html += `<div class="insp-sec"><div class="micro" style="margin-bottom:8px">state counts</div><div class="ledger">`;
+    Object.entries(s.counts||{}).forEach(([k,v])=>{ if(v) html+=`<div class="lrow"><span><span class="sglyph sg-${stateOf(k).c}">${stateOf(k).g}</span> ${stateOf(k).l}</span><span></span><span class="amt">${v}</span></div>`; });
+    html += `</div></div>`;
+    // next expiries among listed unspent vtxos
+    const upcoming = (a.vtxos||[]).filter(v=>v.expiresAt&&v.state!=='spent'&&v.state!=='swept'&&v.state!=='refreshed').sort((x,y)=>x.expiresAt-y.expiresAt).slice(0,3);
+    if (upcoming.length){
+      html += `<div class="insp-sec"><div class="micro" style="margin-bottom:6px">next expiries</div><div class="ledger">`;
+      upcoming.forEach(v=>{ const [tx0,vo]=String(v.outpoint).split(':');
+        html += `<div class="lrow"><span><span class="sglyph sg-${stateOf(v.state).c}">${stateOf(v.state).g}</span> ${midHash(tx0)}:${vo}</span><span class="amt" ${v.state==='renew'?'style="color:var(--signal)"':''}>${remainLabel(v.expiresAt)}</span></div>`; });
+      html += `</div></div>`;
+    }
+    if (s.nearestExpiry) html += `<div class="insp-sec"><div class="micro" style="margin-bottom:6px">nearest expiry · all vtxos</div><div style="font:12px var(--mono)">${dT(s.nearestExpiry)} <span class="dim3">· in ${durLong(s.nearestExpiry-now())}</span></div></div>`;
+    if (!(location.hash.startsWith('#/address/') && location.hash.slice(10)===a.address))
+      html += `<div class="insp-actions"><button class="abtn" id="insp-open-addr">Open address ↗</button></div>`;
+  } else if (it.kind === 'vtxo'){
+    const {op, chain, tx, vout} = it.ref;
+    const entry = chain ? chain.entries.find(e=>e.txid===tx) : null;
+    const ov = D.observedVtxos.find(o=>o.outpoint===op);
+    html = `<div class="insp-sec insp-head">
+      <div class="insp-kind"><b style="font:600 12px var(--ui)">vtxo outpoint</b></div>
+      ${outpointChip(op)}
+      ${ov&&pageId!==op?`<div class="insp-amt">${amt(ov.amount)}<small>observed</small></div>`:''}
+      <div class="micro">${ov?stateOf(ov.state).l+' · ':''}${ov&&ov.expiresAt?'expires '+dT(ov.expiresAt):''}</div>
+    </div>`;
+    if (chain){
+      html += `<div class="insp-sec"><div class="micro" style="margin-bottom:8px">exit path</div><div class="ledger">
+        <div class="lrow"><span>depth</span><span></span><span class="amt">${chain.length} (${chain.counts?Object.entries(chain.counts).map(([k,v])=>k+':'+v).join(' '):''})</span></div>
+        <div class="lrow"><span>anchors</span><span></span><span class="amt">${chain.anchorCommitments.length}</span></div>
+        ${chain.truncated?'<div class="lrow"><span class="dim3">compressed</span><span></span><span class="amt dim3">yes</span></div>':''}
+      </div></div>`;
+    }
+    html += `<div class="insp-sec"><div class="micro" style="margin-bottom:8px">links</div><div class="ledger">
+      ${tx && VT[tx]?`<div class="lrow"><span>tx</span>${chipHTML(tx)}<span class="amt"></span></div>`:''}
+      ${chain&&chain.anchorCommitments[0]&&CT[chain.anchorCommitments[0]]?`<div class="lrow"><span>anchor</span>${chipHTML(chain.anchorCommitments[0])}<span class="amt"></span></div>`:''}
+      ${ov&&ADDR[ov.address]?`<div class="lrow"><span>address</span>${addrChipHTML(ov.address)}<span class="amt"></span></div>`:''}
+    </div></div>`;
+    html += `<div class="insp-actions"><button class="abtn" data-copy="${esc(op)}">Copy outpoint</button>${tx?`<button class="abtn" onclick="location.hash='#/tx/${tx}'">Open tx</button>`:''}</div>`;
+  } else if (it.kind === 'vtxoitem'){
+    // a single vtxo row from an address table (or flow row)
+    const {v, a} = it.ref;
+    const tx0 = v.outpoint ? String(v.outpoint).split(':')[0] : null;
+    const vo = v.outpoint ? String(v.outpoint).split(':')[1] : null;
+    html = `<div class="insp-sec insp-head">
+      <div class="insp-kind"><b style="font:600 12px var(--ui)">vtxo</b><span style="margin-left:auto">${stateBadge(v.state)}</span></div>
+      ${outpointChip(v.outpoint,'big')}
+      <div class="insp-amt">${amt(v.amount)}<small>vtxo out</small></div>
+      <div class="micro">created ${v.createdAt?dT(v.createdAt):'—'}${v.expiresAt?' · expires '+dT(v.expiresAt)+' ('+remainLabel(v.expiresAt)+')':''}</div>
+    </div>`;
+    html += `<div class="insp-sec"><div class="micro" style="margin-bottom:8px">lifecycle</div><div class="ledger">
+      ${v.createdAt?`<div class="lrow"><span>created</span><span class="amt">${dT(v.createdAt)} · ${rel(v.createdAt)} ago</span></div>`:''}
+      ${v.expiresAt?`<div class="lrow"><span>expires</span><span class="amt">${dT(v.expiresAt)} · ${remainLabel(v.expiresAt)}</span></div>`:''}
+      ${v.isPreconfirmed?`<div class="lrow"><span>preconf</span><span class="amt">yes</span></div>`:''}
+      ${v.spentByTx?`<div class="lrow"><span>spent by</span>${chipHTML(v.spentByTx)}<span class="amt"></span></div>`:''}
+      ${v.settledBy?`<div class="lrow"><span>settled by</span>${chipHTML(v.settledBy)}<span class="amt"></span></div>`:''}
+      ${v.commitmentTxid?`<div class="lrow"><span>commitment</span>${chipHTML(v.commitmentTxid)}<span class="amt"></span></div>`:''}
+    </div></div>`;
+    html += `<div class="insp-sec"><div class="micro" style="margin-bottom:8px">links</div><div class="ledger">
+      ${tx0&&VT[tx0]?`<div class="lrow"><span>issuing tx</span>${chipHTML(tx0)}<span class="amt">${kindOf(VT[tx0].kind).l}</span></div>`:''}
+      ${a?`<div class="lrow"><span>address</span>${addrChipHTML(a.address)}<span class="amt"></span></div>`:''}
+    </div></div>`;
+    html += `<div class="insp-actions"><button class="abtn" data-open="${esc(v.outpoint)}">Open outpoint</button><button class="abtn" data-gotx="${esc(tx0||'')}">Open issuing tx</button><button class="abtn" data-watch="${esc(v.outpoint)}">${isWatched(v.outpoint)?'● watching':'watch'}</button></div>`;
+  }
+  ins.innerHTML = html;
+  fixLcLabels(ins);
+  bindInspector(ins);
+  ensureSheetClose(ins);
+}
+/* lifecycle labels: % estimates drift at narrow widths — measure real boxes and nudge same-row overlaps */
+function fixLcLabels(ins){
+  ins.querySelectorAll('.lc-track').forEach(track=>{
+    const tr = track.getBoundingClientRect();
+    if (!tr.width || !tr.height) return; // hidden (e.g. sheet not open yet) — rects would be 0
+    const labels = [...track.querySelectorAll('.lc-lbl')];
+    if (!labels.length) return;
+    for (let pass=0; pass<4; pass++){
+      const rows = new Map();
+      labels.forEach(l=>{
+        const r = l.getBoundingClientRect();
+        const key = Math.round(r.top/4);
+        if(!rows.has(key)) rows.set(key,[]);
+        rows.get(key).push({el:l, r});
+      });
+      let moved = false;
+      for (const arr of rows.values()){
+        arr.sort((a,b)=>a.r.left-b.r.left);
+        for (let i=1;i<arr.length;i++){
+          const prev = arr[i-1], cur = arr[i];
+          const ov = prev.r.right - cur.r.left + 4;
+          if (ov > 0){
+            const curLeft = parseFloat(cur.el.style.left)||0;
+            cur.el.style.left = (curLeft + ov/tr.width*100) + '%';
+            moved = true;
+            cur.r = cur.el.getBoundingClientRect();
+          }
+        }
+      }
+      if (!moved) break;
+    }
+    labels.forEach(l=>{
+      const r = l.getBoundingClientRect();
+      if (r.right > tr.right - 2 && !l.classList.contains('rgt')){
+        l.classList.remove('lft'); l.classList.add('rgt'); l.style.left = '98.5%';
+      } else if (r.left < tr.left + 1 && !l.classList.contains('lft')){
+        l.classList.remove('rgt'); l.classList.add('lft'); l.style.left = '1.5%';
+      }
+    });
+  });
+}
+function lifecycleHTML(a){
+  // created → preconfirmed → anchored (block, conf) → expires (countdown); exit window shaded
+  const n = now();
+  const vt = VT[a.txid];
+  const created = vt ? vt.createdAt : a.time;
+  const exp = a.expiresAt;
+  const anch = anchorInfo(a.txid);
+  const isSecond = a.network === 'second';
+  const delay = exitDelaySec(a.network);
+  const nodes = [];
+  nodes.push({t:created, l:'created', done:true});
+  const preAt = created;
+  nodes.push({t:preAt, l:'preconf', done:true, now: a.state==='preconfirmed'&&!anch});
+  if (anch && anch.blockTime){
+    nodes.push({t:anch.blockTime, l:`batch · blk ${NF.format(anch.block)}`, done:true, now:false});
+  } else if (anch || a.state==='preconfirmed' || a.state==='renew' || a.state==='settled'){
+    nodes.push({t:null, l:'batch pending', done:false, now:true});
+  } else {
+    nodes.push({t:null, l:'unanchored', done:false, now:true});
+  }
+  if (exp){
+    const winStart = exp - delay;
+    nodes.push({t:winStart, l:'exit window', act:true});
+    nodes.push({t:exp, l:'expires', act:true});
+  }
+  const timed = nodes.filter(x=>x.t!=null).sort((a,b)=>a.t-b.t);
+  const t0 = timed.length? timed[0].t : n-3600;
+  const t1 = exp || (timed.length? timed[timed.length-1].t : n+3600);
+  const span = Math.max(1, t1-t0);
+  const X = t => 4 + (t-t0)/span*92; // percent-ish within track
+  let track = `<div class="lc-track"><div class="lc-line"></div>`;
+  if (exp){
+    const ws = exp - delay;
+    track += `<div class="lc-win" style="left:${X(ws)}%;width:${X(exp)-X(ws)}%"></div>`;
+  }
+  // pending anchor (batch pending / unanchored) pins at the now-marker inside the track
+  const pendingNode = nodes.find(x=>x.t==null);
+  if (pendingNode){ timed.push({t:Math.min(n, t1-1), l:pendingNode.l, done:false, now:true}); timed.sort((a,b)=>a.t-b.t); }
+  // labels alternate two rows; place greedily per row with edge-aware spans so same-row labels never overlap
+  const rawX = timed.map(nd=>X(nd.t));
+  const estW = timed.map(nd=>Math.max(6, nd.l.length*1.55)); // ≈1.55% of track per char
+  const place = timed.map(()=>({lx:0,edge:'',w:0}));
+  for(let row=0;row<2;row++){
+    let prevR = 2.5;
+    for(let i=row;i<timed.length;i+=2){
+      const w=estW[i];
+      let c = Math.max(rawX[i], prevR + w/2 + 0.8);
+      let lx=c, edge='';
+      if (c - w/2 < 2.5){ edge='lft'; lx=2.5; }
+      else if (c + w/2 > 97.5){ edge='rgt'; lx=97.5; }
+      let vL = edge==='lft'? lx : edge==='rgt'? lx-w : lx-w/2;
+      let vR = edge==='lft'? lx+w : edge==='rgt'? lx : lx+w/2;
+      if (vL < prevR + 0.4){ // still colliding — push right as a centered label
+        c = prevR + 0.4 + w/2; lx=c; edge='';
+        if (c + w/2 > 97.5){ edge='rgt'; lx=97.5; vL=lx-w; vR=lx; }
+        else { vL=c-w/2; vR=c+w/2; }
+      }
+      place[i]={lx,edge,w}; prevR=vR;
+    }
+  }
+  timed.forEach((nd,idx)=>{
+    const cls = nd.act ? 'act' : (nd.done?'done':(nd.now?'now':''));
+    const rowCls = idx % 2 ? ' l2' : '';
+    const p = place[idx];
+    track += `<div class="lc-node ${cls}" style="left:${Math.min(96,Math.max(4,rawX[idx]))}%"></div><div class="lc-lbl ${nd.act?'act':''}${rowCls}${p.edge?' '+p.edge:''}" style="left:${p.lx}%">${nd.l}</div>`;
+  });
+  // now marker
+  if (n > t0 && n < t1) track += `<div class="lc-now" style="left:${X(n)}%"></div>`;
+  track += `</div>`;
+  const meta = [];
+  if (created) meta.push(`<div class="minirow"><span class="k">created</span><span class="v">${dT(created)} · ${rel(created)} ago</span></div>`);
+  if (a.state) meta.push(`<div class="minirow"><span class="k">state</span><span class="v">${stateOf(a.state).l}</span></div>`);
+  if (exp) meta.push(`<div class="minirow"><span class="k">expires</span><span class="v">${dT(exp)} · in ${remainLabel(exp)}</span></div>`);
+  if (exp && !isSecond) meta.push(`<div class="minirow"><span class="k">exit window</span><span class="v">opens ${dT(exp-delay)} (${durLong(exp-delay-n)} left)</span></div>`);
+  if (exp && isSecond) meta.push(`<div class="minirow"><span class="k">exit window</span><span class="v">≈ ${D.operators.second.exitDeltaBlocks} blocks (~1 d) before expiry</span></div>`);
+  if (anch) meta.push(`<div class="minirow"><span class="k">anchor</span><span class="v">${chipHTML(anch.commitment)}</span></div>`);
+  if (anch && anch.conf!=null) meta.push(`<div class="minirow"><span class="k">confirmations</span><span class="v">${anch.conf}</span></div>`);
+  return `<div class="insp-sec lifecycle"><div class="lc-title"><span class="micro">lifecycle</span><span class="micro">${isSecond?'second':'arkade'}</span></div>${track}<div class="lc-meta">${meta.join('')}</div></div>`;
+}
+function remainLabel(exp){
+  const r = exp - now();
+  if (r <= 0) return 'expired';
+  return durLong(r);
+}
+function anchorsHTML(txid){
+  const vt = VT[txid]; if (!vt) return '';
+  const anch = anchorInfo(txid);
+  let html = `<div class="insp-sec"><div class="micro" style="margin-bottom:8px">anchors</div><div class="ledger">`;
+  if (anch){
+    const ct = CT[anch.commitment];
+    html += `<div class="lrow"><span>commitment</span>${chipHTML(anch.commitment)}<span class="amt">${anch.block?'blk '+NF.format(anch.block):'—'}</span></div>`;
+    if (ct) html += `<div class="lrow"><span></span><span class="dim3">${ct.totalOutputVtxos} vtxo · ${ct.connectorCount} conn · ${ct.forfeitCount} forfeit</span><span class="amt"></span></div>`;
+  }
+  (vt.commitmentTxids||[]).forEach(c=>{ if(!anch || c!==anch.commitment) html += `<div class="lrow"><span>commitment</span>${chipHTML(c)}<span class="amt"></span></div>`; });
+  html += `</div></div>`;
+  return html;
+}
+function actionsHTML(txid, network){
+  const second = network === 'second';
+  let h = `<button class="abtn" data-open="${esc(txid)}">Open</button>
+    <button class="abtn" data-copy="${esc(txid)}">Copy id</button>
+    <button class="abtn" data-json="${esc(txid)}">Copy JSON</button>`;
+  if (second) h += `<a class="abtn" href="https://mempool.space/tx/${esc(txid)}" target="_blank" rel="noopener">mempool ↗</a>`;
+  h += `<button class="abtn ${isWatched(txid)?'on':''}" data-watch="${esc(txid)}">${isWatched(txid)?'● watching':'watch'}</button>`;
+  return h;
+}
+function bindInspector(ins){
+  ins.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click',()=>copyText(b.dataset.copy)));
+  ins.querySelectorAll('[data-json]').forEach(b=>b.addEventListener('click',async()=>{
+    const id=b.dataset.json; const obj = VT[id]||CT[id]||D.activity.find(a=>a.txid===id)||null;
+    if(obj){ try{await navigator.clipboard.writeText(JSON.stringify(obj,null,1));toast('copied json');}catch(e){toast('copy failed');} }
+    else toast('not in snapshot');
+  }));
+  // [data-watch] clicks handled by the document-level delegated listener
+  ins.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>{
+    const id=b.dataset.open;
+    if (id.includes(':')){ location.hash='#/vtxo/'+id; return; }
+    if (VT[id]) location.hash='#/tx/'+id;
+    else if (CT[id]) location.hash='#/commitment/'+id;
+    else if (D.activity.some(a=>a.txid===id&&a.network==='second')) window.open('https://mempool.space/tx/'+id,'_blank','noopener');
+    else location.hash='#/tx/'+id;
+  }));
+  ins.querySelectorAll('[data-gotx]').forEach(b=>b.addEventListener('click',()=>{
+    const id=b.dataset.gotx; if(id) location.hash='#/tx/'+id;
+  }));
+  ins.querySelectorAll('.chip[data-chip]').forEach(c=>{ if(!c.dataset.bound){c.dataset.bound='1';bindChip(c);} });
+  const ao = ins.querySelector('#insp-open-addr');
+  if (ao) ao.addEventListener('click',()=>{ if(inspItem&&inspItem.ref) location.hash='#/address/'+inspItem.ref.address; });
+}
+
+/* ---------- operators diff ---------- */
+function buildOpsDiff(){
+  const A = D.operators.arkade, S = D.operators.second;
+  const rows = [
+    ['software', A.version||'—', S.version||'not published'],
+    ['status', A.status, S.status],
+    ['session / round', `${durLong(A.sessionDurationSec)}`, `${durLong(S.roundIntervalSec)} / round`],
+    ['vtxo lifetime', '≈ 30 d (batch-bound)', `${S.vtxoLifetimeBlocks.toLocaleString('en-US')} blocks ≈ 28 d`],
+    ['exit window', durLong(A.unilateralExitDelaySec), `exitDelta ${S.exitDeltaBlocks} blocks ≈ ${durLong(SECOND_EXIT_SEC)}`],
+    ['vtxo size', `${sats(A.vtxoMinSat)} – ${sats(A.vtxoMaxSat)} sats`, `≤ ${sats(S.maxVtxoSat)} sats`],
+    ['boarding', `min ${sats(A.vtxoMinSat)} sats · exit delay ${durLong(A.boardingExitDelaySec)}`, `min ${sats(S.minBoardSat)} sats · ${S.boardConfirmations} conf`],
+    ['exit depth cap', 'uncapped', `≤ ${S.maxVtxoExitDepth} txs`],
+    ['index', 'full vtxo index', 'none — server address only'],
+    ['fees', feeSummary(), `server pays on-chain fees`],
+    ['deprecated signers', A.deprecatedSigners.length ? `${A.deprecatedSigners.length} (cutoff ${d2(A.deprecatedSigners[0].cutoffAt)})` : '0', '—'],
+  ];
+  const diffIdx = new Set([4,8,10]); // flag the interesting ones
+  let html = `<div class="ops"><div class="ops-head"><h2>Operators</h2><span class="micro">normalized units · raw on hover</span></div>
+    <table><thead><tr><th></th><th><span class="monogram a">A</span> Arkade</th><th><span class="monogram">S</span> Second</th></tr></thead><tbody>`;
+  rows.forEach((r,i)=>{
+    html += `<tr class="${diffIdx.has(i)?'diff':''}"><td>${r[0]}</td><td title="${esc(A.endpoint)}">${r[1]}</td><td title="${esc(S.endpoint)}">${r[2]}</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+  const w = el('div'); w.innerHTML = html;
+  return w;
+}
+function feeSummary(){
+  const f = D.operators.arkade.fees;
+  return `offchain in: ${feeExprReadable(f.offchainInputExpr)} · onchain out: ${f.onchainOutputSat} sats${f.offchainInputExpr?`<span class="raw">${esc(f.offchainInputExpr)}</span>`:''}`;
+}
+function feeExprReadable(expr){
+  if (!expr) return 'free';
+  // CEL: inputType == 'vtxo' && expiry - now() > 2505216.0 ? amount * 0.002 : 0.0
+  if (expr.includes('0.002')) return '0.2% of input when >29 d left, else free';
+  return esc(expr);
+}
+
+/* ---------- expiry radar ---------- */
+function buildRadar(){
+  const obs = D.observedVtxos.slice().sort((a,b)=>a.expiresAt-b.expiresAt);
+  const n = now();
+  const t0 = n, t1 = n + 30*86400;
+  const X = t => (t-t0)/(t1-t0)*100;
+  const winStart = t1 - exitDelaySec('arkade');
+  const renew = obs.filter(v=>v.state==='renew');
+  const w = el('div'); w.className='radar';
+  w.innerHTML = `<h2>Expiry radar</h2>
+    <div class="sub">${obs.length} observed unspent vtxos · horizon 30 d · exit window shaded · renew items listed</div>
+    <div class="radar-track"><div class="ruler"></div>
+      <div style="position:absolute;top:20px;bottom:0;left:${X(winStart)}%;right:0;background:rgba(255,106,43,.07)"></div>
+      ${obs.map(v=>{const x=X(v.expiresAt);const done=v.expiresAt<n;const rn=v.state==='renew';
+        return `<div class="tick ${rn?'renew':done?'done':''}" style="left:${x}%" title="${esc(v.outpoint)} · ${amtPlain(v.amount)} · ${stateOf(v.state).l} · exp ${dT(v.expiresAt)}"></div>`;}).join('')}
+    </div>
+    <div class="radar-scale"><span>now</span><span>7 d</span><span>14 d</span><span>21 d</span><span>30 d</span></div>
+    <div class="micro" style="margin-top:8px">exit window opens ~${d2(winStart)} (last 7 d)</div>
+    <div class="radar-list">${renew.map(v=>`<div class="radar-row">
+        <span class="sglyph sg-sig">!</span>${outpointChip(v.outpoint)}
+        <span class="amt hot">${amt(v.amount)}</span>
+        <span class="hot">${remainLabel(v.expiresAt)}</span>
+        <span class="dim3">${dT(v.expiresAt)}</span></div>`).join('')}
+      ${obs.filter(v=>v.state!=='renew').slice(0,6).map(v=>`<div class="radar-row">
+        <span class="sglyph sg-${stateOf(v.state).c}">${stateOf(v.state).g}</span>${outpointChip(v.outpoint)}
+        <span class="amt">${amt(v.amount)}</span><span class="dim3">${stateOf(v.state).l} · ${remainLabel(v.expiresAt)}</span></div>`).join('')}
+    </div>`;
+  return w;
+}
+
+/* ---------- time strip ---------- */
+let brushDrag = null;
+function bindTimeStrip(){
+  const svg = $('#tsvg'); if(!svg) return;
+  const range = $('#tsrange');
+  range.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    range.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+    timeRange = +b.dataset.r; tableState.brush=null; renderStrip(); renderTable();
+  }));
+  const clearBrush = ()=>{ tableState.brush=null; renderStrip(); renderTable(); };
+  // pointer events on svg
+  const toX = e => { const r = svg.getBoundingClientRect(); return Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)); };
+  svg.addEventListener('pointerdown', e=>{ brushDrag={x0:toX(e),x1:toX(e)}; svg.setPointerCapture(e.pointerId); });
+  svg.addEventListener('pointermove', e=>{
+    if (brushDrag){ brushDrag.x1=toX(e); drawBrush(); }
+    else showCrosshair(toX(e));
+  });
+  svg.addEventListener('pointerup', e=>{
+    if (!brushDrag) return;
+    brushDrag.x1=toX(e);
+    const [a,b] = [Math.min(brushDrag.x0,brushDrag.x1), Math.max(brushDrag.x0,brushDrag.x1)];
+    brushDrag=null; hideCrosshair();
+    if (b-a < 0.004){ tableState.brush=null; }
+    else {
+      const [t0,t1] = stripDomain();
+      tableState.brush = [t0 + a*(t1-t0), t0 + b*(t1-t0)];
+    }
+    renderStrip(); renderTable();
+  });
+  svg.addEventListener('pointerleave', ()=>{ if(!brushDrag) hideCrosshair(); });
+}
+function stripDomain(){
+  const n = now();
+  if (timeRange === 24) return [n-86400, n];
+  if (timeRange === 168) return [n-7*86400, n];
+  return [n-45*86400, n];
+}
+function renderStrip(){
+  const svg = $('#tsvg'); if(!svg) return;
+  const [t0,t1] = stripDomain();
+  const W=1000,H=64;
+  const X = t => (t-t0)/(t1-t0)*W;
+  const cy = 30;               // centre line
+  const base = 52;             // aggregate baseline
+  let s = '';
+  // hourly aggregate — ONE continuous step area, subtle, behind ticks
+  const hrs = D.stats.arkadeHourly;
+  const spanH = (t1-t0)/3600;
+  const nB = Math.max(1,Math.ceil(spanH));
+  const perH = new Array(nB).fill(0);
+  const hourlyMap = {}; hrs.forEach(h=>hourlyMap[h.hourStart]=h.virtualTxCount);
+  const startH = Math.floor(t0/3600)*3600;
+  for (let h=startH; h<t1; h+=3600){
+    const idx = Math.min(nB-1,Math.max(0,Math.floor((h-t0)/(t1-t0)*nB)));
+    perH[idx] += hourlyMap[h]||0;
+  }
+  const maxC = Math.max(1,...perH);
+  const bw = W/nB, ah = 11;
+  const ys = perH.map(c=> base - ah*(c/maxC));
+  if (nB===1){ s += `<path d="M0 ${ys[0]} H${W} L${W} ${base} L0 ${base} Z" fill="rgba(122,167,255,.07)"/>`; }
+  else {
+    let d = `M0 ${ys[0]}`;
+    for (let i=1;i<nB;i++) d += `H${i*bw} V${ys[i]}`;
+    d += `H${W} L${W} ${base} L0 ${base} Z`;
+    s += `<path d="${d}" fill="rgba(122,167,255,.07)"/>`;
+  }
+  // block boundaries — faint hairlines, sparse labels
+  const blocks = D.chain.blocks; // newest first
+  const bIn = blocks.filter(b=>b.time>=t0&&b.time<=t1).slice().reverse(); // oldest → newest
+  let lastX = -1e9;
+  bIn.forEach((b)=>{
+    const x=X(b.time);
+    s += `<line x1="${x}" y1="8" x2="${x}" y2="${base}" stroke="#232329" stroke-width="0.7"/>`;
+    if (x - lastX < 78) return;
+    lastX = x;
+    s += `<text x="${Math.min(x+3,W-52)}" y="9" font-family="Geist Mono" font-size="8" fill="#6E6E78">${b.height}</text>`;
+  });
+  // centre line
+  s += `<line x1="0" y1="${cy}" x2="${W}" y2="${cy}" stroke="#232329" stroke-width="1"/>`;
+  // activity ticks: commitments tallest above, other arkade short above, second below — crisp, consistent heights
+  D.activity.forEach(a=>{
+    if (a.time<t0||a.time>t1) return;
+    const x=X(a.time);
+    const isC = a.kind==='batch';
+    const up = a.network==='arkade';
+    const h = isC ? 12 : 6;
+    const y = up ? cy-h : cy+2;
+    let col = a.network==='arkade' ? (isC?'#EDEDEF':'#A0A0A8') : '#7AA7FF';
+    if (NEEDS.has(a.state)) col = '#FF6A2B';
+    s += `<line x1="${x}" y1="${y}" x2="${x}" y2="${y+h}" stroke="${col}" stroke-width="${isC?1.6:1}" opacity="${NEEDS.has(a.state)?'.95':'.7'}"/>`;
+  });
+  // brush overlay
+  if (tableState.brush){
+    const bx0=X(tableState.brush[0]), bx1=X(tableState.brush[1]);
+    s += `<rect x="${bx0}" y="0" width="${bx1-bx0}" height="${H}" fill="rgba(122,167,255,.12)" stroke="rgba(122,167,255,.4)"/>`;
+  }
+  if (brushDrag){
+    const bx0=X(t0+brushDrag.x0*(t1-t0)), bx1=X(t0+brushDrag.x1*(t1-t0));
+    s += `<rect x="${Math.min(bx0,bx1)}" y="0" width="${Math.abs(bx1-bx0)}" height="${H}" fill="rgba(122,167,255,.1)" stroke="rgba(122,167,255,.35)" stroke-dasharray="3 2"/>`;
+  }
+  svg.innerHTML = s;
+  // brush chip
+  const bc = $('#tsbrush');
+  if (tableState.brush){
+    bc.innerHTML = `<span class="ts-brush-chip">${t2(tableState.brush[0])}–${tableState.brush[1]-tableState.brush[0]>86400?dT(tableState.brush[1]):t2(tableState.brush[1])} <button id="tsclear" aria-label="Clear time filter">×</button></span>`;
+    $('#tsclear').addEventListener('click', clearTimeBrush);
+  } else bc.innerHTML = '';
+}
+function clearTimeBrush(){ tableState.brush=null; renderStrip(); renderTable(); }
+function showCrosshair(x){
+  const svg=$('#tsvg'); if(!svg) return;
+  const [t0,t1]=stripDomain(); const t=t0+x*(t1-t0);
+  // find nearest block
+  let best=null,bd=1e18;
+  D.chain.blocks.forEach(b=>{const d=Math.abs(b.time-t);if(d<bd){bd=d;best=b;}});
+  const px=x*svg.getBoundingClientRect().width;
+  let g=svg.querySelector('.xh');
+  if(!g){ g=el('g','xh'); svg.appendChild(g); }
+  g.innerHTML=`<line x1="${px}" y1="0" x2="${px}" y2="64" stroke="#A0A0A8" stroke-width="1" stroke-dasharray="2 2"/>
+    <text x="${Math.min(px+4,svg.getBoundingClientRect().width-140)}" y="12" font-family="Geist Mono" font-size="9" fill="#A0A0A8">${dT(t)}${best?' · blk '+best.height+' ('+best.pool+')':''}</text>`;
+}
+function hideCrosshair(){ const g=$('#tsvg')&&$('#tsvg').querySelector('.xh'); if(g) g.remove(); }
+function drawBrush(){ renderStrip(); }
+
+/* ---------- query bar ---------- */
+/* short placeholders on small screens */
+const phMQ = matchMedia('(max-width:760px)');
+function phSync(){
+  const mobile = phMQ.matches;
+  const q = $('#qinput'); if(q) q.placeholder = mobile ? 'filter · net: kind: state: amt>' : 'filter: net:arkade kind:payment state:renew amt>10000 — or type an id';
+  const o = $('#omni-input'); if(o) o.placeholder = mobile ? 'txid · ark1… · block' : 'txid · outpoint · ark1… address · 5120… script · block height';
+}
+phMQ.addEventListener('change', phSync);
+
+function bindQueryBar(){
+  const q = $('#qinput');
+  q.addEventListener('input', ()=>{ renderTable(); syncSegs(); });
+  q.addEventListener('keydown', e=>{
+    if (e.key==='Enter'){ e.preventDefault(); const v=q.value.trim(); if(v) navigateQuery(v); }
+    if (e.key==='Escape'){ q.value=''; renderTable(); syncSegs(); q.blur(); }
+  });
+  $('#qclear').addEventListener('click', ()=>{ q.value=''; renderTable(); syncSegs(); });
+  document.querySelectorAll('.qseg button').forEach(b=>b.addEventListener('click',()=>{
+    const tok=b.dataset.t;
+    const f=parseQuery(q.value);
+    // toggle
+    const [k,v]=tok.split(':');
+    let cur = f[k];
+    if (k==='state' && v==='renew'){ cur = (f.state==='renew')?'': 'renew'; }
+    const active = (k==='net'&&f.net===v)||(k==='layer'&&f.kind===undefined&&false)||(k==='layer'&&f.layer===v)||(k==='state'&&f.state===v)||(k==='net'&&v==='arkade'&&f.net==='arkade')||(k==='net'&&v==='second'&&f.net==='second');
+    // simpler: check token text presence
+    const has = q.value.toLowerCase().includes(tok);
+    let toks = q.value.trim()?q.value.trim().split(/\s+/):[];
+    if (has){ toks = toks.filter(t=>t.toLowerCase()!==tok); }
+    else toks.push(tok);
+    q.value = toks.join(' ');
+    renderTable(); syncSegs();
+  }));
+  $('#morebtn').addEventListener('click', ()=>{
+    tableState.shown = Math.min(tableState.rows.length, tableState.shown+25);
+    const tb=$('#atbody'); tb.innerHTML='';
+    tableState.rows.slice(0,tableState.shown).forEach((a,i)=>tb.appendChild(rowEl(a,i)));
+    updateMoreBtn();
+    if(tableState.sel>=0) document.querySelector(`#atbody tr[data-i="${tableState.sel}"]`)?.classList.add('sel');
+  });
+  phSync();
+}
+function segCount(dim,v){
+  // count rows matching this segment value, ignoring other dims but respecting brush
+  const f=parseQuery($('#qinput').value);
+  return D.activity.filter(a=>{
+    if (tableState.brush && (a.time<tableState.brush[0]||a.time>tableState.brush[1])) return false;
+    if(dim==='net') return a.network===(v==='arkade'?'arkade':'second');
+    if(dim==='layer') return a.layer===(v==='virtual'?'virtual':'onchain');
+    if(dim==='state'){
+      if(v==='renew') return a.state==='renew'||a.state==='expired';
+      if(v==='spent') return a.state==='spent'||a.state==='swept';
+      return a.state===v;
+    }
+    return true;
+  }).length;
+}
+function syncSegs(){
+  const f=parseQuery($('#qinput').value);
+  const paint=(segId,dim,map)=>{
+    const seg=$(segId); if(!seg) return;
+    seg.querySelectorAll('button').forEach(b=>{
+      const tok=b.dataset.t; const [k,v]=tok.split(':');
+      let on=false;
+      if(dim==='net') on = f.net===(v==='arkade'?'arkade':'second') && f.net===v;
+      if(dim==='layer') on = f.layer===v;
+      if(dim==='state') on = (v==='renew') ? (f.needs||f.state==='renew'||f.state==='expired') : (f.state===v||(v==='spent'&&f.state==='swept'));
+      // also literal token presence
+      if(!on && $('#qinput').value.toLowerCase().includes(tok)) on=true;
+      b.classList.toggle('on',on);
+      const n=segCount(dim,v);
+      const nEl=b.querySelector('.n'); if(nEl) nEl.textContent=' '+n;
+    });
+  };
+  paint('#segnet','net'); paint('#seglayer','layer'); paint('#segstate','state');
+  $('#qclear').hidden = !$('#qinput').value.trim() && !tableState.brush;
+}
+function navigateQuery(v){
+  const c = classifyHash(v);
+  if (c.type==='tx'){location.hash='#/tx/'+c.id;return;}
+  if (c.type==='commitment'){location.hash='#/commitment/'+c.id;return;}
+  if (c.type==='vtxo'){location.hash='#/vtxo/'+c.id;return;}
+  if (c.type==='address'||c.type==='address-partial'){location.hash='#/address/'+c.id;return;}
+  if (c.type==='block'){ toast('block '+NF.format(c.id)+' · '+ (blkTime(c.id)?dT(blkTime(c.id)):'not in snapshot')); return; }
+  toast('not in snapshot — see mempool.space ↗');
+  window.open('https://mempool.space/tx/'+v,'_blank','noopener');
+}
+
+/* ---------- omnibox ---------- */
+const omni = $('#omni-input'), omniList = $('#omni-list');
+let omniSel = -1, omniItems = [];
+function omniSuggest(q){
+  q = q.trim().toLowerCase(); if(!q) return [];
+  const out = [];
+  const push=(type,id,label,sub)=>out.push({type,id,label,sub});
+  // txids prefix
+  const matchTx = (obj,kind)=>Object.keys(obj).filter(k=>k.startsWith(q)).slice(0,4);
+  matchTx(VT,'tx').forEach(id=>push('tx',id,midHash(id),'virtual tx'));
+  matchTx(CT,'commitment').forEach(id=>push('commitment',id,midHash(id),'commitment'));
+  // addresses prefix
+  Object.keys(ADDR).filter(a=>a.toLowerCase().includes(q)).slice(0,4).forEach(a=>push('address',a,midHash(a,8),ADDR[a].totalVtxos+' vtxos'));
+  // observed vtxos outpoints
+  D.observedVtxos.filter(o=>o.outpoint.toLowerCase().includes(q)).slice(0,3).forEach(o=>push('vtxo',o.outpoint,midHash(o.outpoint),'vtxo · '+stateOf(o.state).l));
+  // second txs from activity
+  D.activity.filter(a=>a.network==='second'&&a.txid.startsWith(q)).slice(0,3).forEach(a=>push('second',a.txid,midHash(a.txid),'on-chain · mempool ↗'));
+  // classify hint
+  if (/^[0-9a-f]{64}$/i.test(q)) push('go','',q,'open as txid');
+  if (/^[0-9a-f]{64}:[0-9]+$/i.test(q)) push('go','',q,'open outpoint');
+  if (/^ark1/i.test(q)) push('go','',q,'open address');
+  if (/^\d+$/.test(q)&&q.length<8) push('go','',q,'block height');
+  return out.slice(0,8);
+}
+function renderOmni(){
+  const q = omni.value.trim();
+  omniItems = omniSuggest(q);
+  omniSel = -1;
+  if (!omniItems.length){ omniList.classList.remove('open'); omniList.innerHTML=''; return; }
+  omniList.innerHTML = omniItems.map((it,i)=>`<div class="sug ${i===0?'sel':''}" data-i="${i}" role="option">
+    <span class="tag">${it.type}</span><span class="lbl mono">${esc(it.id?midHash(it.id,10):it.label)}</span>
+    <span class="sub">${esc(it.sub||'')}</span></div>`).join('');
+  omniList.classList.add('open');
+  omniList.querySelectorAll('.sug').forEach(s=>{
+    s.addEventListener('mousedown', e=>{ e.preventDefault(); pickOmni(+s.dataset.i); });
+    s.addEventListener('mouseenter', ()=>{ omniSel=+s.dataset.i; paintOmniSel(); });
+  });
+}
+function paintOmniSel(){
+  omniList.querySelectorAll('.sug').forEach((s,i)=>s.classList.toggle('sel',i===omniSel));
+}
+omni.addEventListener('input', renderOmni);
+omni.addEventListener('focus', renderOmni);
+omni.addEventListener('blur', ()=>setTimeout(()=>omniList.classList.remove('open'),120));
+omni.addEventListener('keydown', e=>{
+  if (e.key==='ArrowDown'){ e.preventDefault(); omniSel=Math.min(omniItems.length-1,omniSel+1); paintOmniSel(); }
+  else if (e.key==='ArrowUp'){ e.preventDefault(); omniSel=Math.max(0,omniSel-1); paintOmniSel(); }
+  else if (e.key==='Enter'){ e.preventDefault(); if(omniSel>=0&&omniItems[omniSel]) pickOmni(omniSel); else { omniList.classList.remove('open'); navigateQuery(omni.value); } }
+  else if (e.key==='Escape'){ omniList.classList.remove('open'); omni.blur(); }
+});
+function pickOmni(i){
+  const it = omniItems[i]; if(!it) return;
+  omniList.classList.remove('open'); omni.value='';
+  const v = it.id || it.label;
+  navigateQuery(v);
+}
+document.addEventListener('click', e=>{
+  if (!e.target.closest('#omni')) omniList.classList.remove('open');
+});
+
+/* ---------- chips: delegated click/copy ---------- */
+function bindChip(c){
+  c.addEventListener('click', e=>{ e.stopPropagation(); openChip(c); });
+  c.addEventListener('keydown', e=>{ if(e.key==='Enter'){e.preventDefault();openChip(c);} if(e.key==='c'&&(e.metaKey||e.ctrlKey)){e.preventDefault();copyChip(c);} });
+}
+document.addEventListener('click', e=>{
+  const chip = e.target.closest('.chip[data-chip]');
+  if (chip && !chip.dataset.bound){ chip.dataset.bound='1'; bindChip(chip); openChip(chip); return; }
+});
+let hoverChip=null;
+document.addEventListener('mouseover', e=>{
+  const chip=e.target.closest('.chip[data-chip]');
+  if(chip!==hoverChip){ if(hoverChip)hoverChip.classList.remove('hover'); hoverChip=chip; if(chip)chip.classList.add('hover'); }
+});
+function openChip(c){
+  const id = c.dataset.chip;
+  if (c.dataset.op){
+    if (VT[id.split(':')[0]]) location.hash='#/tx/'+id.split(':')[0];
+    else location.hash='#/vtxo/'+id;
+    return;
+  }
+  const cl = classifyHash(id);
+  if (cl.type==='tx') location.hash='#/tx/'+id;
+  else if (cl.type==='commitment') location.hash='#/commitment/'+id;
+  else if (cl.type==='vtxo') location.hash='#/vtxo/'+id;
+  else if (cl.type==='address'||cl.type==='address-partial') location.hash='#/address/'+id;
+  else if (cl.type==='second'||cl.type==='unknown-tx'||cl.type==='unknown-outpoint'){
+    window.open('https://mempool.space/tx/'+id.split(':')[0],'_blank','noopener');
+  } else if (cl.type==='block'){ toast('block '+NF.format(cl.id)); }
+  else toast('not in snapshot');
+}
+function copyChip(c){ copyText(c.dataset.chip); }
+
+/* ---------- keyboard ---------- */
+let gPending=false;
+function isTyping(){ const a=document.activeElement; return a && (a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.isContentEditable); }
+document.addEventListener('keydown', e=>{
+  if (isTyping()){
+    if (e.key==='Escape'){ document.activeElement.blur(); }
+    return;
+  }
+  const k = e.key;
+  const panelOpen = $('#watchpanel').classList.contains('open')||$('#kbdhelp').classList.contains('open');
+  if (panelOpen){ if(k==='Escape'||k==='?'){closePanels(); e.preventDefault();} return; }
+  if (k==='Escape' && $('#insp').classList.contains('sheet')){ closeSheet(); e.preventDefault(); return; }
+  if (k==='/' ){ e.preventDefault(); omni.focus(); omni.select(); return; }
+  if (k==='?'){ e.preventDefault(); toggleHelp(); return; }
+  if (k==='g'){ gPending=true; setTimeout(()=>gPending=false,900); return; }
+  if (gPending){
+    gPending=false;
+    if (k==='o'){ location.hash='#/'; return; }
+    if (k==='w'){ toggleWatchPanel(); return; }
+  }
+  if (k==='j'||k==='ArrowDown'){ e.preventDefault(); moveSel(1); }
+  else if (k==='k'||k==='ArrowUp'){ e.preventDefault(); moveSel(-1); }
+  else if (k==='Enter'){ e.preventDefault(); if (pageSel && pageSel.open) pageSel.open(pageSel.idx>=0?pageSel.idx:0); else openRow(tableState.sel>=0?tableState.sel:0); }
+  else if (k==='c'||k==='C'){ if(hoverChip){ copyChip(hoverChip); } else if(tableState.sel>=0){ const a=tableState.rows[tableState.sel]; if(a) copyText(a.txid,'copied '+midHash(a.txid)); } }
+  else if (k==='w'||k==='W'){ if(tableState.sel>=0){ const a=tableState.rows[tableState.sel]; if(a) toggleWatch(a.txid); } }
+});
+function moveSel(d){
+  if (pageSel && pageSel.items.length){
+    let i = (pageSel.idx<0?0:pageSel.idx) + d;
+    i = Math.max(0, Math.min(pageSel.items.length-1, i));
+    pageSel.idx = i; pageSel.pick(i); return;
+  }
+  if (!tableState.rows.length) return;
+  let i = tableState.sel + d;
+  i = Math.max(0, Math.min(tableState.rows.length-1, i));
+  if (i >= tableState.shown){ tableState.shown = Math.min(tableState.rows.length, i+5); rerenderTableBody(); }
+  selectRow(i,true);
+}
+function rerenderTableBody(){
+  const tb=$('#atbody'); tb.innerHTML='';
+  tableState.rows.slice(0,tableState.shown).forEach((a,i)=>tb.appendChild(rowEl(a,i)));
+  updateMoreBtn();
+}
+function toggleHelp(){ $('#kbdhelp').classList.toggle('open'); }
+function toggleWatchPanel(){ renderWatchPanel(); $('#watchpanel').classList.toggle('open'); }
+function closePanels(){ $('#watchpanel').classList.remove('open'); $('#kbdhelp').classList.remove('open'); }
+$('#helpbtn').addEventListener('click',toggleHelp);
+$('#watchbtn').addEventListener('click',toggleWatchPanel);
+$('#wpclose').addEventListener('click',closePanels);
+$('#watchpanel').addEventListener('click',e=>{ if(e.target.id==='watchpanel') closePanels(); });
+$('#kbdhelp').addEventListener('click',e=>{ if(e.target.id==='kbdhelp') closePanels(); });
+// single delegated handler for every [data-watch] button (detail headers + inspector actions)
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-watch]');
+  if(b){ e.preventDefault(); toggleWatch(b.dataset.watch); }
+});
+
+/* ---------- watchlist panel ---------- */
+function renderWatchPanel(){
+  const list=$('#wplist'); list.innerHTML='';
+  $('#wpcnt').textContent = watch.size ? `${watch.size} item${watch.size>1?'s':''}` : '';
+  if(!watch.size){ list.innerHTML='<div class="wp-empty">nothing watched — press w on a row or tap watch</div>'; return; }
+  [...watch].forEach(id=>{
+    const info = watchInfo(id);
+    const row = el('div','wp-item');
+    const lbl = id.includes(':') ? midHash(id.split(':')[0])+' :'+id.split(':')[1] : midHash(id,12);
+    const expHtml = info&&info.exp ? `<span class="exp ${info.exp-now()<exitDelaySec('arkade')?'hot':''}">${info.label} · ${remainLabel(info.exp)}</span>` : `<span class="exp">no expiry data</span>`;
+    row.innerHTML = `<span class="chip" data-chip="${esc(id)}" data-op="${id.includes(':')&&CH[id]?'1':''}" role="button" tabindex="0">${ident(id)}<span class="txt">${esc(lbl)}</span></span>${expHtml}
+      <button class="abtn" data-unwatch="${esc(id)}" style="padding:3px 8px">remove</button>`;
+    list.appendChild(row);
+  });
+  list.querySelectorAll('[data-unwatch]').forEach(b=>b.addEventListener('click',()=>{watch.delete(b.dataset.unwatch);saveWatch();renderWatchPanel();refreshWatchButtons();}));
+  list.querySelectorAll('.chip').forEach(bindChip);
+}
+function refreshWatchButtons(){
+  document.querySelectorAll('[data-watch]').forEach(b=>{
+    const on=isWatched(b.dataset.watch);
+    b.classList.toggle('on',on);
+    b.textContent = on?'● watching':'watch';
+  });
+}
+
+/* ---------- detail views ---------- */
+function detailShell(title, inner){
+  const m=$('#main'); m.innerHTML=`<div class="detail">${inner}</div>`;
+  workspace.classList.remove('noinsp');
+  closeSheet(); pageSel=null;
+  $('#prov').innerHTML=provHTML();
+}
+function provHTML(){
+  return `<b>Snapshot</b> · ${D.meta.generatedAtIso.slice(0,16).replace('T',' ')} UTC · block ${NF.format(D.chain.tipHeight)} · frozen clock, advances from load<br>
+  <b>Sources</b> · Arkade ${esc(D.operators.arkade.endpoint)} · Second ${esc(D.operators.second.endpoint)} · archive ${esc(D.stats? 'arkexplorer.blockonomics.co':'')} · Esplora mempool.space<br>
+  <b>Coverage</b> · ${D.activity.length} activity rows · ${Object.keys(VT).length} virtual txs · ${Object.keys(CT).length} commitments · Second = on-chain only (no public VTXO index)`;
+}
+
+function renderTx(txid){
+  const v = VT[txid];
+  if (!v){ renderNotFound(classifyHash(txid)); return; }
+  const st=stateOf(v.state), kd=kindOf(v.kind);
+  const anch=anchorInfo(txid);
+  pushTrail('#/tx/'+txid, 'tx '+midHash(txid));
+  pageId=txid; inspItem={kind:'tx',ref:v}; renderInspector();
+  const created=v.createdAt, exp=v.expiresAt;
+  const isSecond=false;
+  let inner=`<div class="dhead"><div class="dtop">
+      <div class="dleft"><span class="kindglyph" style="font-size:15px">${kd.g}</span><span class="dkind">${kd.l} transaction</span>
+        ${chipHTML(txid,'big')}${stateBadge(v.state)}
+        <button class="abtn ${isWatched(txid)?'on':''}" data-watch="${txid}">${isWatched(txid)?'● watching':'watch'}</button></div>
+      <div class="dnum">${amt(v.totalOut)}<small>total out</small></div>
+    </div>
+    <div class="meta"><span>created <b>${dT(created)}</b> · ${rel(created)} ago</span>
+    ${exp?`<span>expires <b>${dT(exp)}</b> · in ${remainLabel(exp)}</span>`:''}
+    ${anch?`<span>anchor <b>block ${anch.block?NF.format(anch.block):'—'}</b>${anch.conf?` · ${anch.conf} conf`:''}</span>`:''}
+    <span><b>${(v.inputs||[]).length}</b> in → <b>${(v.outputs||[]).length}</b> out · <b>${amt(v.totalIn)}</b> in</span></div></div>`;
+  // flow — ledger rows, no boxes
+  inner+=`<div class="dsec"><h2>Flow <span class="n">${(v.inputs||[]).length} in → ${(v.outputs||[]).length} out</span></h2>
+    <div class="fhead"><span class="micro">inputs</span><span></span><span class="micro" style="padding-left:16px">outputs</span></div>
+    <div class="flow2">${flowRows(v)}</div></div>`;
+  // unroll
+  inner+=unrollHTML(v);
+  // raw
+  inner+=`<div class="dsec"><h2>Raw <span class="n">psbt</span></h2>${v.psbt?`<div class="psbt" id="psbtbox"></div><div style="margin-top:8px"><button class="abtn" id="psbtcopy">copy psbt</button> <button class="abtn" id="psbtfull">show full</button></div>`:`<div class="empty" style="padding:16px">psbt not in this snapshot</div>`}</div>`;
+  // related activity row
+  inner+=relatedHTML(txid);
+  detailShell('tx', inner);
+  // fill psbt lazily
+  if (v.psbt){ const box=$('#psbtbox'); box.textContent=v.psbt.slice(0,600)+'…'; let full=false;
+    $('#psbtcopy').addEventListener('click',()=>copyText(v.psbt,'copied psbt'));
+    $('#psbtfull').addEventListener('click',()=>{full=!full;box.textContent=full?v.psbt:v.psbt.slice(0,600)+'…';$('#psbtfull').textContent=full?'truncate':'show full';});
+  }
+  bindDetailChips(); refreshWatchButtons();
+  // flow row → inspector vtxo detail
+  document.querySelectorAll('#main [data-sel]').forEach(cell=>cell.addEventListener('click',e=>{
+    if (e.target.closest('.chip')) return; // chips navigate themselves
+    const [side,i] = cell.dataset.sel.split(':');
+    const vtxo = side==='out' ? ((v.outputs[+i]||{}).vtxo) : ((v.inputs[+i]||{}).vtxo);
+    if (vtxo && vtxo.outpoint){ inspItem={kind:'vtxoitem',ref:{v:vtxo,a:null}}; renderInspector(); if(window.innerWidth<=1100)openSheet(); }
+  }));
+}
+function flowRows(v){
+  const ins=v.inputs||[], outs=v.outputs||[];
+  const n=Math.max(ins.length,outs.length,1);
+  let h='';
+  for(let i=0;i<n;i++){
+    const fi=ins[i], fo=outs[i];
+    h+=`<div class="frow">${fi?finHTML(fi,v.totalIn,i):'<div class="fin"></div>'}<div class="fgap">${i===0?'<i class="fnode"></i>':''}</div>${fo?foutHTML(fo,v.totalOut,i):'<div class="fout"></div>'}</div>`;
+  }
+  return h;
+}
+function finHTML(inp,total,i){
+  const amtN = inp.amount;
+  const w = total? Math.min(100, amtN/total*100):0;
+  const via = inp.via==='checkpoint' ? `via checkpoint ${midHash(inp.checkpointTxid||'')}` : inp.via==='vtxo'?'from vtxo':inp.via==='batch'?'from batch':'—';
+  return `<div class="fin" data-sel="in:${i}">
+    <div class="fline"><span class="flabel">in</span>${outpointChip(inp.outpoint||'—')}${inp.vtxo?`<span class="sglyph sg-${stateOf(inp.vtxo.state).c} stag" title="${stateOf(inp.vtxo.state).l}">${stateOf(inp.vtxo.state).g}</span>`:''}</div>
+    <div class="famt">${amt(amtN)}</div>
+    <div class="fvia">${esc(via)}${inp.address?' · ':''}${inp.address?addrChipHTML(inp.address):''}</div>
+    <div class="fbar" title="share of row total"><i style="width:${w}%"></i></div>
+  </div>`;
+}
+function foutHTML(out,total,i){
+  const amtN=out.amount;
+  const w = total? Math.min(100, amtN/total*100):0;
+  const vtxo=out.vtxo;
+  const st = vtxo?stateOf(vtxo.state):null;
+  const hot = vtxo && NEEDS.has(vtxo.state);
+  const dead = vtxo && (vtxo.state==='spent'||vtxo.state==='swept'||vtxo.state==='refreshed');
+  const exp = vtxo&&vtxo.expiresAt ? `<span class="fexp${hot?' hot':''}">${vtxo.expiresAt>now()?'exp '+remainLabel(vtxo.expiresAt):'expired'}</span>` : '';
+  return `<div class="fout ${hot?'hot':''} ${dead?'dead':''}" data-sel="out:${i}">
+    <div class="fline"><span class="flabel">vout ${out.vout}</span><span class="fkind">${out.kind}</span>${st?`<span class="sglyph sg-${st.c} stag" title="${st.l}">${st.g}</span>`:''}</div>
+    <div class="famt ${hot?'hot':''}">${amt(amtN)}</div>
+    <div class="fvia">${vtxo&&vtxo.outpoint?outpointChip(vtxo.outpoint):'<span class="dim3">anchor output</span>'}</div>
+    <div class="fbar" title="share of row total"><i style="width:${w}%"></i></div>
+    <div class="fmeta">${out.address?addrChipHTML(out.address):''}${exp}${vtxo&&vtxo.spentByTx?`<span>spent by ${chipHTML(vtxo.spentByTx)}</span>`:''}</div>
+  </div>`;
+}
+
+function ocFlowRows(oc){
+  const ins=oc.inputs||[], outs=oc.outputs||[];
+  const n=Math.max(ins.length,outs.length,1);
+  const tin = oc.totalInputAmount || ins.reduce((s,i)=>s+(i.amount||0),0);
+  const tout = oc.totalOutputAmount || outs.reduce((s,o)=>s+(o.amount||0),0);
+  let h='';
+  for(let i=0;i<n;i++){
+    const fi=ins[i], fo=outs[i];
+    h+=`<div class="frow">${fi?ocFin(fi,tin):'<div class="fin"></div>'}<div class="fgap">${i===0?'<i class="fnode"></i>':''}</div>${fo?ocFout(fo,tout):'<div class="fout"></div>'}</div>`;
+  }
+  return h;
+}
+function ocFin(i,tin){
+  const w = tin? Math.min(100,(i.amount||0)/tin*100):0;
+  return `<div class="fin"><div class="fline"><span class="flabel">in</span>${chipHTML(i.txid+':'+(i.vout??0))}</div>
+    <div class="famt">${amt(i.amount)}</div>
+    <div class="fvia">${i.address?addrChipHTML(i.address):''}</div>
+    <div class="fbar" title="share of row total"><i style="width:${w}%"></i></div></div>`;
+}
+function ocFout(o,tout){
+  const w = tout? Math.min(100,(o.amount||0)/tout*100):0;
+  return `<div class="fout"><div class="fline"><span class="flabel">vout ${o.vout}</span><span class="fkind">${o.type||''}</span></div>
+    <div class="famt">${amt(o.amount)}</div>
+    <div class="fvia">${o.address?addrChipHTML(o.address):'<span class="dim3">op-return / anchor</span>'}</div>
+    <div class="fbar" title="share of row total"><i style="width:${w}%"></i></div></div>`;
+}
+function unrollHTML(v){
+  // find chains for this tx's outputs
+  const keys = Object.keys(CH).filter(k=>k.startsWith(v.txid+':'));
+  if(!keys.length) return '';
+  const ch = CH[keys[0]];
+  const offchain = Math.max(0, ch.length - (ch.counts?ch.counts.commitment:1)); // length − commitments = off-chain txs to broadcast
+  const anch = ch.anchorCommitments[0];
+  const c = CT[anch]; const blk = c&&c.onchain?c.onchain.blockHeight:null;
+  let inner=`<div class="dsec"><h2>Unroll path <span class="n">exit depth</span></h2>
+    <div style="font:12px var(--mono);color:var(--text-2);margin-bottom:10px">Exit depth <b style="color:var(--text)">${offchain}</b> off-chain txs to broadcast · ${ch.counts?`${ch.counts.ark} ark · ${ch.counts.checkpoint} checkpoint · ${ch.counts.tree} tree`:''} → ${anch?chipHTML(anch):'—'}${blk?` in block ${NF.format(blk)}`:''}${ch.truncated?' · chain compressed in snapshot':''}</div>
+    <details class="unroll"><summary>show path · ${ch.entries.length} steps${ch.truncated?' · compressed from '+ch.length:''}</summary><div class="entries">`;
+  ch.entries.forEach(e=>{
+    if(e.gap){ inner+=`<div class="uent gap">… ${e.gap} more</div>`; return; }
+    const known = VT[e.txid]?'tx':CT[e.txid]?'commitment':null;
+    inner+=`<div class="uent"><span class="tt">${e.type}</span><span class="tx">${chipHTML(e.txid)}</span>${known?`<span class="dim3">${known}</span>`:''}</div>`;
+  });
+  inner+=`</div></details></div>`;
+  return inner;
+}
+function relatedHTML(txid){
+  // activity rows referencing this txid
+  const rows = D.activity.filter(a=>a.txid===txid||a.commitmentTxid===txid).slice(0,6);
+  if(!rows.length) return '';
+  let h=`<div class="dsec"><h2>In feed <span class="n">${rows.length}</span></h2><div class="ledger">`;
+  rows.forEach(a=>{
+    const st=stateOf(a.state);
+    h+=`<div class="lrow"><span class="sglyph sg-${st.c}">${st.g}</span><span>${kindOf(a.kind).l} · ${a.network}</span><span class="amt">${amt(a.amount)} <span class="dim3">${rel(a.time)}</span></span></div>`;
+  });
+  h+=`</div></div>`; return h;
+}
+function bindDetailChips(){
+  document.querySelectorAll('#main .chip[data-chip]').forEach(c=>{ if(!c.dataset.bound){c.dataset.bound='1';bindChip(c);} });
+}
+
+function renderCommitment(txid){
+  const c=CT[txid];
+  if(!c){ renderNotFound(classifyHash(txid)); return; }
+  const oc=c.onchain||{};
+  pushTrail('#/commitment/'+txid,'commitment '+midHash(txid));
+  pageId=txid; inspItem={kind:'commitment',ref:c}; renderInspector();
+  const durS = c.endedAt&&c.startedAt? c.endedAt-c.startedAt : null;
+  let inner=`<div class="dhead"><div class="dtop">
+      <div class="dleft"><span class="kindglyph" style="font-size:15px">⛓</span><span class="dkind">commitment transaction</span>
+        ${chipHTML(txid,'big')}
+        <span class="statecell"><span class="sglyph sg-live">●</span><span>confirmed</span></span>
+        <button class="abtn ${isWatched(txid)?'on':''}" data-watch="${txid}">${isWatched(txid)?'● watching':'watch'}</button></div>
+      <div class="dnum">${amt(c.totalOutputAmount)}<small>batch out</small></div>
+    </div>
+    <div class="meta">
+      ${oc.blockHeight?`<span>block <b>${NF.format(oc.blockHeight)}</b>${oc.blockHash?` · <a href="https://mempool.space/block/${oc.blockHash}" target="_blank" rel="noopener" class="dim" style="text-decoration:underline dotted">hash ↗</a>`:''}</span>`:''}
+      ${oc.confirmations!=null?`<span><b>${oc.confirmations}</b> confirmations</span>`:''}
+      ${oc.blockTime?`<span>mined <b>${dT(oc.blockTime)}</b></span>`:''}
+      ${oc.fee!=null?`<span>fee <b>${oc.fee} sats</b> · ${oc.feeRate} sat/vB</span>`:''}
+      ${oc.vsize?`<span><b>${oc.vsize}</b> vB · weight ${oc.weight}</span>`:''}
+      ${durS?`<span>batch window <b>${durLong(durS)}</b> (${dT(c.startedAt)} → ${dT(c.endedAt)})</span>`:''}
+    </div></div>`;
+  inner+=`<div class="dsec"><h2>Facts</h2><div class="factgrid">
+    <div class="fact"><div class="k">batch outputs</div><div class="v">${c.totalOutputVtxos} vtxo${c.totalOutputVtxos===1?'':'s'} · ${amtCell(c.totalOutputAmount)}</div></div>
+    <div class="fact"><div class="k">inputs</div><div class="v">${c.totalInputVtxos} vtxo${c.totalInputVtxos===1?'':'s'} · ${amtCell(c.totalInputAmount)}</div></div>
+    <div class="fact"><div class="k">connectors</div><div class="v">${c.connectorCount}</div></div>
+    <div class="fact"><div class="k">forfeits</div><div class="v">${c.forfeitCount} ${c.forfeitTxids&&c.forfeitTxids[0]?chipHTML(c.forfeitTxids[0]):''}</div></div>
+    <div class="fact"><div class="k">on-chain in/out</div><div class="v">${oc.inputCount??'—'} → ${oc.outputCount??'—'}</div></div>
+    <div class="fact"><div class="k">size</div><div class="v">${oc.size??'—'} B · ${oc.vsize??'—'} vB</div></div>
+  </div></div>`;
+  // batches table
+  inner+=`<div class="dsec"><h2>Batches <span class="n">${(c.batches||[]).length}</span></h2><table class="batches"><thead><tr><th>vout</th><th class="num">amount · ${unitLabel()}</th><th class="num">vtxos</th><th>expires</th><th>state</th></tr></thead><tbody>`;
+  (c.batches||[]).forEach(b=>{
+    inner+=`<tr><td>vout ${b.vout}</td><td class="num">${amtCell(b.amount)}</td><td class="num">${b.vtxoCount}</td><td>${b.expiresAt?dT(b.expiresAt)+' · '+remainLabel(b.expiresAt):'—'}</td><td>${b.swept?'<span class="sglyph sg-mut">⌧</span> swept':'<span class="sglyph sg-live">●</span> live'}</td></tr>`;
+  });
+  inner+=`</tbody></table></div>`;
+  // trees
+  inner+=`<div class="dsec"><h2>Trees <span class="n">vtxo merkle leaves</span></h2><div class="trees">`;
+  Object.entries(c.trees||{}).forEach(([vout,leaves])=>{
+    inner+=`<div class="tree-node"><div class="tlabel">output vout ${vout} · ${leaves.length} leaf${leaves.length===1?'':'es'}</div>`;
+    leaves.forEach(l=>{
+      inner+=`<div class="tree-leaf">${chipHTML(l.txid)}${VT[l.txid]?`<span class="dim3">${kindOf(VT[l.txid].kind).l}</span>`:''}</div>`;
+    });
+    inner+=`</div>`;
+  });
+  inner+=`</div></div>`;
+  // onchain io — ledger rows
+  inner+=`<div class="dsec"><h2>On-chain ledger</h2>
+    <div class="fhead"><span class="micro">inputs</span><span></span><span class="micro" style="padding-left:16px">outputs</span></div>
+    <div class="flow2">${ocFlowRows(oc)}</div></div>`;
+  inner+=relatedHTML(txid);
+  detailShell('commitment', inner);
+  bindDetailChips(); refreshWatchButtons();
+}
+
+function renderAddress(addr){
+  let a = ADDR[addr];
+  const partial = !a;
+  if (partial){
+    // synthesize partial from observedVtxos + virtualTxs touching this address
+    const vtxos = [];
+    D.observedVtxos.filter(o=>o.address===addr).forEach(o=>vtxos.push(o));
+    Object.values(VT).forEach(v=>(v.outputs||[]).forEach(o=>{ if(o.address===addr&&o.vtxo) vtxos.push({...o.vtxo,outpoint:o.vtxo.outpoint}); }));
+    const seen=new Set(); const uniq=vtxos.filter(v=>!seen.has(v.outpoint)&&seen.add(v.outpoint));
+    const counts={}; let spend=0,recv=0,renew=0,near=null;
+    uniq.forEach(v=>{counts[v.state]=(counts[v.state]||0)+1; if(v.state==='renew'){renew+=v.amount;} if(v.state!=='spent'&&v.state!=='swept'&&v.state!=='refreshed')spend+=v.amount; if(v.expiresAt&&(!near||v.expiresAt<near))near=v.expiresAt;});
+    a={address:addr,script:null,totalVtxos:uniq.length,listedVtxos:uniq.length,vtxos:uniq.sort((x,y)=>(x.expiresAt||9e12)-(y.expiresAt||9e12)),summary:{spendable:spend,renew,expired:0,received:null,counts,nearestExpiry:near}};
+  }
+  pushTrail('#/address/'+addr,'address '+midHash(addr,6));
+  pageId=addr; inspItem={kind:'address',ref:a}; renderInspector();
+  const s=a.summary||{};
+  const counts=s.counts||{};
+  const unspent = (s.spendable||0) + (s.renew||0) + (s.expired||0); // unspent = healthy + exit-window + expired
+  const totalListed=Math.max(1,Object.values(counts).reduce((x,y)=>x+y,0));
+  const stateColors={preconfirmed:'var(--pre)',settled:'var(--live)',renew:'var(--signal)',expired:'var(--signal)',spent:'var(--muted-state)',refreshed:'#3A3A41',swept:'#3A3A41',unknown:'var(--muted-state)'};
+  let inner=`<div class="dhead"><div class="dtop">
+      <div class="dleft"><span class="dkind">address</span>${partial?'<span class="netchip" style="color:var(--signal);border-color:rgba(255,106,43,.4)">partial index</span>':''}
+        <button class="abtn ${isWatched(addr)?'on':''}" data-watch="${addr}">${isWatched(addr)?'● watching':'watch'}</button></div>
+      <div class="dnum">${amt(unspent)}<small>unspent</small></div>
+    </div>
+    <div class="meta">${addrChipHTML(addr)}
+      ${a.script?`<span>script · ${esc(a.script)}</span>`:''}
+      <span><b>${NF.format(a.totalVtxos)}</b> vtxos · <b>${NF.format(a.listedVtxos)}</b> listed</span>
+      ${s.nearestExpiry?`<span>nearest expiry <b>${dT(s.nearestExpiry)}</b></span>`:''}</div></div>`;
+  // needs action callout — summary covers ALL vtxos
+  const renewV = (a.vtxos||[]).filter(v=>v.state==='renew');
+  const renewCnt = (s.counts&&s.counts.renew)||renewV.length;
+  const renewAmtTot = s.renew || renewV.reduce((x,v)=>x+v.amount,0);
+  const soon = renewV.length ? Math.min(...renewV.map(v=>v.expiresAt)) : (s.nearestExpiry||null);
+  if (renewAmtTot>0 || renewV.length){
+    inner+=`<div class="callout"><div class="ct"><span class="sglyph sg-sig">!</span> Needs action</div>
+      <div class="cb">${renewCnt} vtxo${renewCnt>1?'s':''} · ${amt(renewAmtTot)} · soonest expiry ${soon?remainLabel(soon)+' ('+dT(soon)+')':'—'} — inside the ${durLong(exitDelaySec('arkade'))} exit window: renew or exit now</div></div>`;
+  }
+  // summary strip + state bar (counts cover all vtxos)
+  inner+=`<div class="dsec"><h2>Summary <span class="n">all ${NF.format(totalListed)} vtxos · table shows ${NF.format(a.listedVtxos)} listed</span></h2>
+    <div class="factgrid">
+      <div class="fact"><div class="k">healthy</div><div class="v">${amt(s.spendable)}</div></div>
+      <div class="fact"><div class="k">in exit window</div><div class="v" style="color:${renewAmtTot?'var(--signal)':'inherit'}">${renewAmtTot?`${renewCnt} · ${amt(renewAmtTot)}`:'0'}</div></div>
+      <div class="fact"><div class="k">expired</div><div class="v">${amt(s.expired||0)}</div></div>
+      <div class="fact"><div class="k">unspent</div><div class="v">${amt(unspent)}</div></div>
+      <div class="fact"><div class="k">received</div><div class="v">${s.received!=null?amt(s.received):'—'}</div></div>
+    </div>
+    <div class="statebar">${Object.entries(counts).filter(([,v])=>v>0).map(([k,v])=>`<i style="width:${v/totalListed*100}%;background:${stateColors[k]||'var(--muted-state)'}" title="${k}: ${v}"></i>`).join('')}</div>
+    <div class="sbar-legend">${Object.entries(counts).filter(([,v])=>v>0).map(([k,v])=>`<span><i style="background:${stateColors[k]||'var(--muted-state)'}"></i>${stateOf(k).l} · ${v}</span>`).join('')}</div>
+  </div>`;
+  // vtxo table — rows selectable into the context pane
+  inner+=`<div class="dsec"><h2>VTXOs <span class="n">${NF.format(a.listedVtxos)} of ${NF.format(a.totalVtxos)} listed · urgency sort · click header to re-sort</span></h2>
+    <div style="overflow-x:auto"><table class="vtable" id="vtable"><thead><tr>
+      <th data-k="outpoint">outpoint</th><th data-k="amount" class="num">amount · ${unitLabel()}</th><th data-k="state">state</th><th data-k="expiresAt">expires</th><th>expiry</th><th>links</th>
+    </tr></thead><tbody id="vtbody"></tbody></table></div>
+    ${a.totalVtxos>a.listedVtxos?`<div class="micro" style="margin-top:8px">${NF.format(a.listedVtxos)} of ${NF.format(a.totalVtxos)} listed — every unspent vtxo + newest history; the rest are not in this snapshot</div>`:''}
+  </div>`;
+  detailShell('address', inner);
+  curAddr = a;
+  let dispRows = (a.vtxos||[]).slice().sort(vtxoSort);
+  const paintVrows = ()=>{
+    const tb=$('#vtbody'); if(!tb) return; tb.innerHTML='';
+    dispRows.forEach((v,i)=>tb.appendChild(vtxoRowEl(v,i)));
+  };
+  paintVrows();
+  pageSel = {items:dispRows, idx:-1, pick:addrSelect, open:addrOpen};
+  // sorting
+  let sortK='expiresAt', sortDir=1;
+  document.querySelectorAll('#vtable th').forEach(th=>th.addEventListener('click',()=>{
+    const k=th.dataset.k; if(sortK===k)sortDir*=-1; else{sortK=k;sortDir=1;}
+    dispRows = dispRows.slice().sort((x,y)=>{
+      let av=x[k],bv=y[k];
+      if(k==='outpoint'){av=String(av);bv=String(bv);}
+      if(av==null)return 1; if(bv==null)return -1;
+      return (av>bv?1:av<bv?-1:0)*sortDir;
+    });
+    pageSel.items=dispRows; pageSel.idx=-1;
+    paintVrows();
+  }));
+  document.querySelectorAll('#main .chip[data-chip]').forEach(c=>{if(!c.dataset.bound){c.dataset.bound='1';bindChip(c);}});
+  refreshWatchButtons();
+}
+let curAddr = null;
+function addrSelect(i){
+  if(!pageSel) return;
+  pageSel.idx=i;
+  document.querySelectorAll('#vtbody tr').forEach(tr=>tr.classList.toggle('sel',+tr.dataset.vi===i));
+  const v=pageSel.items[i]; if(!v) return;
+  inspItem={kind:'vtxoitem',ref:{v,a:curAddr}};
+  renderInspector();
+  if(window.innerWidth<=1100) openSheet();
+  const tr=document.querySelector(`#vtbody tr[data-vi="${i}"]`); if(tr) tr.scrollIntoView({block:'nearest'});
+}
+function addrOpen(i){
+  const v=pageSel&&pageSel.items[i]; if(!v) return;
+  const tx0=String(v.outpoint||'').split(':')[0];
+  if(tx0&&VT[tx0]) location.hash='#/tx/'+tx0; else location.hash='#/vtxo/'+v.outpoint;
+}
+function vtxoSort(a,b){ // urgency: unspent renew/expired first by soonest expiry, then by expiry
+  const rank=v=>v.state==='renew'||v.state==='expired'?0:v.state==='preconfirmed'?1:v.state==='settled'?2:3;
+  const r=rank(a)-rank(b); if(r)return r;
+  return (a.expiresAt||9e12)-(b.expiresAt||9e12);
+}
+function vtxoRowEl(v,i){
+  const tr=el('tr'); const st=stateOf(v.state); const hot=NEEDS.has(v.state);
+  tr.className=hot?'hot':''; tr.dataset.vi=i;
+  tr.innerHTML=`<td>${outpointChip(v.outpoint)}</td><td class="num">${amtCell(v.amount)}</td>
+    <td><span class="sglyph sg-${st.c}">${st.g}</span> ${st.l}</td>
+    <td>${v.expiresAt?dT(v.expiresAt):'—'}</td>
+    <td style="min-width:120px">${vtxoExpiryBar(v)}</td>
+    <td>${v.spentByTx?chipHTML(v.spentByTx):''}${v.commitmentTxid?chipHTML(v.commitmentTxid):''}</td>`;
+  tr.addEventListener('click',e=>{ if(e.target.closest('.chip'))return; addrSelect(i); });
+  tr.querySelectorAll('.chip').forEach(c=>{if(!c.dataset.bound){c.dataset.bound='1';bindChip(c);}});
+  return tr;
+}
+
+function renderVtxo(op){
+  const [txid,voutS]=op.split(':'); const vout=+voutS;
+  const ch=CH[op];
+  const vt=VT[txid];
+  const ov=D.observedVtxos.find(o=>o.outpoint===op);
+  if(!ch&&!vt&&!ov){ renderNotFound({type:'unknown-outpoint',id:op}); return; }
+  pushTrail('#/vtxo/'+op,'vtxo '+midHash(op));
+  pageId=op; inspItem={kind:'vtxo',ref:{op,chain:ch,tx:txid,vout}}; renderInspector();
+  let inner=`<div class="dhead"><div class="dtop">
+      <div class="dleft"><span class="dkind">vtxo outpoint</span>${ov?stateBadge(ov.state):''}
+        <button class="abtn ${isWatched(op)?'on':''}" data-watch="${op}">${isWatched(op)?'● watching':'watch'}</button></div>
+      <div class="dnum">${ov?amt(ov.amount):'—'}<small>vtxo out</small></div>
+    </div>
+    <div class="meta">${outpointChip(op,'big')}
+      ${ov&&ov.expiresAt?`<span>expires <b>${dT(ov.expiresAt)}</b> · ${remainLabel(ov.expiresAt)}</span>`:''}
+      ${ov&&ov.address?`<span>address ${addrChipHTML(ov.address)}</span>`:''}
+      ${vt?`<span>issuing tx ${chipHTML(txid)}</span>`:''}</div></div>`;
+  if(ch){
+    const off=Math.max(0, ch.length - (ch.counts?ch.counts.commitment:1));
+    inner+=`<div class="dsec"><h2>Exit path</h2><div style="font:12px var(--mono);color:var(--text-2)">depth <b style="color:var(--text)">${ch.length}</b> · ${ch.counts?Object.entries(ch.counts).map(([k,v])=>`${k} ${v}`).join(' · '):''} · off-chain to broadcast <b style="color:var(--text)">${off}</b>${ch.truncated?' · compressed':''}</div>
+    <details class="unroll" style="margin-top:10px"><summary>entries</summary><div class="entries">${ch.entries.map(e=>e.gap?`<div class="uent gap">… ${e.gap} more</div>`:`<div class="uent"><span class="tt">${e.type}</span><span class="tx">${chipHTML(e.txid)}</span></div>`).join('')}</div></details></div>`;
+  }
+  if(vt){ inner+=`<div class="dsec"><h2>Issuing tx</h2><div class="ledger"><div class="lrow"><span>tx</span>${chipHTML(txid)}<span class="amt">${vt.state}</span></div></div></div>`; }
+  detailShell('vtxo', inner);
+  document.querySelectorAll('#main .chip[data-chip]').forEach(c=>{if(!c.dataset.bound){c.dataset.bound='1';bindChip(c);}});
+  refreshWatchButtons();
+}
+
+function renderNotFound(c){
+  workspace.classList.add('noinsp'); closeSheet(); pageSel=null; pageId=null; $('#insp').innerHTML='';
+  const m=$('#main');
+  let hint='';
+  if(c.type==='unknown-tx') hint=`txid <span class="mono">${esc(midHash(c.id,10))}</span> is not in this snapshot — it may be a Second or unknown on-chain tx.`;
+  else if(c.type==='unknown-outpoint') hint=`outpoint <span class="mono">${esc(midHash(c.id,10))}</span> not observed.`;
+  else if(c.type==='script') hint=`script <span class="mono">${esc(c.id.slice(0,20))}…</span> — no direct index; search VTXOs by address instead.`;
+  else if(c.type==='block') hint=`block ${NF.format(c.id)} ${blkTime(c.id)?'mined '+dT(blkTime(c.id)):'outside the 180-block window in this snapshot'}.`;
+  else hint=`“${esc(c.id||'')}” didn't match anything in the snapshot.`;
+  m.innerHTML=`<div class="nf"><div class="micro" style="margin-bottom:10px">not in snapshot</div>
+    <h1>Nothing here</h1><p>${hint}</p>
+    <p style="margin-top:14px">${c.type==='unknown-tx'||c.type==='second'?`<a class="abtn" href="https://mempool.space/tx/${esc(c.id)}" target="_blank" rel="noopener">open on mempool.space ↗</a>`:''}</p>
+    <p style="margin-top:18px"><button class="abtn" id="nfsearch">search the snapshot</button></p></div>`;
+  $('#prov').innerHTML=provHTML();
+  const b=$('#nfsearch'); if(b) b.addEventListener('click',()=>{omni.focus();});
+  pushTrail('#/','not found');
+}
+
+/* ---------- live tape ---------- */
+function renderTape(){
+  const t=$('#tape'); const n=now();
+  const A=D.operators.arkade,S=D.operators.second;
+  const st24=D.stats.arkade24h;
+  // second next round
+  let nr=S.nextRoundAt; while(nr<n) nr+=S.roundIntervalSec;
+  const segs=[
+    {html:`tip <b>${NF.format(D.chain.tipHeight)}</b> · ${rel(D.chain.tipTime)} ago`,tip:'chain tip height from Esplora · mempool.space'},
+    {html:`fees <b>${D.chain.fees.fastestFee}/${D.chain.fees.halfHourFee}/${D.chain.fees.hourFee}</b> sat/vB`,tip:'mempool.space fees · fastest / 30m / 1h'},
+    {html:`<span class="dot live"></span> Arkade <b>${esc(A.version||'')}</b> · exit ${durLong(A.unilateralExitDelaySec)} · ${A.sessionDurationSec}s sess`,tip:'Arkade /v1/info · fetched '+A.fetchedAt},
+    {html:`<span class="dot pre"></span> Second · next round <b id="roundcd"></b>`,tip:'ark.second.tech · nextRoundAt rolls forward hourly'},
+    {html:`24h <b>${st24.virtualTxCount} tx</b> <span class="${st24.txCountChangePct<0?'warn':''}">${st24.txCountChangePct>0?'+':''}${st24.txCountChangePct}%</span> · ${btcT(st24.virtualTxVolumeBtc)} BTC`,tip:'third-party activity archive · arkexplorer.blockonomics.co · Arkade'},
+    {html:`liq <b>${btcT(st24.networkLiquidityBtc)} BTC</b>`,tip:'archive aggregate · network liquidity'},
+    {html:`captured <b>${t2(D.meta.generatedAt)}</b>`,tip:'capture '+D.meta.generatedAtIso+' · clock frozen at load'},
+  ];
+  t.innerHTML=segs.map(s=>`<span class="tseg" title="${esc(s.tip)}">${s.html}</span>`).join('');
+  requestAnimationFrame(()=>{ t.classList.toggle('overflow', t.scrollWidth > t.clientWidth + 2); });
+}
+addEventListener('resize', ()=>{ const t=$('#tape'); if(t) t.classList.toggle('overflow', t.scrollWidth > t.clientWidth + 2); });
+function tickTape(){
+  const n=now(); const S=D.operators.second;
+  let nr=S.nextRoundAt; while(nr<n) nr+=S.roundIntervalSec;
+  const cd=$('#roundcd'); if(cd){
+    const s=Math.max(0,Math.round(nr-n));
+    cd.textContent=`${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor(s%3600/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  }
+}
+
+/* ---------- unit toggle ---------- */
+$('#unitseg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  UNIT=b.dataset.unit;
+  $('#unitseg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  // re-render current view cheaply: re-run route
+  route(location.hash.replace(/^#\/?/,''));
+}));
+
+// tape + label tickers
+// cheaper: interval for tape, 30s for dynamic labels
+setInterval(tickTape, 1000);
+setInterval(()=>{ if(!document.hidden){ /* refresh relative labels in table */
+  document.querySelectorAll('#atbody tr').forEach(tr=>{
+    const a=tableState.rows[+tr.dataset.i]; if(!a)return;
+    const relEl=tr.querySelector('.t-rel'); if(relEl) relEl.textContent=rel(a.time);
+    const absEl=tr.querySelector('.t-abs'); if(absEl) absEl.textContent=dT(a.time);
+  });
+}}, 30000);
+
+/* ---------- hashchange ---------- */
+window.addEventListener('hashchange', ()=>route(location.hash));
+
+/* ---------- boot ---------- */
+renderTape();
+// help overlay content
+$('#khgrid').innerHTML=[
+  ['j / k · ↑ ↓','move selection'],['Enter','open selected'],['c','copy txid'],['w','watch / unwatch'],
+  ['/','focus search'],['g then o','overview'],['g then w','watchlist'],['?','this overlay'],['Esc','close / blur']
+].map(([k,d])=>`<div class="kh-row"><span>${d}</span><kbd>${k}</kbd></div>`).join('');
+route(location.hash || '#/');
+renderWatchBadge();
+</script>
+</body>
+</html>

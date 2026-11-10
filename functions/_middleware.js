@@ -4,7 +4,14 @@ import { Script } from "@scure/btc-signer/script.js";
 const BOT_UA =
     /Twitterbot|facebookexternalhit|Slackbot|Slack-ImgProxy|LinkedInBot|Discordbot|WhatsApp|TelegramBot|Googlebot|bingbot|yandex|Embedly|showyoubot|outbrain|pinterest|vkShare|W3C_Validator|Iframely/i;
 
-const ACCENT_COLOR = "#7f5af0";
+// Atlas ink palette: bg #0B0E14, amber #F2A93B / ice #8FB8FF accents.
+const ACCENT_COLOR = "#F2A93B";
+const ACCENT_COLOR_2 = "#8FB8FF";
+const OG_BG = "#0B0E14";
+const OG_LINE = "#1E2532";
+const OG_TEXT = "#E6EAF2";
+const OG_TEXT_DIM = "#9AA4B5";
+const OG_TEXT_FAINT = "#5E6879";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -28,9 +35,81 @@ function formatSats(satsBigInt) {
     return decPart ? `${formattedInt}.${decPart} BTC` : `${formattedInt} BTC`;
 }
 
+// Asset metadata arrives as a hex-encoded MetadataList (uvarint count, then
+// per item uvarint key-len + key + uvarint value-len + value) or, defensively,
+// an already-parsed object. Mirror the SDK's known-field extraction.
+const ASSET_METADATA_DECODING = new TextDecoder();
+
+function readVarUint(buf, pos) {
+    let value = 0;
+    let shift = 0;
+    for (;;) {
+        if (pos >= buf.length) throw new Error("truncated varuint");
+        const b = buf[pos++];
+        value += (b & 0x7f) * 2 ** shift;
+        if (!(b & 0x80)) break;
+        shift += 7;
+        if (shift > 49) throw new Error("varuint overflow");
+    }
+    return [value, pos];
+}
+
+function parseAssetMetadata(raw) {
+    try {
+        let fields;
+        if (typeof raw === "string") {
+            const buf = hex.decode(raw);
+            let pos = 0;
+            const [count, p0] = readVarUint(buf, pos);
+            pos = p0;
+            fields = {};
+            for (let i = 0; i < count; i++) {
+                const [klen, p1] = readVarUint(buf, pos);
+                pos = p1;
+                const key = ASSET_METADATA_DECODING.decode(buf.slice(pos, pos + klen));
+                pos += klen;
+                const [vlen, p2] = readVarUint(buf, pos);
+                pos = p2;
+                fields[key] = ASSET_METADATA_DECODING.decode(buf.slice(pos, pos + vlen));
+                pos += vlen;
+            }
+        } else if (typeof raw === "object" && raw !== null) {
+            fields = raw;
+        } else {
+            return {};
+        }
+        const out = {};
+        for (const key of ["name", "ticker", "icon"]) {
+            const v = fields[key];
+            if (typeof v === "string") out[key] = v;
+        }
+        const d = Number(fields.decimals);
+        out.decimals = Number.isFinite(d) ? d : undefined;
+        return out;
+    } catch {
+        return {};
+    }
+}
+
+const MAX_ASSET_DECIMALS = 40;
+
+function assetDecimals(value) {
+    return typeof value === "number" &&
+        Number.isInteger(value) &&
+        value >= 0 &&
+        value <= MAX_ASSET_DECIMALS
+        ? value
+        : null;
+}
+
 function formatAmount(amount, decimals) {
-    if (decimals === 0) return BigInt(amount).toLocaleString("en-US");
+    // Supply is a decimal string (possibly > 2^53): keep it exact via BigInt.
     const str = BigInt(amount).toString();
+    if (decimals === null) {
+        // Invalid decimals metadata: show raw base units, explicitly marked.
+        return `${str.replace(/\B(?=(\d{3})+(?!\d))/g, ",")} raw`;
+    }
+    if (decimals === 0) return BigInt(amount).toLocaleString("en-US");
     const padded = str.padStart(decimals + 1, "0");
     const intPart = padded.slice(0, padded.length - decimals);
     const decPart = padded.slice(padded.length - decimals).replace(/0+$/, "");
@@ -174,14 +253,20 @@ async function getPageMeta(pagePath, indexerUrl) {
         const stats = [];
         let assetLabel = truncate(assetMatch[1]);
         if (data) {
-            const ticker = data.metadata?.ticker;
-            const name = data.metadata?.name;
-            const decimals = data.metadata?.decimals || 0;
+            const meta = parseAssetMetadata(data.metadata);
+            const ticker = meta.ticker;
+            const name = meta.name;
+            const decimals = assetDecimals(meta.decimals);
             assetLabel = ticker || name || assetLabel;
             if (name) stats.push({ label: "Name", value: name });
             if (ticker && name) stats.push({ label: "Ticker", value: ticker });
-            if (data.supply != null)
-                stats.push({ label: "Supply", value: formatAmount(data.supply, decimals) });
+            if (data.supply != null) {
+                try {
+                    stats.push({ label: "Supply", value: formatAmount(data.supply, decimals) });
+                } catch {
+                    // Malformed supply — omit rather than fail the OG response.
+                }
+            }
         }
         const extra = stats.map((s) => `${s.value}`).join(" | ");
         return {
@@ -219,32 +304,32 @@ function buildOgImageSvg(meta) {
         const statItems = meta.stats
             .map((s, i) => {
                 const x = 80 + i * colWidth;
-                return `<text x="${x}" y="420" font-size="52" font-weight="bold" fill="white" font-family="sans-serif">${esc(s.value)}</text>
-        <text x="${x}" y="460" font-size="24" fill="#9ca3af" font-family="sans-serif">${esc(s.label.toUpperCase())}</text>`;
+                return `<text x="${x}" y="420" font-size="52" font-weight="bold" fill="${OG_TEXT}" font-family="sans-serif">${esc(s.value)}</text>
+        <text x="${x}" y="460" font-size="24" fill="${OG_TEXT_DIM}" font-family="sans-serif">${esc(s.label.toUpperCase())}</text>`;
             })
             .join("\n");
         statsBlock = statItems;
     } else {
-        statsBlock = `<text x="80" y="420" font-size="36" fill="#9ca3af" font-family="sans-serif">Implementation-independent Ark observer</text>`;
+        statsBlock = `<text x="80" y="420" font-size="36" fill="${OG_TEXT_DIM}" font-family="sans-serif">Implementation-independent Ark observer</text>`;
     }
 
     return `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
-    <rect width="1200" height="630" fill="#0f0b1a"/>
+    <rect width="1200" height="630" fill="${OG_BG}"/>
     <rect width="1200" height="6" fill="${ACCENT_COLOR}"/>
     <text x="80" y="100" font-size="64" font-weight="bold" fill="${ACCENT_COLOR}" font-family="sans-serif">ark.observer</text>
-    ${typeLabel ? `<text x="80" y="200" font-size="32" font-weight="bold" fill="${ACCENT_COLOR}" font-family="sans-serif">${esc(typeLabel.toUpperCase())}</text>` : ""}
+    ${typeLabel ? `<text x="80" y="200" font-size="32" font-weight="bold" fill="${ACCENT_COLOR_2}" font-family="sans-serif">${esc(typeLabel.toUpperCase())}</text>` : ""}
     ${
         meta.type === "asset"
-            ? `<text x="80" y="280" font-size="56" font-weight="bold" fill="white" font-family="sans-serif">${esc(meta.label)}</text>`
+            ? `<text x="80" y="280" font-size="56" font-weight="bold" fill="${OG_TEXT}" font-family="sans-serif">${esc(meta.label)}</text>`
             : displayId
-              ? `<text x="80" y="${typeLabel ? "270" : "200"}" font-size="38" fill="#d1d5db" font-family="monospace">${esc(displayId)}</text>`
+              ? `<text x="80" y="${typeLabel ? "270" : "200"}" font-size="38" fill="${OG_TEXT_DIM}" font-family="monospace">${esc(displayId)}</text>`
               : ""
     }
-    <line x1="80" y1="340" x2="1120" y2="340" stroke="#2d2640" stroke-width="1"/>
+    <line x1="80" y1="340" x2="1120" y2="340" stroke="${OG_LINE}" stroke-width="1"/>
     ${statsBlock}
-    <line x1="80" y1="520" x2="1120" y2="520" stroke="#2d2640" stroke-width="1"/>
-    <text x="80" y="570" font-size="28" fill="#6b7280" font-family="sans-serif">ark.observer</text>
-    <text x="1120" y="570" font-size="28" fill="#4b5563" font-family="sans-serif" text-anchor="end">ark.observer</text>
+    <line x1="80" y1="520" x2="1120" y2="520" stroke="${OG_LINE}" stroke-width="1"/>
+    <text x="80" y="570" font-size="28" fill="${OG_TEXT_FAINT}" font-family="sans-serif">ark.observer</text>
+    <text x="1120" y="570" font-size="28" fill="${OG_TEXT_FAINT}" font-family="sans-serif" text-anchor="end">ark.observer</text>
   </svg>`;
 }
 

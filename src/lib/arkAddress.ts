@@ -62,9 +62,13 @@ export function decodeArkAddress(arkAddressStr: string): ArkAddress | null {
 
 /**
  * Display address for a parsed transaction output.
- * Commitment txs and connector-tree outputs are genuine on-chain outputs (bc1…/tb1…).
- * Everything else off-chain — including checkpoint outputs — is a VTXO and renders as
- * an Arkade address (ark1…/tark1…).
+ *
+ * On-chain-style outputs — every output of a commitment tx, connector-tree
+ * outputs, and forfeit outputs (the operator's P2WPKH reclaim address) —
+ * decode to a Bitcoin address (bc1…/tb1…). Everything else is encoded as an
+ * Arkade address (ark1…/tark1…): that is an *address encoding* of the output
+ * script keyed by the operator pubkey, NOT a claim that the output is a
+ * spendable VTXO — VTXO status only comes from indexer records.
  */
 export function deriveOutputDisplayAddress(
     script: Uint8Array,
@@ -75,7 +79,10 @@ export function deriveOutputDisplayAddress(
         signerPubkey?: string;
     },
 ): string {
-    const onchain = opts.type === "commitment" || opts.subtype === "connector-tree";
+    const onchain =
+        opts.type === "commitment" ||
+        opts.subtype === "connector-tree" ||
+        opts.subtype === "forfeit";
     if (onchain) {
         try {
             const net = opts.network === "bitcoin" ? btc.NETWORK : btc.TEST_NETWORK;

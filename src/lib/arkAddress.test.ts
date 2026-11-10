@@ -38,4 +38,17 @@ describe("deriveOutputDisplayAddress", () => {
         });
         expect(addr.startsWith("bc1")).toBe(true);
     });
+
+    it("renders forfeit outputs as onchain addresses, not fabricated Ark addresses", () => {
+        // P2WPKH scriptPubKey (0014 <20-byte hash>) — the forfeit output's shape.
+        const p2wpkh = hex.decode("0014" + "11".repeat(20));
+        const addr = deriveOutputDisplayAddress(p2wpkh, {
+            type: "arkade",
+            subtype: "forfeit",
+            network: "bitcoin",
+            signerPubkey: SIGNER,
+        });
+        expect(addr.startsWith("bc1")).toBe(true);
+        expect(addr.startsWith("ark1")).toBe(false);
+    });
 });

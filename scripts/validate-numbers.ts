@@ -16,6 +16,8 @@ type SnapshotVtxo = JsonRecord & {
     txType?: string;
     amount_sat?: unknown;
     left_seconds?: unknown;
+    expiresAt?: unknown;
+    expiresAt_unix?: unknown;
     urgent?: unknown;
     expired?: unknown;
     isSpent?: unknown;
@@ -41,6 +43,7 @@ type ClassifiedVtxo = {
     terminal: boolean;
     needsReview: boolean;
     leftSeconds: number | null;
+    expired: boolean;
 };
 type Options = {
     json: boolean;
@@ -63,17 +66,43 @@ function finiteNumber(value: unknown): number | null {
     return Number.isFinite(number) ? number : null;
 }
 
+/**
+ * Independent BIP68 oracle for arkd relative timelocks. The production code
+ * (`parseRelativeTimelock`) applies arkd's raw >=512 wire convention (blocks
+ * below, seconds at/above — NOT BIP68 itself; BIP68 carries the type in
+ * nSequence bit 22 and permits block counts >= 512). This oracle additionally
+ * enforces what the resulting timelock can actually encode as BIP68:
+ * - blocks: integer in [0, 0xffff] (nSequence block field is 16 bits;
+ *   zero is valid — verified bip68.encode({blocks:0}) → nSequence 0)
+ * - seconds: multiple of 512 (9-bit granularity), <= 0xffff << 9
+ * A value that fails these cannot be a real CSV timelock — flag it rather
+ * than blessing the heuristic.
+ */
+const BIP68_BLOCKS_MAX = 0xffff;
+const BIP68_SECONDS_MAX = 0xffff << 9;
+const BIP68_SECONDS_GRANULARITY = 512;
+
 function describeRelativeTimelock(
     raw: unknown,
-): { seconds: number; interpretation: string } | null {
+): { seconds: number; interpretation: string; bip68Valid: boolean } | null {
     const value = finiteNumber(raw);
     if (value === null) return null;
-    if (value >= TIMELOCK_SECONDS_THRESHOLD) {
-        return { seconds: value, interpretation: `${value} seconds (raw value >= 512)` };
+    if (!Number.isInteger(value) || value < 0) {
+        return { seconds: 0, interpretation: "negative/non-integer", bip68Valid: false };
     }
+    if (value >= TIMELOCK_SECONDS_THRESHOLD) {
+        const bip68Valid = value % BIP68_SECONDS_GRANULARITY === 0 && value <= BIP68_SECONDS_MAX;
+        return {
+            seconds: value,
+            interpretation: `${value} seconds (raw value >= 512)${bip68Valid ? "" : ` — NOT BIP68-encodable (needs multiple of ${BIP68_SECONDS_GRANULARITY}, <= ${BIP68_SECONDS_MAX})`}`,
+            bip68Valid,
+        };
+    }
+    const bip68Valid = value <= BIP68_BLOCKS_MAX;
     return {
         seconds: value * BLOCK_SECONDS,
-        interpretation: `${value} blocks × ${BLOCK_SECONDS} seconds/block`,
+        interpretation: `${value} blocks × ${BLOCK_SECONDS} seconds/block${bip68Valid ? "" : ` — NOT BIP68-encodable (> ${BIP68_BLOCKS_MAX} blocks)`}`,
+        bip68Valid,
     };
 }
 
@@ -95,17 +124,26 @@ function toUnixSeconds(value: unknown): number | null {
     return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : null;
 }
 
-function classifyArkadeVtxo(row: SnapshotVtxo, exitSeconds: number | null): ClassifiedVtxo {
-    const leftSeconds = finiteNumber(row.left_seconds);
-    const expired = row.expired === true || (leftSeconds !== null && leftSeconds <= 0);
+function classifyArkadeVtxo(
+    row: SnapshotVtxo,
+    exitSeconds: number | null,
+    nowSeconds: number,
+): ClassifiedVtxo {
+    // Mirror records-table.tsx getArkadeRecordStatus: prefer the absolute expiresAt
+    // timestamp and recompute remaining lifetime against now; left_seconds (frozen at
+    // index time) is only a fallback for rows without an expiry timestamp.
+    const expiresAtSeconds = toUnixSeconds(row.expiresAt) ?? toUnixSeconds(row.expiresAt_unix);
+    const leftSeconds =
+        expiresAtSeconds !== null ? expiresAtSeconds - nowSeconds : finiteNumber(row.left_seconds);
     const terminal = row.isSpent === true || Boolean(row.spentBy) || Boolean(row.settledBy);
+    const expired = row.expired === true || (leftSeconds !== null && leftSeconds <= 0);
     const unknownLifetime = leftSeconds === null;
     const urgent =
         !terminal &&
         !expired &&
         leftSeconds !== null &&
         (row.urgent === true || (exitSeconds !== null && leftSeconds <= exitSeconds));
-    const needsReview = row.urgent === true || urgent || expired || unknownLifetime;
+    const needsReview = !terminal && (row.urgent === true || urgent || expired || unknownLifetime);
 
     let status: ArkadeStatus;
     if (terminal) {
@@ -126,6 +164,7 @@ function classifyArkadeVtxo(row: SnapshotVtxo, exitSeconds: number | null): Clas
         terminal,
         needsReview,
         leftSeconds,
+        expired,
     };
 }
 
@@ -199,9 +238,9 @@ function sumFinite(values: unknown[]): number {
     return values.reduce<number>((sum, value) => sum + (finiteNumber(value) ?? 0), 0);
 }
 
-function summarizeArkade(arkade: ArkadeSnapshot, exitSeconds: number | null) {
+function summarizeArkade(arkade: ArkadeSnapshot, exitSeconds: number | null, nowSeconds: number) {
     const vtxos = Array.isArray(arkade.vtxos) ? arkade.vtxos : [];
-    const classified = vtxos.map((row) => classifyArkadeVtxo(row, exitSeconds));
+    const classified = vtxos.map((row) => classifyArkadeVtxo(row, exitSeconds, nowSeconds));
     const statusCounts: Record<ArkadeStatus, number> = {
         terminal: 0,
         expired: 0,
@@ -240,10 +279,8 @@ function summarizeArkade(arkade: ArkadeSnapshot, exitSeconds: number | null) {
             finiteNumber((onchain as JsonRecord).block_height) !== null
         );
     }).length;
-    const statsExpiredCount = vtxos.filter((row) => {
-        const leftSeconds = finiteNumber(row.left_seconds);
-        return row.expired === true || (leftSeconds !== null && leftSeconds <= 0);
-    }).length;
+    // Expired count mirrors the UI: recomputed expiry wins over the frozen snapshot fields.
+    const statsExpiredCount = classified.filter((item) => item.expired).length;
     const statsUnknownCount = reviewRows.filter((item) => item.leftSeconds === null).length;
 
     return {
@@ -270,12 +307,15 @@ function addSnapshotConsistencyChecks(
     checks: Check[],
     classified: ClassifiedVtxo[],
     exitSeconds: number | null,
+    snapshotNowSeconds: number | null,
 ): void {
     for (const item of classified) {
         const id = `${item.row.txid ?? "?"}:${item.row.vout ?? "?"}`;
-        const left = item.leftSeconds;
-        if (left !== null && typeof item.row.expired === "boolean") {
-            const derivedExpired = left <= 0;
+        // Flag consistency is evaluated at index time, so it uses the frozen
+        // left_seconds rather than the expiry recomputed against the current clock.
+        const frozenLeft = finiteNumber(item.row.left_seconds);
+        if (frozenLeft !== null && typeof item.row.expired === "boolean") {
+            const derivedExpired = frozenLeft <= 0;
             addCheck(
                 checks,
                 "Snapshot consistency",
@@ -285,14 +325,10 @@ function addSnapshotConsistencyChecks(
                 derivedExpired === item.row.expired,
             );
         }
-        if (
-            left !== null &&
-            exitSeconds !== null &&
-            !item.terminal &&
-            left > 0 &&
-            typeof item.row.urgent === "boolean"
-        ) {
-            const derivedUrgent = left <= exitSeconds;
+        // The indexer sets urgent purely from frozen lifetime — 0 < left_seconds <=
+        // unilateralExitDelay — regardless of spent/settled state, so mirror that exactly.
+        if (frozenLeft !== null && exitSeconds !== null && typeof item.row.urgent === "boolean") {
+            const derivedUrgent = frozenLeft > 0 && frozenLeft <= exitSeconds;
             addCheck(
                 checks,
                 "Snapshot consistency",
@@ -301,6 +337,25 @@ function addSnapshotConsistencyChecks(
                 item.row.urgent,
                 derivedUrgent === item.row.urgent,
             );
+        }
+        if (frozenLeft !== null && snapshotNowSeconds !== null) {
+            const expiresAtSeconds =
+                toUnixSeconds(item.row.expiresAt) ?? toUnixSeconds(item.row.expiresAt_unix);
+            if (expiresAtSeconds !== null) {
+                const driftSeconds = Math.abs(expiresAtSeconds - snapshotNowSeconds - frozenLeft);
+                addCheck(
+                    checks,
+                    "Snapshot consistency",
+                    `expiresAt vs left_seconds ${id}`,
+                    "expiresAt - fetched_at ≈ left_seconds (±120s)",
+                    {
+                        expiresAtSeconds,
+                        leftSeconds: frozenLeft,
+                        driftSeconds: Math.round(driftSeconds),
+                    },
+                    driftSeconds <= 120,
+                );
+            }
         }
     }
 }
@@ -770,18 +825,30 @@ async function main(): Promise<void> {
         const arkadeDelay = describeRelativeTimelock(arkade.info?.unilateralExitDelay);
         const secondExitDelta = finiteNumber(bark.info?.vtxo_exit_delta);
         const secondExitSeconds = secondExitDelta === null ? null : secondExitDelta * BLOCK_SECONDS;
-        const arkadeSummary = summarizeArkade(arkade, arkadeDelay?.seconds ?? null);
+        // Live "now" drives expiry recomputation; snapshot fetched_at anchors the
+        // frozen left_seconds consistency checks.
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        const snapshotNowSeconds = toUnixSeconds(arkade.fetched_at);
+        const arkadeSummary = summarizeArkade(arkade, arkadeDelay?.seconds ?? null, nowSeconds);
         const secondSummary = barkOnchainSummary(bark);
 
+        // The SDK pins MAINNET_UNILATERAL_EXIT_DELAY = 605184n as the canonical
+        // mainnet delay; a different advertised value is legal (operator config)
+        // but worth flagging, not failing.
+        const SDK_MAINNET_EXIT_SECONDS = 605184;
         addCheck(
             checks,
             "Exit parameters",
-            "Arkade unilateral exit delay",
+            "Arkade unilateral exit delay (BIP68-valid)",
             arkadeDelay === null
                 ? null
-                : { seconds: arkadeDelay.seconds, interpretation: arkadeDelay.interpretation },
+                : {
+                      seconds: arkadeDelay.seconds,
+                      interpretation: arkadeDelay.interpretation,
+                      matchesSdkMainnetDefault: arkadeDelay.seconds === SDK_MAINNET_EXIT_SECONDS,
+                  },
             arkade.info?.unilateralExitDelay ?? null,
-            arkadeDelay !== null,
+            arkadeDelay !== null && arkadeDelay.bip68Valid,
         );
         addCheck(
             checks,
@@ -789,9 +856,22 @@ async function main(): Promise<void> {
             "Second VTXO exit delay",
             secondExitDelta === null
                 ? null
-                : { blocks: secondExitDelta, seconds: secondExitSeconds },
+                : {
+                      blocks: secondExitDelta,
+                      seconds: secondExitSeconds,
+                      // bark-rest ArkInfo: "relative timelock, in blocks";
+                      // lifetime must exceed the exit delta to be coherent.
+                      coherentWithLifetime:
+                          secondExitDelta !== null &&
+                          finiteNumber(bark.info?.vtxo_lifetime) !== null &&
+                          (finiteNumber(bark.info?.vtxo_lifetime) ?? 0) > secondExitDelta,
+                  },
             bark.info?.vtxo_exit_delta ?? null,
-            secondExitSeconds !== null,
+            secondExitSeconds !== null &&
+                secondExitDelta !== null &&
+                Number.isInteger(secondExitDelta) &&
+                secondExitDelta > 0 &&
+                secondExitDelta <= 0xffff,
         );
         addCheck(
             checks,
@@ -844,6 +924,7 @@ async function main(): Promise<void> {
             checks,
             arkadeSummary.classified,
             arkadeDelay?.seconds ?? null,
+            snapshotNowSeconds,
         );
 
         const initialTip = options.tip;

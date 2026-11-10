@@ -1,0 +1,2189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ark.observer — Atlas</title>
+<style>
+@font-face{font-family:'IS';src:url('fonts/instrument-sans-var.woff2') format('woff2');font-weight:100 900;font-stretch:75% 100%;font-display:swap}
+@font-face{font-family:'MM';src:url('fonts/martian-mono-var.woff2') format('woff2');font-weight:100 800;font-stretch:75% 112.5%;font-display:swap}
+@font-face{font-family:'GM';src:url('fonts/geist-mono-var.woff2') format('woff2');font-weight:100 900;font-display:swap}
+:root{
+  --bg:#0B0E14; --bg-2:#0F131B; --panel:#121722; --panel-2:#161C28;
+  --line:#1E2532; --line-2:#2A3344;
+  --text:#E6EAF2; --text-2:#9AA4B5; --text-3:#5E6879;
+  --chain:#F2A93B; --virt:#8FB8FF; --cp:#6C7BD9; --vtxo:#E6EAF2;
+  --alert:#FF6464; --ok:#5ED6AE;
+  --arkade:#8FB8FF; --second:#F2A93B;
+  --r:8px;
+  --mono:'MM',ui-monospace,monospace;
+  --sans:'IS',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{color-scheme:dark}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+::selection{background:#2A3344}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--virt);outline-offset:2px;border-radius:3px}
+.mono{font-family:var(--mono)}
+.micro{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-stretch:87.5%}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:14px;height:52px;padding:0 16px;background:rgba(11,14,20,.92);border-bottom:1px solid var(--line);backdrop-filter:none}
+.brand{display:flex;align-items:center;gap:9px;font-weight:600;font-size:15px;letter-spacing:-.01em;white-space:nowrap}
+.brand svg{display:block}
+.mode-tag{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--text-3);border:1px solid var(--line-2);border-radius:4px;padding:2px 6px;text-transform:uppercase}
+.search-wrap{position:relative;flex:1;max-width:520px;margin:0 auto}
+.search-box{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;background:var(--panel);border:1px solid var(--line-2);border-radius:7px}
+.search-box:focus-within{border-color:var(--virt)}
+.search-box input{flex:1;background:none;border:0;outline:0;font-family:var(--mono);font-size:12.5px;color:var(--text);min-width:0}
+.search-box input::placeholder{color:var(--text-3);font-family:var(--sans)}
+.search-box kbd{font-family:var(--mono);font-size:10px;color:var(--text-3);border:1px solid var(--line-2);border-radius:3px;padding:1px 4px}
+.suggest{position:absolute;top:38px;left:0;right:0;background:var(--panel);border:1px solid var(--line-2);border-radius:8px;overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,.5);z-index:70;max-height:320px;overflow-y:auto}
+.suggest:empty{display:none}
+.sug{display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;text-align:left;font-size:12.5px}
+.sug:hover,.sug.sel{background:var(--panel-2)}
+.sug .k{color:var(--text-3);font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.05em;width:74px;flex:none}
+.sug .v{font-family:var(--mono);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top-actions{display:flex;align-items:center;gap:8px}
+.tbtn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px solid var(--line-2);border-radius:7px;font-size:12.5px;color:var(--text-2);white-space:nowrap}
+.tbtn:hover{color:var(--text);border-color:#3A4557;background:var(--panel)}
+.tbtn[aria-pressed="true"]{color:var(--text);border-color:var(--virt);background:#16202F}
+.tbtn .cnt{font-family:var(--mono);font-size:10.5px;color:var(--text-3)}
+.switcher{display:flex;align-items:center;border:1px solid var(--line-2);border-radius:7px;overflow:hidden}
+.switcher a{padding:5px 9px;font-size:11.5px;color:var(--text-3);white-space:nowrap}
+.switcher a:hover{color:var(--text);background:var(--panel)}
+.switcher a.cur{color:var(--text);background:var(--panel-2);font-weight:600}
+
+/* ---------- layout ---------- */
+main{max-width:1560px;margin:0 auto;padding:0 20px 80px}
+section{margin-top:22px}
+.sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.sec-head h2{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.sec-head .sub{color:var(--text-3);font-size:12px}
+.sec-head .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+/* ---------- canvas ---------- */
+.canvas-card{background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;position:relative}
+.canvas-card .canvas-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:6px;overflow:hidden}
+.seg button{padding:4px 11px;font-size:11.5px;color:var(--text-3);font-family:var(--mono);font-size:10.5px;letter-spacing:.04em}
+.seg button.on{background:var(--panel-2);color:var(--text)}
+.seg button:hover:not(.on){color:var(--text-2)}
+.canvas-meta{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text-3);letter-spacing:.04em;white-space:nowrap}
+.round-cd{font-family:var(--mono);font-size:10.5px;color:var(--chain);letter-spacing:.03em;white-space:nowrap}
+#atlasCanvas{display:block;width:100%;height:auto;cursor:grab;touch-action:pan-x pan-y}
+#atlasCanvas.dragging{cursor:grabbing}
+#atlasCanvas .dotgrid{ /* svg pattern */ }
+.legend-pop{position:absolute;top:10px;right:14px;z-index:20;background:var(--panel);border:1px solid var(--line-2);border-radius:8px;padding:10px 12px;font-size:11.5px;display:none;max-width:280px}
+.legend-pop.open{display:block}
+.legend-pop h4{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px}
+.legend-pop .row{display:flex;gap:8px;align-items:center;padding:3px 0;color:var(--text-2)}
+.legend-pop .row .sw{width:18px;flex:none;display:flex;justify-content:center}
+.minimap{position:absolute;right:14px;bottom:12px;width:150px;height:30px;background:rgba(11,14,20,.85);border:1px solid var(--line-2);border-radius:6px;display:none;z-index:15}
+@media (max-width:760px){ .minimap{display:block;top:auto;bottom:-38px;right:10px} .atlas-stage{margin-bottom:44px} }
+.atlas-stage{position:relative}
+.lane-tags{display:none}
+.ltag{position:absolute;left:5px;transform:translateY(-50%);font-family:var(--mono);font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-2);background:rgba(11,14,20,.8);border:1px solid var(--line);border-left:2px solid var(--c,#8FB8FF);padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none}
+.lane-tags{pointer-events:none}
+
+/* inspector drawer */
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(400px,92vw);background:var(--panel);border-left:1px solid var(--line-2);z-index:80;transform:translateX(102%);transition:transform .22s ease;overflow-y:auto;padding:18px;box-shadow:-16px 0 40px rgba(0,0,0,.45)}
+.drawer.open{transform:none}
+.drawer .d-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px}
+.drawer .d-head .t{font-family:var(--mono);font-size:12px;word-break:break-all;line-height:1.5}
+.drawer .d-x{margin-left:auto;flex:none;width:28px;height:28px;border:1px solid var(--line-2);border-radius:6px;color:var(--text-2);font-size:14px;line-height:1}
+.drawer .d-x:hover{color:var(--text);border-color:#3A4557}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:5px 12px;font-size:12.5px;margin:10px 0}
+.kv .k{color:var(--text-3);font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding-top:2px}
+.kv .v{font-family:var(--mono);font-size:11.5px;overflow-wrap:break-word}
+.chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:4px;border:1px solid var(--line-2);color:var(--text-2);white-space:nowrap}
+.chip.alert{color:var(--alert);border-color:#4A2B2B;background:#1B1216}
+.chip.ok{color:var(--ok);border-color:#1F3B33;background:#0F1B18}
+.chip.virt{color:var(--virt);border-color:#23395C;background:#101A2C}
+.chip.chain{color:var(--chain);border-color:#4A3A1F;background:#1A150C}
+.d-sec{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+.d-sec h5{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px}
+.mini-list{list-style:none}
+.mini-list li{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed var(--line);font-size:12px}
+.mini-list li:last-child{border:0}
+.mini-list .mono{font-size:11px}
+.d-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.d-actions a,.d-actions button{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid var(--line-2);border-radius:7px;font-size:12px;color:var(--text-2)}
+.d-actions a:hover,.d-actions button:hover{color:var(--text);border-color:#3A4557;background:var(--panel-2)}
+
+/* ---------- 3-col band ---------- */
+.band{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+@media (max-width:1100px){.band{grid-template-columns:1fr 1fr}}
+@media (max-width:760px){.band{grid-template-columns:minmax(0,1fr)}.panel{min-width:0}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.panel h3{font-size:12px;font-weight:600;color:var(--text-2);letter-spacing:.01em;margin-bottom:2px}
+.panel .hint{font-size:11px;color:var(--text-3);margin-bottom:12px}
+
+/* exit outlook ruler */
+.ruler{position:relative;height:128px;margin-top:6px}
+.ruler .axis{position:absolute;left:0;right:0;top:88px;height:1px;background:var(--line-2)}
+.ruler .tick{position:absolute;top:88px;width:1px;height:7px;background:var(--line-2)}
+.ruler .tick span{position:absolute;top:99px;left:-16px;width:34px;text-align:center;font-family:var(--mono);font-size:9px;color:var(--text-3)}
+.ruler .win{position:absolute;top:50px;height:32px;background:repeating-linear-gradient(45deg,#3A1F22 0 3px,#241419 3px 6px);border:1px solid #5A2E33;border-radius:3px}
+.ruler .win2{top:34px;height:9px;background:repeating-linear-gradient(45deg,#2A2416 0 3px,#1A150C 3px 6px);border-color:#4A3A1F}
+.ruler .winlab{position:absolute;top:14px;font-family:var(--mono);font-size:8.5px;letter-spacing:.04em;white-space:nowrap}
+.ruler .dot{position:absolute;top:88px;width:9px;height:9px;border-radius:50%;transform:translate(-50%,-50%);border:2px solid var(--bg);cursor:pointer}
+.ruler .dot:hover{transform:translate(-50%,-50%) scale(1.3)}
+.ruler .dot.renew{background:var(--alert)}
+.ruler .dot.other{background:var(--virt)}
+.ruler .dot.settled{background:var(--ok)}
+.renew-list{margin-top:10px;list-style:none}
+.renew-list li{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed var(--line);font-size:12px}
+.renew-list .amt{font-family:var(--mono);font-size:11.5px;margin-left:auto}
+.renew-list .when{font-family:var(--mono);font-size:10.5px;color:var(--alert);white-space:nowrap}
+.renew-more{padding:6px 0;font-family:var(--mono);font-size:10.5px;color:var(--text-3);border-top:1px dashed var(--line)}
+.stat-big{font-family:var(--mono);font-size:26px;font-weight:500;letter-spacing:-.02em;margin:6px 0 2px}
+.stat-big small{font-size:13px;color:var(--text-3)}
+.fact-hero .big small{font-size:.45em;color:var(--text-3);font-weight:400}
+
+/* operators */
+.op-block{padding:12px 0;border-top:1px solid var(--line)}
+.op-block:first-of-type{border-top:0;padding-top:0}
+.op-name{display:flex;align-items:baseline;gap:8px}
+.op-name .nm{font-weight:600;font-size:14px}
+.op-name .ver{font-family:var(--mono);font-size:10.5px;color:var(--text-3)}
+.op-name .ep{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text-3)}
+.lifebar{position:relative;height:26px;margin:10px 0 4px;background:var(--panel-2);border-radius:5px;overflow:hidden}
+.lifebar .seg-fill{position:absolute;top:0;bottom:0;background:rgba(143,184,255,.3)}
+.lifebar .seg-exit{position:absolute;top:0;bottom:0;background:var(--alert);opacity:.85}
+.lifebar .tickmark{position:absolute;top:0;bottom:0;width:1px;background:rgba(230,234,242,.25)}
+.lifebar-lab{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9.5px;color:var(--text-3);margin-bottom:10px}
+.op-params{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:11.5px}
+.op-params .pk{color:var(--text-3);font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase}
+.op-params .pv{font-family:var(--mono);font-size:11px;text-align:right;overflow-wrap:break-word}
+.fee-expr{font-family:var(--mono);font-size:10.5px;color:var(--text-2);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:6px 8px;margin-top:8px;line-height:1.5;overflow-wrap:anywhere}
+.next-round{display:flex;align-items:center;gap:8px;margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--text-2);flex-wrap:wrap;row-gap:3px}
+.next-round .cd{color:var(--chain);font-size:13px}
+
+/* latest list */
+.latest{list-style:none}
+.latest li{display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12px;cursor:pointer}
+.latest li:last-child{border:0}
+.latest li:hover .t{color:var(--virt)}
+.latest .glyph{width:16px;flex:none;display:flex;justify-content:center}
+.latest .t{font-family:var(--mono);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto}
+.latest .amt{font-family:var(--mono);font-size:11px;color:var(--text-2);margin-left:auto;white-space:nowrap}
+.latest .when{font-family:var(--mono);font-size:10px;color:var(--text-3);white-space:nowrap}
+
+/* activity table */
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+table.act{width:100%;border-collapse:collapse;font-size:12.5px;min-width:760px}
+table.act th{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);text-align:left;padding:9px 12px;border-bottom:1px solid var(--line-2);font-weight:400;white-space:nowrap}
+table.act td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+table.act tr:last-child td{border-bottom:0}
+table.act tbody tr{cursor:pointer}
+table.act tbody tr:hover{background:var(--panel-2)}
+td .tx{font-family:var(--mono);font-size:11.5px}
+td .amt{font-family:var(--mono);font-size:11.5px;text-align:right}
+td .when{font-family:var(--mono);font-size:10.5px;color:var(--text-3);white-space:nowrap}
+.filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.fchip{font-family:var(--sans);font-size:11.5px;letter-spacing:.02em;padding:4px 12px;border:1px solid var(--line-2);border-radius:20px;color:var(--text-3)}
+.fchip.on{color:var(--text);border-color:var(--virt);background:#16202F}
+.showmore{display:block;margin:12px auto 0;height:32px;padding:0 18px;border:1px solid var(--line-2);border-radius:7px;font-size:12.5px;color:var(--text-2)}
+.showmore:hover{color:var(--text);border-color:#3A4557}
+
+/* ---------- detail pages ---------- */
+.detail{display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start}
+@media (max-width:1000px){.detail{grid-template-columns:1fr}}
+.facts{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;position:sticky;top:64px}
+@media (max-width:1000px){.facts{position:static}}
+.facts h3{font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:10px}
+.fact-hero{margin-bottom:14px}
+.fact-hero .big{font-family:var(--mono);font-size:30px;font-weight:500;letter-spacing:-.02em}
+.fact-hero .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+.fact-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px dashed var(--line);font-size:12px}
+.fact-row .k{color:var(--text-3);font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding-top:2px}
+.fact-row .v{font-family:var(--mono);font-size:11.5px;text-align:right;overflow-wrap:break-word;min-width:0}
+.fact-row .v .cpbtn{margin-left:4px}
+.copybtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;color:var(--text-3);vertical-align:-4px;margin-left:4px;border:1px solid transparent}
+.copybtn:hover{color:var(--text);border-color:var(--line-2);background:var(--panel-2)}
+.copybtn.done{color:var(--ok)}
+details.raw{margin-top:10px;border:1px solid var(--line);border-radius:6px}
+details.raw summary{padding:8px 10px;font-family:var(--mono);font-size:10.5px;color:var(--text-3);cursor:pointer;letter-spacing:.05em;text-transform:uppercase}
+details.raw pre{padding:10px;font-family:var(--mono);font-size:10.5px;color:var(--text-2);white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto;border-top:1px solid var(--line)}
+.needs-card{border:1px solid #4A2B2B;background:#1B1216;border-radius:8px;padding:12px;margin-top:12px}
+.needs-card .ttl{color:var(--alert);font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.needs-card .txt{font-size:12.5px;color:var(--text)}
+.needs-card .when{font-family:var(--mono);font-size:11px;color:var(--alert);margin-top:4px}
+
+/* unroll path */
+.unroll{margin-top:0}
+.path-svg{display:block;width:100%;height:auto}
+.gap-cap{cursor:pointer}
+.gap-cap:hover .cap-box{stroke:var(--virt)}
+.cap-box{fill:#10182B;stroke:var(--cp);stroke-width:1;rx:5}
+.cap-txt{fill:var(--text-2);font-family:var(--mono);font-size:9.5px;letter-spacing:.04em}
+
+/* commitment view */
+.commit-wrap{display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start}
+@media (max-width:1000px){.commit-wrap{grid-template-columns:1fr}}
+.ticklist{list-style:none;font-size:12px}
+.ticklist li{display:flex;gap:8px;padding:5px 0;border-bottom:1px dashed var(--line);align-items:baseline}
+.ticklist .mono{font-size:11px;word-break:break-all}
+.ticklist .amt{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-2);white-space:nowrap}
+
+/* address constellation */
+.addr-wrap{display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start}
+@media (max-width:1000px){.addr-wrap{grid-template-columns:1fr}}
+.const-svg{display:block;width:100%;height:560px}
+.vtxo-table{width:100%;border-collapse:collapse;font-size:12px}
+.vtxo-table th{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);text-align:left;padding:7px 10px;border-bottom:1px solid var(--line-2);font-weight:400}
+.vtxo-table td{padding:7px 10px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px}
+.vtxo-table tr{cursor:pointer}
+.vtxo-table tr:hover{background:var(--panel-2)}
+
+/* watchlist drawer */
+.watch-drawer{position:fixed;top:0;right:0;bottom:0;width:min(380px,92vw);background:var(--panel);border-left:1px solid var(--line-2);z-index:80;transform:translateX(102%);transition:transform .22s ease;overflow-y:auto;padding:18px;box-shadow:-16px 0 40px rgba(0,0,0,.45)}
+.watch-drawer.open{transform:none}
+.watch-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);font-size:12px}
+.watch-item .mono{font-size:11px;word-break:break-all}
+.watch-item .when{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--alert);white-space:nowrap}
+.watch-x{flex:none;width:24px;height:24px;border:1px solid var(--line-2);border-radius:5px;color:var(--text-3);font-size:12px}
+.watch-x:hover{color:var(--alert);border-color:var(--alert)}
+.watch-empty{color:var(--text-3);font-size:12.5px;padding:20px 0;text-align:center}
+
+/* watch toggle button */
+.watchbtn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid var(--line-2);border-radius:7px;font-size:12px;color:var(--text-2)}
+.watchbtn:hover{color:var(--text);border-color:#3A4557}
+.watchbtn.on{color:var(--chain);border-color:#4A3A1F;background:#1A150C}
+.watchbtn .star{font-size:13px}
+
+/* bottom sheet on mobile for drawers */
+@media (max-width:760px){
+  .drawer,.watch-drawer{width:100vw;border-left:0;border-top:1px solid var(--line-2);top:auto;height:78vh;border-radius:14px 14px 0 0;transform:translateY(102%);transition:transform .22s ease}
+  .drawer.open,.watch-drawer.open{transform:none}
+  #atlasCanvas{height:auto}
+}
+
+/* tooltip */
+#tip{position:fixed;z-index:90;pointer-events:none;background:var(--panel);border:1px solid var(--line-2);border-radius:8px;padding:9px 11px;font-size:12px;max-width:280px;box-shadow:0 10px 30px rgba(0,0,0,.5);display:none}
+#tip .tt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px}
+#tip .tx{font-family:var(--mono);font-size:11px;word-break:break-all}
+
+/* jargon popover */
+.jarg{position:relative;display:inline-flex}
+.jarg>button{font:inherit;color:var(--virt);border-bottom:1px dotted var(--virt);background:none;padding:0;cursor:help;font-size:inherit}
+.jarg .pop{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);width:230px;background:var(--panel);border:1px solid var(--line-2);border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--text-2);line-height:1.5;z-index:50;display:none;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.jarg .pop.open{display:block}
+.jarg .pop .jt{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--text);margin-bottom:3px}
+
+/* not-found */
+.notfound{max-width:520px;margin:80px auto;text-align:center;padding:30px}
+.notfound h1{font-size:20px;margin-bottom:8px}
+.notfound p{color:var(--text-2);font-size:13px;margin-bottom:16px}
+
+/* footer provenance */
+.provenance{margin-top:26px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);font-size:11.5px;color:var(--text-3);display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.provenance .mono{font-size:10px}
+.provenance a{color:var(--text-2);text-decoration:underline;text-underline-offset:2px}
+.provenance a:hover{color:var(--text)}
+
+/* scrollbars */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#232B3B;border-radius:6px;border:2px solid var(--bg)}
+::-webkit-scrollbar-track{background:transparent}
+
+@media (max-width:760px){
+  main{padding:0 12px 60px}
+  .topbar{gap:6px;padding:0 10px;flex-wrap:wrap;height:auto;min-height:52px;padding-top:6px;padding-bottom:6px}
+  .brand .wm-sub{display:none}
+  .mode-tag{display:none}
+  .search-wrap{flex:1 1 100%;order:3;max-width:none;margin:0}
+  .search-box{height:32px}
+  .switcher{order:2;margin-left:auto}
+  .switcher a{padding:4px 5px;font-size:9.5px;letter-spacing:-.02em}
+  .switcher a#swAll{display:none}
+  .tbtn .lbl{display:none}
+  .tbtn{padding:0 7px}
+  #atlasCanvas{min-width:880px;max-width:none}
+  .atlas-scroll{overflow-x:auto}
+  .lane-tags{display:block}
+  #atlasCanvas .gutter-lbl{display:none}
+  .legend-pop{position:fixed;top:110px;right:12px;left:auto;max-width:80vw}
+  .canvas-meta,.round-cd{white-space:normal;order:4;flex-basis:100%}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="#/" aria-label="ark.observer home">
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><line x1="1" y1="13" x2="17" y2="13" stroke="#F2A93B" stroke-width="1.2"/><rect x="7.4" y="6.4" width="3.2" height="3.2" transform="rotate(45 9 8)" fill="#8FB8FF" stroke="#E6EAF2" stroke-width=".8"/></svg>
+    <span>ark.observer</span><span class="wm-sub micro" style="color:var(--text-3)">atlas</span>
+  </a>
+  <div class="search-wrap">
+    <div class="search-box">
+      <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.2" fill="none" stroke="#5E6879" stroke-width="1.4"/><line x1="9.3" y1="9.3" x2="12.5" y2="12.5" stroke="#5E6879" stroke-width="1.4"/></svg>
+      <input id="searchInput" type="text" placeholder="txid · txid:vout · ark1… · block" autocomplete="off" spellcheck="false" aria-label="Search transactions, addresses, blocks">
+      <kbd>/</kbd>
+    </div>
+    <div class="suggest" id="suggest" role="listbox"></div>
+  </div>
+  <div class="top-actions">
+    <button class="tbtn" id="legendBtn" aria-pressed="false" title="Toggle legend"><span class="lbl">Legend</span><span aria-hidden="true">◈</span></button>
+    <button class="tbtn" id="watchBtn" aria-label="Watchlist"><span class="star" aria-hidden="true">✦</span><span class="lbl">Watch</span><span class="cnt" id="watchCount">0</span></button>
+  </div>
+  <nav class="switcher" aria-label="Proposals">
+    <a href="signal.html" id="swSignal">01 Signal</a>
+    <a href="datasheet.html" id="swDatasheet">02 Datasheet</a>
+    <a href="atlas.html" class="cur" id="swAtlas">03 Atlas</a>
+    <a href="index.html" id="swAll" title="All proposals">All</a>
+  </nav>
+</header>
+
+<main id="app"></main>
+
+<div class="drawer" id="inspector" role="dialog" aria-label="Inspector"></div>
+<div class="watch-drawer" id="watchDrawer" role="dialog" aria-label="Watchlist"></div>
+<div id="tip" role="tooltip"></div>
+
+<script src="data.js"></script>
+<script>
+'use strict';
+/* ============================================================
+   ATLAS — ark.observer proposal 03
+   ============================================================ */
+const D = window.ARK_OBSERVER_DATA;
+const T0 = performance.now();
+const now = () => D.meta.generatedAt + (performance.now() - T0) / 1000;
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs={}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+const elh = (tag, attrs={}, parent) => { const e = document.createElement(tag); for (const k in attrs){ if(k==='class') e.className=attrs[k]; else if(k==='html') e.innerHTML=attrs[k]; else if(k.startsWith('on')) e.addEventListener(k.slice(2), attrs[k]); else e.setAttribute(k, attrs[k]); } if(parent) parent.appendChild(e); return e; };
+
+/* ---------------- formatting ---------------- */
+const NF = new Intl.NumberFormat('en-US');
+const sats = n => n == null ? '—' : NF.format(Math.round(n)) + ' sats';
+// human-facing: integers with grouping, always — never "4.9 k sats"
+const satsShort = n => n == null ? '—' : NF.format(Math.round(n)) + ' sats';
+// compact bare number for tiny SVG labels (no unit)
+const satsMini = n => n == null ? '' : NF.format(Math.round(n));
+const KIND_LABEL = { payment:'Payment', onboard:'Onboard', refresh:'Refresh', batch:'Commitment', 'server-in':'To server', 'server-out':'From server' };
+const kindLabel = k => KIND_LABEL[k] || (k ? k[0].toUpperCase()+k.slice(1) : k);
+const btc = n => {
+  if (n == null) return '—';
+  const v = n / 1e8;
+  return v.toFixed(8);
+};
+const dur = (a, b=now()) => {
+  const s = Math.max(0, b - a);
+  if (s < 90) return Math.round(s) + ' s';
+  if (s < 5400) return Math.round(s/60) + ' min';
+  if (s < 172800) return (s/3600).toFixed(s<36000?1:0).replace(/\.0$/,'') + ' h';
+  return (s/86400).toFixed(1).replace(/\.0$/,'') + ' d';
+};
+const durExact = s => {
+  s = Math.round(s);
+  const d = Math.floor(s/86400), h = Math.floor(s%86400/3600), m = Math.floor(s%3600/60), sec=s%60;
+  if (d) return `${d} d ${h} h`;
+  if (h) return `${h} h ${m} min`;
+  if (m) return `${m} min ${sec} s`;
+  return `${sec} s`;
+};
+const ago = t => { const d = now() - t; if (d < 60) return 'now'; if (d < 3600) return Math.floor(d/60)+'m ago'; if (d < 86400) return Math.floor(d/3600)+'h ago'; return Math.floor(d/86400)+'d ago'; };
+const until = t => { const d = t - now(); if (d < 0) return 'expired'; if (d < 3600) return Math.ceil(d/60)+' min'; if (d < 86400) return (d/3600).toFixed(1).replace(/\.0$/,'')+' h'; return (d/86400).toFixed(1).replace(/\.0$/,'')+' d'; };
+const hhmm = t => new Date(t*1000).toISOString().slice(11,16);
+const ddmm = t => { const d=new Date(t*1000); return d.toISOString().slice(5,10).replace('-','/'); };
+const dthhmm = t => { const d=new Date(t*1000); return d.toISOString().slice(5,16).replace('T',' ')+'Z'; };
+const mid = (s,n=10) => s.length<=n*2+1 ? s : s.slice(0,n)+'…'+s.slice(-n);
+const short = (s,n=8) => s.length<=n*2+1 ? s : s.slice(0,n)+'…'+s.slice(-n);
+const copyBtn = async (text) => {
+  try { await navigator.clipboard.writeText(text); } catch(e) {
+    const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+  }
+};
+const iconCopy = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor"/><path d="M3.5 1V0.5A.5.5 0 0 1 4 0h5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-.5.5H9" stroke="currentColor"/></svg>`;
+
+/* ---------------- shared lookups ---------------- */
+const COMMIT = D.commitmentTxs;
+const VTX = D.virtualTxs;
+const CHAIN = D.vtxoChains;
+const ADDR = D.addresses;
+const commitOf = txid => COMMIT[txid] || null;
+const vtxTime = id => (VTX[id] && VTX[id].createdAt) || (COMMIT[id] && COMMIT[id].endedAt) || (D.activity.find(a=>a.txid===id)||{}).time || null;
+const commitBlock = id => { const c = COMMIT[id]; return c ? c.onchain.blockHeight : null; };
+const blockByHeight = new Map(D.chain.blocks.map(b=>[b.height,b]));
+const STATE_COLOR = { renew:'#FF6464', expired:'#FF6464', preconfirmed:'#8FB8FF', settled:'#5ED6AE', spent:'#5E6879', refreshed:'#5E6879', swept:'#5E6879', unknown:'#5E6879', confirmed:'#F2A93B', mempool:'#F2A93B' };
+const LANE_COLOR = { arkade:'#8FB8FF', second:'#F2A93B' };
+
+/* ---------------- frozen clock ticker ---------------- */
+const clockEls = [];
+function rel(t){ return ago(t); }
+setInterval(() => { for (const f of clockEls) { try { f(); } catch(e){} } }, 1000);
+
+/* ---------------- routing ---------------- */
+const routes = { overview: renderOverview, tx: renderTx, commitment: renderCommitment, address: renderAddress, vtxo: renderVtxo };
+function parseHash(){
+  const h = location.hash.replace(/^#\/?/, '');
+  const parts = h.split('/').filter(Boolean);
+  if (!parts.length) return { view:'overview' };
+  const [view, ...rest] = parts;
+  return { view, id: rest.join('/') ? decodeURIComponent(rest.join('/')) : null };
+}
+function route(){
+  const r = parseHash();
+  closeDrawer(); closeWatch();
+  const fn = routes[r.view] || routes.overview;
+  $('#app').innerHTML = '';
+  fn(r.id);
+  window.scrollTo(0,0);
+}
+addEventListener('hashchange', route);
+// detail SVGs are width-dependent (desktop flow vs mobile metro) — re-render on resize
+let resizeT; addEventListener('resize',()=>{clearTimeout(resizeT);resizeT=setTimeout(route,180);});
+// cross-proposal switcher: keep the current route in each link (also for open-in-new-tab)
+$$('#swSignal,#swDatasheet,#swAtlas').forEach(a=>{ a.dataset.base=a.getAttribute('href'); });
+function syncSwitcher(){
+  const h=location.hash && location.hash!=='#/' ? location.hash : '';
+  $$('#swSignal,#swDatasheet,#swAtlas').forEach(a=>{ a.href=a.dataset.base+h; });
+}
+addEventListener('hashchange',syncSwitcher);
+syncSwitcher();
+
+/* ============================================================
+   HELPERS — svg + html builders
+   ============================================================ */
+function svgEl(tag, attrs, parent){ return el(tag, attrs, parent); }
+function mkSvg(w,h,parent,cls=''){
+  const s = svgEl('svg',{viewBox:`0 0 ${w} ${h}`,width:'100%',height:'100%',class:cls, preserveAspectRatio:'xMidYMid meet'},parent);
+  s.style.display='block'; return s;
+}
+function txt(parent,x,y,s,attrs={}){
+  const t = svgEl('text',{x,y,'font-size':attrs.fs||10,fill:attrs.fill||'#9AA4B5','font-family':attrs.mono===false?'var(--sans)':'var(--mono)','letter-spacing':attrs.ls||0,'text-anchor':attrs.anchor||'start'},parent);
+  t.textContent = s;
+  if(attrs.weight) t.setAttribute('font-weight',attrs.weight);
+  if(attrs.opacity) t.setAttribute('opacity',attrs.opacity);
+  if(attrs.stroke){ t.setAttribute('stroke',attrs.stroke); t.setAttribute('stroke-width',attrs.sw||3); t.setAttribute('paint-order','stroke'); }
+  if(attrs.cls) t.setAttribute('class',attrs.cls);
+  return t;
+}
+function line(parent,x1,y1,x2,y2,attrs={}){
+  const a={d:`M${x1} ${y1} L${x2} ${y2}`,stroke:attrs.stroke||'#2A3344','stroke-width':attrs.w||1,fill:'none','stroke-dasharray':attrs.dash||'',opacity:attrs.o||1};
+  if(attrs.markerEnd)a['marker-end']=attrs.markerEnd;
+  if(attrs.markerStart)a['marker-start']=attrs.markerStart;
+  return svgEl('path',a,parent);
+}
+function curve(parent,x1,y1,cx1,cy1,cx2,cy2,x2,y2,attrs={}){
+  const a={d:`M${x1} ${y1} C${cx1} ${cy1} ${cx2} ${cy2} ${x2} ${y2}`,stroke:attrs.stroke||'#2A3344','stroke-width':attrs.w||1.2,fill:'none','stroke-dasharray':attrs.dash||'',opacity:attrs.o||1};
+  if(attrs.markerEnd)a['marker-end']=attrs.markerEnd;
+  return svgEl('path',a,parent);
+}
+function diamond(parent,x,y,s,attrs={}){
+  const g = svgEl('g',{transform:`translate(${x} ${y})`},parent);
+  svgEl('path',{d:`M0 ${-s} L${s} 0 L0 ${s} L${-s} 0 Z`,fill:attrs.fill||'#121722',stroke:attrs.stroke||'#F2A93B','stroke-width':attrs.w||1.4},g);
+  if(attrs.inner) svgEl('path',{d:`M0 ${-s*.45} L${s*.45} 0 L0 ${s*.45} L${-s*.45} 0 Z`,fill:attrs.inner},g);
+  return g;
+}
+function vtxoCircle(parent,x,y,r,attrs={}){
+  const g = svgEl('g',{transform:`translate(${x} ${y})`,class:attrs.cls||''},parent);
+  if(attrs.ring!=null){
+    // lifetime arc: r = remaining fraction
+    const frac = Math.max(0,Math.min(1,attrs.ring));
+    const col = attrs.ringColor || (attrs.alert ? '#FF6464' : '#5E6879');
+    const circ = 2*Math.PI*r;
+    svgEl('circle',{r:r+2.5,fill:'none',stroke:'#1E2532','stroke-width':2},g);
+    if(frac>0.005){
+      svgEl('circle',{r:r+2.5,fill:'none',stroke:col,'stroke-width':2,'stroke-linecap':'round',
+        'stroke-dasharray':`${circ*frac} ${circ*(1-frac)}`,
+        transform:`rotate(-90)`},g);
+    }
+  }
+  svgEl('circle',{r:r,fill:attrs.fill||'#121722',stroke:attrs.stroke||'#E6EAF2','stroke-width':attrs.w||1.4,class:'node-ring'},g);
+  if(attrs.label) txt(g,0,r+11,attrs.label,{fs:8.5,fill:attrs.labelColor||'#9AA4B5',anchor:'middle'});
+  return g;
+}
+function hitArea(parent,x,y,w,h,attrs={}){
+  return svgEl('rect',{x:x-w/2,y:y-h/2,width:w,height:h,fill:'transparent',class:attrs.cls||'',style:'cursor:pointer'},parent);
+}
+
+/* tooltip */
+const tip = $('#tip');
+function showTip(html,x,y){ tip.innerHTML=html; tip.style.display='block'; moveTip(x,y); }
+function moveTip(x,y){ const w=tip.offsetWidth,h=tip.offsetHeight; let px=x+14,py=y+14; if(px+w>innerWidth-8)px=x-w-14; if(py+h>innerHeight-8)py=y-h-14; tip.style.left=px+'px'; tip.style.top=py+'px'; }
+function hideTip(){ tip.style.display='none'; }
+function bindTip(node,html,getXY){
+  node.addEventListener('pointerenter',e=>{showTip(html,e.clientX,e.clientY);});
+  node.addEventListener('pointermove',e=>moveTip(e.clientX,e.clientY));
+  node.addEventListener('pointerleave',hideTip);
+}
+
+/* jargon popover helper */
+const JARGON = {
+  vtxo:'A VTXO is a virtual UTXO — an off-chain coin inside Ark. It only exists in operator state until a commitment transaction anchors it to Bitcoin.',
+  checkpoint:'Checkpoint transactions spend VTXOs off-chain so an Ark tx can consume them. Each input on an Ark tx goes through a checkpoint first.',
+  commitment:'A commitment transaction anchors a batch of VTXOs into a Bitcoin block. Arkade calls them batches, Second calls them rounds.',
+  exitdepth:'Exit depth = how many transactions a holder must broadcast to exit unilaterally: the VTXO\u2019s own tx plus every off-chain hop back to the commitment, minus the commitment itself.',
+  preconfirmed:'Preconfirmed means the operator cosigned the transaction off-chain but it is not yet anchored in a Bitcoin block.',
+  exitwindow:'The exit window is the last stretch of a VTXO\u2019s life (≈7 d for Arkade, ≈1 d for Second) where unilateral exit becomes possible before expiry.',
+  renew:'Renew means the VTXO is inside the exit window — it must be refreshed into a new batch before it expires or it can be swept.',
+  tree:'A batch\u2019s outputs form a merkle tree; each leaf is a VTXO transaction. On mainnet most trees are a single leaf.',
+  connector:'Connectors link forfeited VTXO outputs back into the batch so old state can\u2019t be spent twice.',
+  forfeit:'Forfeit transactions let the operator claim a VTXO\u2019s value if its owner lets it expire inside the exit window.',
+  anchor:'The anchor output is a tiny OP_RETURN-style marker that ties an Ark transaction to its eventual commitment.',
+  batch:'A batch is Arkade\u2019s commitment transaction — it settles many virtual transactions into one on-chain tx.',
+  round:'A round is Second\u2019s commitment — an hourly cycle that anchors VTXOs to Bitcoin.',
+  serveraddr:'Second publishes a server address; on-chain transactions touching it are its observable footprint. Second has no public VTXO index.',
+};
+function jargon(term, key){
+  const w = elh('span',{class:'jarg'});
+  elh('button',{html:esc(term),'aria-label':'About '+term},w).addEventListener('click',e=>{
+    e.stopPropagation();
+    const p = w.querySelector('.pop');
+    const open = !p.classList.contains('open');
+    $$('.pop.open').forEach(x=>x.classList.remove('open'));
+    if(open){ p.classList.add('open'); }
+  });
+  elh('span',{class:'pop',html:`<div class="jt">${esc(term)}</div>${esc(JARGON[key]||'')}`},w);
+  return w;
+}
+
+/* state chip */
+function chip(state, extra=''){
+  const cls = state==='renew'||state==='expired' ? 'alert' : (state==='settled'||state==='confirmed') ? 'ok' : (state==='preconfirmed') ? 'virt' : 'chain';
+  return `<span class="chip ${cls} ${extra}">${esc(state)}</span>`;
+}
+function glyphFor(a){
+  // returns svg glyph html for activity row / latest
+  if(a.network==='second'){
+    return `<svg width="14" height="14" viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" transform="rotate(45 7 7)" fill="none" stroke="#F2A93B" stroke-width="1.3"/></svg>`;
+  }
+  if(a.layer==='onchain'){
+    return `<svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1.5 L12.5 7 L7 12.5 L1.5 7 Z" fill="none" stroke="#F2A93B" stroke-width="1.3"/></svg>`;
+  }
+  if(a.kind==='onboard'||a.kind==='refresh'){
+    return `<svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="4" fill="none" stroke="#8FB8FF" stroke-width="1.3"/><circle cx="7" cy="7" r="1.4" fill="#8FB8FF"/></svg>`;
+  }
+  return `<svg width="14" height="14" viewBox="0 0 14 14"><rect x="1.5" y="3.5" width="11" height="7" rx="3.5" fill="none" stroke="#8FB8FF" stroke-width="1.3"/></svg>`;
+}
+
+/* watchlist */
+const WL_KEY = 'ark-observer-proto-atlas-watchlist';
+function wlLoad(){ try{return JSON.parse(localStorage.getItem(WL_KEY))||{}}catch(e){return{}} }
+function wlSave(w){ localStorage.setItem(WL_KEY, JSON.stringify(w)); }
+const watch = wlLoad();
+function wlKey(kind,id){ return kind+':'+id; }
+function isWatched(kind,id){ return !!watch[wlKey(kind,id)]; }
+function toggleWatch(kind,id,label){
+  const k=wlKey(kind,id);
+  if(watch[k]) delete watch[k]; else watch[k]={kind,id,label:label||id,time:now()};
+  wlSave(watch); renderWatchBadge(); if($('#watchDrawer').classList.contains('open')) renderWatchDrawer();
+}
+function renderWatchBadge(){ $('#watchCount').textContent = Object.keys(watch).length; }
+function watchBtnHTML(kind,id,label){
+  const on = isWatched(kind,id);
+  return `<button class="watchbtn ${on?'on':''}" data-watch="${esc(kind)}:${esc(id)}" data-label="${esc(label||'')}" aria-pressed="${on}"><span class="star" aria-hidden="true">${on?'★':'☆'}</span>${on?'Watching':'Watch'}</button>`;
+}
+
+/* copy button */
+function copyBtnFor(text){
+  const b = elh('button',{class:'copybtn','aria-label':'Copy','title':'Copy','html':iconCopy});
+  b.addEventListener('click',async e=>{e.stopPropagation();await copyBtn(text);b.classList.add('done');b.innerHTML='✓';setTimeout(()=>{b.classList.remove('done');b.innerHTML=iconCopy;},1200);});
+  return b;
+}
+
+/* inspector drawer */
+const inspector = $('#inspector');
+function openInspector(html){ inspector.innerHTML=html; inspector.classList.add('open'); }
+function closeDrawer(){ inspector.classList.remove('open'); }
+$('#inspector .d-x')?.remove; // x handled per-render
+addEventListener('keydown',e=>{ if(e.key==='Escape'){closeDrawer();closeWatch();$$('.pop.open').forEach(x=>x.classList.remove('open'));$('#suggest').innerHTML='';} });
+
+/* watch drawer */
+const watchDrawer = $('#watchDrawer');
+function openWatch(){ renderWatchDrawer(); watchDrawer.classList.add('open'); }
+function closeWatch(){ watchDrawer.classList.remove('open'); }
+$('#watchBtn').addEventListener('click',()=> watchDrawer.classList.contains('open')?closeWatch():openWatch());
+function renderWatchDrawer(){
+  const items = Object.entries(watch);
+  let h = `<div class="d-head"><div class="t" style="font-family:var(--sans);font-size:14px;font-weight:600">Watchlist</div><button class="d-x" id="wdx" aria-label="Close">✕</button></div>`;
+  if(!items.length){ h += `<div class="watch-empty">Nothing watched yet.<br>Watch an address or VTXO from its page.</div>`; }
+  else {
+    h += `<div class="hint" style="font-size:11.5px;color:var(--text-3);margin-bottom:8px">Nearest expiry across watched items:</div>`;
+    let nearest=null;
+    for(const [k,v] of items){
+      const exp = nearestExpiryFor(v.kind,v.id);
+      if(exp!=null && (nearest==null||exp<nearest)) nearest=exp;
+    }
+    if(nearest!=null) h += `<div class="stat-big" style="font-size:20px">${until(nearest)} <small>until nearest expiry</small></div>`;
+    for(const [k,v] of items){
+      const exp = nearestExpiryFor(v.kind,v.id);
+      const href = v.kind==='address' ? '#/address/'+encodeURIComponent(v.id) : '#/vtxo/'+encodeURIComponent(v.id);
+      h += `<div class="watch-item"><div><a href="${href}" class="mono" style="color:var(--virt)">${esc(short(v.id,12))}</a><div class="micro" style="color:var(--text-3)">${esc(v.kind)}${v.label?' · '+esc(v.label.slice(0,14)):''}</div></div><span class="when">${exp!=null?until(exp):'—'}</span><button class="watch-x" data-unwatch="${esc(k)}" aria-label="Remove">✕</button></div>`;
+    }
+  }
+  h += `<div class="hint" style="margin-top:14px;font-size:11px;color:var(--text-3)">Stored locally in this browser only.</div>`;
+  watchDrawer.innerHTML=h;
+  $('#wdx')?.addEventListener('click',closeWatch);
+  $$('[data-unwatch]',watchDrawer).forEach(b=>b.addEventListener('click',()=>{const[k]=b.dataset.unwatch.split(/:(.+)/).length>1?[b.dataset.unwatch]:[]; /* simpler */ }));
+  // simpler unwatch handler
+  watchDrawer.querySelectorAll('.watch-x').forEach((b,i)=>{
+    b.onclick=()=>{ const key=Object.keys(watch)[i]; delete watch[key]; wlSave(watch); renderWatchBadge(); renderWatchDrawer(); };
+  });
+}
+function nearestExpiryFor(kind,id){
+  if(kind==='address'){ const a=ADDR[id]; if(!a) return null; return a.vtxos.reduce((m,v)=>v.expiresAt&&(m==null||v.expiresAt<m)?v.expiresAt:m,null); }
+  if(kind==='vtxo'){ const c=CHAIN[id]; if(!c) return null; const [txid]=id.split(':'); const t=VTX[txid]; return t?t.expiresAt:null; }
+  return null;
+}
+renderWatchBadge();
+
+/* ============================================================
+   OVERVIEW
+   ============================================================ */
+let atlasState = { win:24*3600, pan:0, lane:'all', hover:null };
+let atlasSvg, atlasG, minimapSvg;
+
+function renderOverview(){
+  const app = $('#app');
+  app.innerHTML = `
+  <section aria-label="The Ark layer">
+    <div class="canvas-card atlas-card">
+      <div class="canvas-head">
+        <span class="micro" style="color:var(--text-2)">The Ark layer</span>
+        <span class="hint" style="font-size:11px;color:var(--text-3)">time → · commitments anchor to Bitcoin blocks below</span>
+        <div class="seg" id="winSeg" role="group" aria-label="Time window">
+          <button data-win="21600">6 h</button>
+          <button data-win="86400" class="on">24 h</button>
+          <button data-win="604800">7 d</button>
+        </div>
+        <div class="seg" id="laneSeg" role="group" aria-label="Lane filter">
+          <button data-lane="all" class="on">All</button>
+          <button data-lane="arkade">Arkade</button>
+          <button data-lane="second">Second</button>
+        </div>
+        <span class="round-cd" id="roundCd"></span>
+        <span class="canvas-meta" id="canvasMeta"></span>
+      </div>
+      <div class="atlas-stage">
+        <div class="atlas-scroll"><svg id="atlasCanvas" role="img" aria-label="Ark activity map"></svg></div>
+        <div class="lane-tags" aria-hidden="true">
+          <span class="ltag" style="top:25.8%;--c:#8FB8FF">arkade</span>
+          <span class="ltag" style="top:38.2%;--c:#8FB8FF">txs/h</span>
+          <span class="ltag" style="top:48.4%;--c:#F2A93B">commit</span>
+          <span class="ltag" style="top:68.9%;--c:#F2A93B">second</span>
+          <span class="ltag" style="top:89.5%;--c:#F2A93B">bitcoin</span>
+        </div>
+        <div class="minimap" id="minimap"><svg id="mmSvg" width="100%" height="100%"></svg></div>
+        <div class="legend-pop" id="legendPop"></div>
+      </div>
+    </div>
+  </section>
+  <section class="band" aria-label="Overview panels">
+    <div class="panel">
+      <h3>Exit outlook</h3>
+      <div class="hint">Observed unspent VTXOs by expiry · exit window shaded</div>
+      <div class="ruler" id="ruler"></div>
+      <ul class="renew-list" id="renewList"></ul>
+      <div style="margin-top:12px">
+        <div class="stat-big" id="deepStat">—</div>
+        <div class="hint" style="margin:0">deepest observed exit depth · <a href="#/vtxo/${esc(D.featured.deepChainOutpoint)}" style="color:var(--virt)">open the chain →</a></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Operators</h3>
+      <div class="hint">VTXO lifetime vs. exit window — the safety margin</div>
+      <div id="opPanel"></div>
+    </div>
+    <div class="panel">
+      <h3>Latest</h3>
+      <div class="hint">Newest activity across both lanes</div>
+      <ul class="latest" id="latestList"></ul>
+    </div>
+  </section>
+  <section aria-label="Activity">
+    <div class="sec-head">
+      <h2>Activity</h2>
+      <span class="sub">${D.activity.length} rows · ${D.activity.filter(a=>now()-a.time<86400).length} in the last 24 h (sampled)</span>
+      <div class="right filters" id="actFilters"></div>
+    </div>
+    <div class="table-wrap"><table class="act"><thead><tr>
+      <th></th><th>Kind</th><th>Transaction</th><th>Lane</th><th style="text-align:right">Amount</th><th>State</th><th>Anchor</th><th>Time</th>
+    </tr></thead><tbody id="actBody"></tbody></table></div>
+    <button class="showmore" id="showMore">Show more</button>
+  </section>
+  <footer class="provenance" id="prov"></footer>`;
+
+  buildAtlas();
+  buildRuler();
+  buildOpPanel();
+  buildLatest();
+  buildActivity();
+  buildProvenance();
+  buildLegendPop();
+
+  $('#winSeg').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b)return;
+    atlasState.win=+b.dataset.win;
+    $$('#winSeg button').forEach(x=>x.classList.toggle('on',x===b));
+    buildAtlas();
+  });
+  $('#laneSeg').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b)return;
+    atlasState.lane=b.dataset.lane;
+    $$('#laneSeg button').forEach(x=>x.classList.toggle('on',x===b));
+    buildAtlas();
+  });
+  $('#legendBtn').addEventListener('click',()=>{
+    const p=$('#legendPop'); const open=p.classList.toggle('open');
+    $('#legendBtn').setAttribute('aria-pressed',open);
+  });
+  $('#showMore').addEventListener('click',()=>{ actLimit+=60; buildActivityTable(); });
+  bindAtlasPan();
+}
+
+/* ---------- atlas canvas ---------- */
+function buildAtlas(){
+  const svg = $('#atlasCanvas');
+  svg.innerHTML='';
+  // layout: fixed left gutter for lane labels, plot area shares ONE time axis
+  const W=1240, GUT=150, padR=18;
+  const plotL=GUT+12, plotR=W-padR, iw=plotR-plotL;
+  const laneArkY=98, laneCommitY=184, laneSecY=262, railY=340;
+  const H=railY+40;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  const defs=svgEl('defs',{},svg);
+  const pat=svgEl('pattern',{id:'dots',width:24,height:24,patternUnits:'userSpaceOnUse'},defs);
+  svgEl('circle',{cx:1.2,cy:1.2,r:1,fill:'#161C28'},pat);
+  const mkMarker=(id,col)=>{const m=svgEl('marker',{id,viewBox:'0 0 8 8',refX:7,refY:4,markerWidth:6.5,markerHeight:6.5,orient:'auto-start-reverse'},defs);svgEl('path',{d:'M0 0 L8 4 L0 8 Z',fill:col},m);};
+  mkMarker('arrB','#8FB8FF'); mkMarker('arrG','#F2A93B');
+  svgEl('rect',{x:0,y:0,width:W,height:H,fill:'url(#dots)'},svg);
+  atlasG=svgEl('g',{},svg);
+  atlasSvg={svg,W,H,padL:plotL,padR,padT:22,padB:0,iw,unitW:0};
+  // hover-highlight registry: {el, rels:Set, op}
+  const HL=[];
+  const reg=(node,rels,op)=>HL.push({el:node,rels:new Set(rels),op});
+  atlasHL=HL;
+
+  const t1=now();
+  const tEnd = t1 - atlasPanSec;
+  const tStart = tEnd - atlasState.win;
+  const X = t => plotL + (t-tStart)/atlasState.win*iw;
+  const unitW = iw/atlasState.win;
+  atlasSvg.unitW=unitW;
+
+  // ---- data in window ----
+  const vtxs=Object.values(VTX).filter(t=>t.createdAt>=tStart&&t.createdAt<=tEnd&&atlasState.lane!=='second');
+  const acts=D.activity.filter(a=>a.time>=tStart&&a.time<=tEnd);
+  const secActs=acts.filter(a=>a.network==='second'&&atlasState.lane!=='arkade');
+  const commits=Object.values(COMMIT).filter(c=>c.endedAt>=tStart&&c.endedAt<=tEnd&&atlasState.lane!=='second');
+
+  // height->time map + median interval (for blocks outside the sampled 180)
+  const heightTime=new Map(D.chain.blocks.map(b=>[b.height,b.time]));
+  const intervals=[];for(let i=1;i<D.chain.blocks.length;i++)intervals.push(D.chain.blocks[i-1].time-D.chain.blocks[i].time);
+  intervals.sort((a,b)=>a-b);const medInt=intervals[Math.floor(intervals.length/2)]||600;
+  const nearestCache=[...heightTime.entries()];
+  function timeForHeight(h){
+    if(heightTime.has(h))return heightTime.get(h);
+    let nh=null,nd=1e9,nt=0;
+    for(const [hh,tt] of nearestCache){const d=Math.abs(hh-h);if(d<nd){nd=d;nh=hh;nt=tt;}}
+    if(nh==null)return null;
+    return nt+(h-nh)*medInt;
+  }
+  // anchor position per commitment (shared x for diamond, stem, rail tick)
+  const anchorOf=c=>timeForHeight(c.onchain.blockHeight)??c.endedAt;
+
+  // ---- lane labels in the fixed gutter ----
+  function glabel(main,sub,y,color){
+    txt(atlasG,GUT-14,y,main,{fs:10,fill:color,anchor:'end',weight:600,cls:'gutter-lbl'});
+    if(sub)txt(atlasG,GUT-14,y+11,sub,{fs:8,fill:'#6B7686',anchor:'end',cls:'gutter-lbl'});
+  }
+  txt(atlasG,GUT-14,laneArkY-24,'ARKADE',{fs:10,fill:'#8FB8FF',anchor:'end',weight:600,cls:'gutter-lbl'});
+  txt(atlasG,GUT-14,laneArkY-13,'virtual txs',{fs:8,fill:'#6B7686',anchor:'end',cls:'gutter-lbl'});
+  glabel('COMMITMENTS','anchored to blocks',laneCommitY-14,'#F2A93B');
+  glabel('SECOND','server wallet',laneSecY-14,'#F2A93B');
+  glabel('BITCOIN','block rail',railY-14,'#F2A93B');
+
+  // ---- time axis (top) ----
+  const tickCount=atlasState.win<=21600?12:atlasState.win<=86400?24:28;
+  for(let i=0;i<=tickCount;i++){
+    const t=tStart+atlasState.win*i/tickCount;
+    const x=X(t);
+    if(x<plotL-2||x>plotR+2)continue;
+    line(atlasG,x,15,x,21,{stroke:'#2A3344'});
+    if(x>plotR-30)continue; // leave the now-edge clear
+    const d=new Date(t*1000);
+    const label=atlasState.win<=21600?hhmm(t):atlasState.win<=86400?d.toISOString().slice(11,16):ddmm(t);
+    txt(atlasG,x,10,label,{fs:8.5,fill:'#5E6879',anchor:'middle'});
+  }
+
+  // ---- hourly density band — step AREA on the arkade lane baseline ----
+  // fill only (no stroke, ~11% opacity); each contiguous run of active hours is
+ // its own subpath so gaps in the archive stay gaps. Nodes draw on top.
+  {
+    const hours=D.stats.arkadeHourly;
+    const maxH=Math.max(...hours.map(h=>h.virtualTxCount),1);
+    const bandBase=laneArkY+58, bandH=22;
+    let d='',open=false,pendX=0,lastStart=-1e18;
+    for(const h of hours){
+      const x0=Math.max(X(h.hourStart),plotL), x1=Math.min(X(h.hourStart+3600),plotR);
+      if(x1<=x0) continue;
+      const contiguous=open&&h.hourStart-lastStart<=3600+1;
+      if(h.virtualTxCount<=0||!contiguous){ if(open){d+=` L${pendX} ${bandBase} Z`;open=false;} }
+      if(h.virtualTxCount<=0) continue;
+      const yt=bandBase-(h.virtualTxCount/maxH)*bandH;
+      if(!open){ d+=`M${x0} ${bandBase} L${x0} ${yt}`; open=true; }
+      else d+=` L${x0} ${yt}`;   // vertical step at the hour boundary
+      d+=` L${x1} ${yt}`;
+      pendX=x1; lastStart=h.hourStart;
+    }
+    if(open) d+=` L${pendX} ${bandBase} Z`;
+    if(d){
+      const bpEl=svgEl('path',{d,fill:'#8FB8FF',opacity:.11},atlasG); reg(bpEl,[],.11);
+      txt(atlasG,GUT-14,bandBase-11,'hourly count · archive',{fs:7.5,fill:'#5E6879',anchor:'end',cls:'gutter-lbl'});
+    }
+  }
+
+  // ---- block rail — SAME time axis as the lanes ----
+  const blocksInWin=D.chain.blocks.filter(b=>b.time>=tStart&&b.time<=tEnd).sort((a,b)=>a.time-b.time);
+  const heightsInWin=new Set(blocksInWin.map(b=>b.height));
+  const railItems=[];
+  for(const b of blocksInWin)railItems.push({h:b.height,t:b.time,known:true,pool:b.pool,txCount:b.txCount,hash:b.hash,medianFee:b.medianFee,size:b.size});
+  const commitAnchor=new Map(); // txid -> anchor time (shared x for diamond/stem/tick)
+  for(const c of commits){
+    const h=c.onchain.blockHeight;
+    if(!heightsInWin.has(h)){
+      const at=anchorOf(c);
+      if(at!=null&&at>=tStart&&at<=tEnd)railItems.push({h,t:at,known:false,pool:null,commit:c.txid});
+    }
+    const at2=anchorOf(c); if(at2!=null)commitAnchor.set(c.txid,at2);
+  }
+  // second txs' blocks get rail ticks too (interpolated when outside the 180-block sample)
+  for(const a of secActs){
+    if(!a.blockHeight||heightsInWin.has(a.blockHeight))continue;
+    const bt=timeForHeight(a.blockHeight);
+    if(bt!=null&&bt>=tStart&&bt<=tEnd)railItems.push({h:a.blockHeight,t:bt,known:false,pool:null,second:a.txid});
+  }
+  railItems.sort((a,b)=>a.t-b.t);
+  const seenH=new Set();
+  const rail=railItems.filter(r=>{if(seenH.has(r.h))return false;seenH.add(r.h);return true;});
+  const commitHeights=new Map();
+  for(const c of commits){const h=c.onchain.blockHeight;if(!commitHeights.has(h))commitHeights.set(h,[]);commitHeights.get(h).push(c.txid);}
+
+  // draw rail ticks; width = min(gap-1, 10px)
+  let lastLabelX=-1e9;
+  for(let i=0;i<rail.length;i++){
+    const r=rail[i];
+    const x=X(r.t);
+    if(x<plotL-3||x>plotR+3)continue;
+    const nextX=i<rail.length-1?X(rail[i+1].t):plotR+4;
+    const w=Math.max(1,Math.min(nextX-x-1,10));
+    const ch=commitHeights.get(r.h);
+    const rels=['blk:'+r.h]; if(ch)rels.push('cm:'+ch[0]); if(r.second)rels.push('sec:'+r.second);
+    const g=svgEl('g',{transform:`translate(${x} ${railY})`,style:'cursor:pointer'},atlasG);
+    if(r.known){
+      svgEl('rect',{x:-w/2,y:-4.5,width:w,height:9,rx:1,fill:'#161C28',stroke:ch?'#4A3A1F':'#2A3344','stroke-width':1},g);
+      if(ch)svgEl('rect',{x:-w/2,y:-6.5,width:w,height:2.5,fill:'#F2A93B',rx:1},g);
+    }else if(r.second){
+      // second tx's block — hollow amber tick
+      svgEl('rect',{x:4.5,y:-3.5,width:3,height:7,fill:'#10182B',stroke:'#F2A93B','stroke-width':.9},g);
+    }else{
+      // interpolated commitment height — slim gold tick
+      svgEl('rect',{x:-1.5,y:-5,width:3,height:10,fill:'#1A150C',stroke:'#F2A93B','stroke-width':.8},g);
+    }
+    reg(g,rels,1);
+    g.addEventListener('pointerenter',()=>setAtlasHover(rels));
+    g.addEventListener('pointerleave',()=>setAtlasHover(null));
+    const bt=r.t?dthhmm(r.t):'—';
+    if(ch){
+      bindTip(g,`<div class="tt">block ${r.h}</div><div class="tx">${ch.map(mid).join('<br>')}</div>`,e=>[e.clientX,e.clientY]);
+      g.addEventListener('click',()=>{if(ch[0])location.hash='#/commitment/'+ch[0];});
+    }else{
+      bindTip(g,`<div class="tt">block ${r.h}</div><div style="margin-top:4px">${bt} UTC${r.known?'':' · <span style="color:var(--chain)">interpolated</span>'}</div>`,e=>[e.clientX,e.clientY]);
+      g.addEventListener('click',()=>{
+        openInspector(`<div class="d-head"><div class="t">block ${r.h}</div></div>
+          <div class="kv"><span class="k">time</span><span class="v">${bt} UTC</span>
+          ${r.known?`
+          <span class="k">pool</span><span class="v">${esc(r.pool||'—')}</span>
+          <span class="k">txs</span><span class="v">${(r.txCount||0).toLocaleString()}</span>
+          <span class="k">median fee</span><span class="v">${r.medianFee!=null?r.medianFee+' sat/vB':'—'}</span>
+          <span class="k">size</span><span class="v">${r.size?Math.round(r.size/1e6*10)/10+' MB':'—'}</span>`:`
+          <span class="k">status</span><span class="v">interpolated height (outside sampled blocks)</span>`}
+          <span class="k">commitments</span><span class="v">none observed</span>
+          ${r.second?`<span class="k">second tx</span><span class="v"><a href="https://mempool.space/tx/${r.second}" target="_blank" rel="noopener" style="color:var(--virt)">${mid(r.second,12)} ↗</a></span>`:''}</div>
+          ${r.known&&r.hash?`<div class="d-actions"><a href="https://mempool.space/block/${r.hash}" target="_blank" rel="noopener">mempool.space ↗</a></div>`:''}`);
+      });
+    }
+    // height label: space by actual x so labels never collide; skip anything
+    // crowding the now-edge on the right
+    const labelW=atlasState.win<=21600?30:atlasState.win<=86400?38:30;
+    const isLast=i===rail.length-1;
+    if(x<plotR-24&&(x-lastLabelX>=labelW||(isLast&&x-lastLabelX>=labelW*0.55))){
+      txt(atlasG,x,railY+17,String(r.h),{fs:7.2,fill:'#5E6879',anchor:'middle'});
+      lastLabelX=x;
+    }
+  }
+  txt(atlasG,plotL+6,railY+30,'block height →',{fs:8,fill:'#5E6879',anchor:'start'});
+  // ---- commitments ◆ — placed at their block's x → stems are vertical ----
+  const commitPos=new Map(); // txid -> {x,y}
+  for(const c of commits){
+    const at=commitAnchor.get(c.txid)??anchorOf(c);
+    const x=X(at);
+    if(x<plotL-24||x>plotR+24)continue;
+    const cy=laneCommitY;
+    const rels=['cm:'+c.txid,'blk:'+c.onchain.blockHeight];
+    // vertical stem down to the rail
+    const stem=line(atlasG,x,cy+10,x,railY-6,{stroke:'#F2A93B',w:1,o:.5});
+    reg(stem,rels,.5);
+    const dg=diamond(atlasG,x,cy,6.5,{stroke:'#F2A93B',fill:'#1A150C'});
+    commitPos.set(c.txid,{x,y:cy});
+    reg(dg,rels,1);
+    dg.style.cursor='pointer';
+    dg.addEventListener('pointerenter',()=>setAtlasHover(rels));
+    dg.addEventListener('pointerleave',()=>setAtlasHover(null));
+    const vtxoN=c.totalInputVtxos||c.batches.reduce((s,b)=>s+b.vtxoCount,0)||0;
+    bindTip(dg,`<div class="tt">commitment · batch</div><div class="tx">${mid(c.txid)}</div><div style="margin-top:4px;color:var(--text-2)">${vtxoN} VTXO${vtxoN===1?'':'s'} · block ${c.onchain.blockHeight} · ${ago(c.endedAt)}</div>`,e=>[e.clientX,e.clientY]);
+    dg.addEventListener('click',()=>location.hash='#/commitment/'+c.txid);
+  }
+
+  // ---- arkade virtual txs — node size ∝ √amount ----
+  const maxOut=Math.max(1,...vtxs.map(t=>t.totalOut||t.totalIn||1));
+  const arkEvents=[];
+  for(const t of vtxs){
+    const x=X(t.createdAt);
+    const amt=t.totalOut||t.totalIn||0;
+    const r=Math.max(4,Math.min(11,4+7*Math.sqrt(amt/maxOut)));
+    const g=svgEl('g',{transform:`translate(${x} ${laneArkY})`,style:'cursor:pointer'},atlasG);
+    if(t.kind==='payment'){
+      svgEl('rect',{x:-r*1.45,y:-r,width:r*2.9,height:r*2,rx:r,fill:'#10182B',stroke:'#8FB8FF','stroke-width':1.3},g);
+    }else{
+      svgEl('circle',{r:r,fill:'#10182B',stroke:'#8FB8FF','stroke-width':1.3},g);
+      svgEl('circle',{r:Math.max(1.2,r*.3),fill:'#8FB8FF'},g);
+    }
+    if(t.state==='settled')svgEl('circle',{r:r+3.2,fill:'none',stroke:'#5ED6AE','stroke-width':1,'stroke-dasharray':'2 2',opacity:.7},g);
+    if(t.state==='renew')svgEl('circle',{r:r+3.2,fill:'none',stroke:'#FF6464','stroke-width':1.1},g);
+    const cid=(t.commitmentTxids||[])[0]||null;
+    const rels=['tx:'+t.txid]; if(cid)rels.push('cm:'+cid);
+    reg(g,rels,1);
+    g.addEventListener('pointerenter',()=>setAtlasHover(rels));
+    g.addEventListener('pointerleave',()=>setAtlasHover(null));
+    bindTip(g,`<div class="tt">ark tx · ${esc(t.kind)}</div><div class="tx">${mid(t.txid)}</div><div style="margin-top:4px">${chip(t.state)} ${sats(t.totalOut)} · ${ago(t.createdAt)}</div>`,e=>[e.clientX,e.clientY]);
+    g.addEventListener('click',()=>location.hash='#/tx/'+t.txid);
+    arkEvents.push({x,g,t,r,y:laneArkY,cid});
+  }
+  // collision nudging within the arkade lane
+  arkEvents.sort((a,b)=>a.x-b.x);
+  const minGapPx=atlasState.win<=21600?30:atlasState.win<=86400?22:14;
+  let lastX=-1e9,stack=0;
+  for(const ev of arkEvents){
+    if(ev.x-lastX<minGapPx){stack=Math.min(stack+1,3);ev.y=laneArkY+stack*15;}
+    else{stack=0;ev.y=laneArkY;}
+    ev.g.setAttribute('transform',`translate(${ev.x} ${ev.y})`);
+    lastX=ev.x;
+  }
+  // threads: full curve only when the commitment diamond is on-canvas;
+  // otherwise a short stub toward the anchor side with an arrow + label.
+  // Labels are shortened (<9d / 9d>) and alternate above/below the node to avoid piles.
+  let stubRow=0;
+  const stubLabels=[];
+  for(const ev of arkEvents){
+    const t=ev.t,cid=ev.cid;
+    if(!cid)continue;
+    const rels=['tx:'+t.txid,'cm:'+cid];
+    const cp=commitPos.get(cid);
+    const y0=ev.y+ev.r+2;
+    if(cp){
+      const p=curve(atlasG,ev.x,y0,cp.x-14,(y0+cp.y)/2,cp.x-8,cp.y+10,cp.x,cp.y+9,{stroke:'#8FB8FF',w:1,o:.55,dash:'3 3'});
+      reg(p,rels,.55);
+    }else{
+      const c=COMMIT[cid];
+      if(!c)continue;
+      const at=commitAnchor.get(cid)??anchorOf(c);
+      const ax=X(at);
+      const inWin=ax>=plotL&&ax<=plotR;
+      const dir = !inWin ? (ax<plotL?-1:1) : (ax<ev.x?-1:1);
+      const stubLen=30;
+      const x1=ev.x+dir*(ev.r+4), x2=ev.x+dir*(ev.r+4+stubLen);
+      const p=line(atlasG,x1,ev.y,x2,ev.y,{stroke:'#8FB8FF',w:1,o:.7,'marker-end':'url(#arrB)'});
+      reg(p,rels,.7);
+      const dd=Math.max(1,Math.round(Math.abs(at-(inWin?t.createdAt:tEnd))/86400));
+      stubLabels.push({lx:(x1+x2)/2, dir, inWin, dd, rels, evY:ev.y});
+    }
+  }
+  // draw stub labels in two staggered rows; de-collide by skipping a label whose
+  // x is within 26px of an already-placed label on the same row
+  const rowX=[[],[]];
+  for(const s of stubLabels){
+    const pref=(stubRow++)%2;
+    // two FIXED rows clear of the node stack: above the lane and in the gap
+    // before the commitment diamonds; de-collide per row by x
+    const fits=rr=>!rowX[rr].some(px=>Math.abs(px-s.lx)<32);
+    let r2=pref;
+    if(!fits(r2)) r2=1-r2;
+    if(!fits(r2)) continue; // extremely dense — tooltip on the stub still explains
+    rowX[r2].push(s.lx);
+    const y=r2===0?laneArkY-21:laneCommitY-16;
+    const lbl=s.inWin?'in win':(s.dir<0?'<'+s.dd+'d':s.dd+'d>');
+    const tx=txt(atlasG,s.lx,y,lbl,{fs:7,fill:'#5E6879',stroke:'#0B0E14',sw:3.5});
+    reg(tx,s.rels,.8);
+  }
+
+  // ---- second lane — nodes sit at their block's x → stems are vertical ----
+  const secEvents=[];
+  for(const a of secActs){
+    const bx = a.blockHeight? X(timeForHeight(a.blockHeight)??a.time) : X(a.time);
+    const g=svgEl('g',{transform:`translate(${bx} ${laneSecY})`,style:'cursor:pointer'},atlasG);
+    diamond(g,0,0,5,{stroke:'#F2A93B',fill:'#1A150C'});
+    const rels=['sec:'+a.txid]; if(a.blockHeight)rels.push('blk:'+a.blockHeight);
+    reg(g,rels,1);
+    g.addEventListener('pointerenter',()=>setAtlasHover(rels));
+    g.addEventListener('pointerleave',()=>setAtlasHover(null));
+    if(a.blockHeight){
+      // +6px offset so second stems don't merge with commitment stems on the same block
+      const stem=line(atlasG,bx+6,laneSecY+8,bx+6,railY-6,{stroke:'#F2A93B',w:.8,o:.4});
+      reg(stem,rels,.4);
+    }
+    bindTip(g,`<div class="tt">second · ${esc(a.kind)}</div><div class="tx">${mid(a.txid)}</div><div style="margin-top:4px">${chip(a.state)} ${sats(a.amount)} · block ${a.blockHeight||'—'} · ${ago(a.time)}</div>`,e=>[e.clientX,e.clientY]);
+    g.addEventListener('click',()=>{
+      openInspector(`<div class="d-head"><div class="t">${mid(a.txid)}</div></div>
+        <div class="kv"><span class="k">lane</span><span class="v">second · server wallet</span>
+        <span class="k">kind</span><span class="v">${esc(kindLabel(a.kind))}</span>
+        <span class="k">state</span><span class="v">${chip(a.state)}</span>
+        <span class="k">amount</span><span class="v">${sats(a.amount)}</span>
+        <span class="k">block</span><span class="v">${a.blockHeight||'—'}</span>
+        <span class="k">time</span><span class="v">${dthhmm(a.time)} · ${ago(a.time)}</span></div>
+        <div class="d-sec"><h5>Note</h5><p style="font-size:12px;color:var(--text-2)">Second publishes no VTXO index — this is an on-chain transaction touching its server address, observed via Esplora.</p></div>
+        <div class="d-actions"><a href="https://mempool.space/tx/${a.txid}" target="_blank" rel="noopener">mempool.space ↗</a></div>`);
+    });
+    secEvents.push({x:bx,g,a});
+  }
+  secEvents.sort((a,b)=>a.x-b.x);
+  let sLast=-1e9,sStack=0;
+  for(const ev of secEvents){
+    if(ev.x-sLast<24){sStack=Math.min(sStack+1,2);ev.g.setAttribute('transform',`translate(${ev.x} ${laneSecY+sStack*14})`);}
+    else{sStack=0;ev.g.setAttribute('transform',`translate(${ev.x} ${laneSecY})`);}
+    sLast=ev.x;
+  }
+
+  // ---- now edge + next-round ghost (inside the window only) ----
+  const nx=X(tEnd);
+  const nowG=svgEl('g',{transform:`translate(${nx} 0)`},atlasG);
+  svgEl('line',{x1:0,y1:18,x2:0,y2:H-4,stroke:'#E6EAF2','stroke-width':1,'stroke-dasharray':'2 4',opacity:.5},nowG);
+  svgEl('circle',{cx:0,cy:railY,r:3.5,fill:'#E6EAF2'},nowG);
+  const nr=D.operators.second.nextRoundAt;
+  let nrt=nr;
+  if(nrt<=now()) nrt = nr + Math.max(1,Math.ceil((now()-nr)/D.operators.second.roundIntervalSec))*D.operators.second.roundIntervalSec;
+  if(nrt>tStart&&nrt<tEnd){
+    const gx=X(nrt);
+    const gg=svgEl('g',{transform:`translate(${gx} ${laneSecY})`,opacity:.5},atlasG);
+    diamond(gg,0,0,6,{stroke:'#F2A93B',fill:'none',w:1});
+    txt(gg,0,14,'next',{fs:7,fill:'#F2A93B',anchor:'middle'});
+  }
+  // countdown lives in the canvas header — clear of the now line
+  const cdEl=$('#roundCd');
+  if(cdEl){
+    const updateCd=()=>{const left=D.operators.second.nextRoundAt-now();cdEl.textContent=left>0?'next round in '+durExact(left):'next round due';};
+    updateCd();clockEls.push(updateCd);
+  }
+
+  buildMinimap(svg,W,H,plotL,iw);
+  $('#canvasMeta').textContent=`${ddmm(tStart)} → ${ddmm(tEnd)} · ${rail.length} rail ticks · ${vtxs.length} ark txs · ${secActs.length} second txs`;
+  // on narrow screens the canvas scrolls horizontally — start at the newest edge
+  if(innerWidth<760){ const sc=svg.closest('.atlas-scroll'); if(sc) requestAnimationFrame(()=>{sc.scrollLeft=sc.scrollWidth;}); }
+}
+let atlasHL=null;
+let atlasHoverKeys=null;
+function setAtlasHover(keys){
+  atlasHoverKeys=keys?new Set(keys):null;
+  if(!atlasHL)return;
+  const act=atlasHoverKeys;
+  for(const h of atlasHL){
+    const m=act&&h.rels.size&&[...h.rels].some(r=>act.has(r));
+    h.el.style.opacity = act ? (m?Math.min(1,h.op*1.6):h.op*0.28) : '';
+  }
+}
+let atlasPanSec=0;
+Object.defineProperty(atlasState,'panSec',{get:()=>atlasPanSec,set:v=>{atlasPanSec=v;}});
+function bindAtlasPan(){
+  const svg=$('#atlasCanvas');
+  let dragging=false,sx=0,sp=0,moved=false;
+  svg.addEventListener('pointerdown',e=>{ if(e.pointerType!=='mouse')return; dragging=true;moved=false;sx=e.clientX;sp=atlasPanSec;svg.classList.add('dragging');svg.setPointerCapture(e.pointerId);});
+  svg.addEventListener('pointermove',e=>{
+    if(!dragging)return;
+    const dx=e.clientX-sx;
+    if(Math.abs(dx)>3)moved=true;
+    if(!moved)return;
+    // px -> seconds: unitW px per second
+    const unitW=atlasSvg.unitW||1;
+    atlasPanSec=sp - dx/unitW;
+    // clamp pan: can't go before data start - win, can't go past now
+    const minPan = -(atlasState.win - 3600); // allow some left
+    const maxPan = 0;
+    atlasPanSec=Math.max(minPan,Math.min(maxPan,atlasPanSec));
+    buildAtlas();
+  });
+  const end=()=>{dragging=false;svg.classList.remove('dragging');};
+  svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
+  svg.addEventListener('click',e=>{if(moved){e.stopPropagation();e.preventDefault();moved=false;}});
+}
+function buildMinimap(svg,W,H,padL,iw){
+  const mm=$('#mmSvg'); if(!mm)return; mm.innerHTML='';
+  const mw=150,mh=34;
+  // draw tiny density: all activity in last 7d as bars
+  const t1=now(),t0=t1-7*86400;
+  const bins=60, bw=mw/bins;
+  const counts=new Array(bins).fill(0);
+  for(const a of D.activity){ if(a.time<t0)continue; const i=Math.floor((a.time-t0)/(7*86400)*bins); if(i>=0&&i<bins)counts[i]++; }
+  const max=Math.max(...counts,1);
+  for(let i=0;i<bins;i++){
+    const h=(counts[i]/max)*(mh-6);
+    svgEl('rect',{x:i*bw,y:mh-3-h,width:Math.max(1,bw-1),height:h,fill:'#8FB8FF',opacity:.5},mm);
+  }
+  // viewport indicator
+  const tStart=t1-atlasState.win-atlasPanSec, tEnd=t1-atlasPanSec;
+  const vx0=(tStart-t0)/(7*86400)*mw, vx1=(tEnd-t0)/(7*86400)*mw;
+  svgEl('rect',{x:Math.max(0,vx0),y:2,width:Math.max(4,vx1-vx0),height:mh-5,fill:'none',stroke:'#E6EAF2','stroke-width':1,opacity:.7},mm);
+}
+
+/* ---------- legend popover ---------- */
+function buildLegendPop(){
+  $('#legendPop').innerHTML = `
+    <h4>Shapes · layers</h4>
+    <div class="row"><span class="sw"><svg width="14" height="14"><rect x="5.5" y="2" width="3" height="9" fill="#2A3344"/><rect x="3" y="11" width="8" height="2" fill="#5E6879"/></svg></span>Bitcoin block (rail tick + height)</div>
+    <div class="row"><span class="sw"><svg width="14" height="14"><path d="M7 1 L13 7 L7 13 L1 7 Z" fill="#1A150C" stroke="#F2A93B" stroke-width="1.2"/><line x1="7" y1="13" x2="7" y2="17" stroke="#3A4356" stroke-width="1"/></svg></span>Commitment (◆ at its block)</div>
+    <div class="row"><span class="sw"><svg width="14" height="14"><rect x="1.5" y="4" width="11" height="6" rx="3" fill="#10182B" stroke="#8FB8FF" stroke-width="1.2"/></svg></span>Ark virtual tx</div>
+    <div class="row"><span class="sw"><svg width="14" height="14"><circle cx="7" cy="7" r="4" fill="none" stroke="#6C7BD9" stroke-width="1.2"/><circle cx="7" cy="7" r="1.2" fill="#6C7BD9"/></svg></span>Checkpoint / server hop</div>
+    <div class="row"><span class="sw"><svg width="14" height="14"><path d="M1 10 L14 10" stroke="#3A4356" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#lgArr)"/><defs><marker id="lgArr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#3A4356"/></marker></defs></svg></span>Thread (tx → its anchor / earlier hop)</div>
+    <div class="row"><span class="sw"><svg width="14" height="14"><rect x="2" y="2" width="10" height="10" transform="rotate(45 7 7)" fill="none" stroke="#F2A93B" stroke-width="1.2"/></svg></span>Second round (hollow = next)</div>
+    <div class="row"><span class="sw"><svg width="14" height="14"><rect x="2" y="5" width="10" height="5" fill="#8FB8FF" opacity=".18"/><line x1="2" y1="5" x2="12" y2="5" stroke="#8FB8FF" stroke-width="1.2"/></svg></span>Hourly activity band</div>
+    <h4 style="margin-top:10px">Reading it</h4>
+    <div class="row"><span class="sw" style="color:#8FB8FF">—</span>Blue lane: arkade virtual txs + batch commitments</div>
+    <div class="row"><span class="sw" style="color:#F2A93B">—</span>Gold: commitment diamonds riding the Bitcoin rail</div>
+    <div class="row"><span class="sw" style="color:#6C7BD9">—</span>Indigo: Second server hops (address not public)</div>
+    <div class="row"><span class="sw">✦</span>Now edge · hover a mark to trace its chain · drag to pan · scroll to zoom</div>`;
+}
+
+/* ---------- exit outlook ruler ---------- */
+function buildRuler(){
+  const box=$('#ruler'); box.innerHTML='';
+  const W=box.clientWidth||600;
+  const days=31;
+  // map "days until expiry" onto the plot width with small side insets for edge dots
+  const pad=14;
+  const X=d=>pad+d/days*(W-pad*2);
+  const axisY=88;
+  // axis + ticks (labels BELOW axis, window labels ABOVE bands — no collisions)
+  elh('div',{style:`position:absolute;left:${pad}px;right:${pad}px;top:${axisY}px;height:1px;background:var(--line-2)`},box);
+  for(let d=0;d<=31;d+=7){
+    const x=X(d);
+    elh('div',{style:`position:absolute;left:${x-1}px;top:${axisY}px;width:1px;height:7px;background:var(--line-2)`},box);
+    elh('div',{style:`position:absolute;left:${x-16}px;top:${axisY+11}px;width:32px;text-align:center;font-family:var(--mono);font-size:9px;color:var(--text-3)`},box).textContent=d+'d';
+  }
+  elh('div',{style:`position:absolute;left:${pad}px;top:${axisY+25}px;font-family:var(--mono);font-size:8.5px;color:var(--text-3);letter-spacing:.06em`},box).textContent='days until expiry →';
+  // exit-window bands stacked above the axis; labels sit above the bands
+  const arkExitDays=D.operators.arkade.unilateralExitDelaySec/86400;
+  const secExitDays=(D.operators.second.exitDeltaBlocks*600)/86400;
+  // Second band (thin, on top), Arkade band below it; one legend row above both
+  elh('div',{class:'win win2',style:`left:${X(0)}px;width:${X(Math.min(secExitDays,days))-X(0)}px`,title:`Second exit window ≈ ${secExitDays.toFixed(1)} d before expiry`},box);
+  elh('div',{class:'win',style:`left:${X(0)}px;width:${X(Math.min(arkExitDays,days))-X(0)}px`,title:`Arkade exit window ≈ ${arkExitDays.toFixed(0)} d before expiry`},box);
+  elh('div',{class:'winlab',style:`left:${X(0)}px`},box).innerHTML=
+    `<span style="color:var(--alert)">▨ arkade ≤${arkExitDays.toFixed(0)}d</span>&nbsp;·&nbsp;<span style="color:var(--chain)">▨ second ≤${secExitDays.toFixed(1)}d</span>`;
+  // observed VTXOs as dots ON the axis, sized by √amount
+  const obs=D.observedVtxos;
+  const maxAmt=Math.max(...obs.map(v=>v.amount||1),1);
+  for(const v of obs){
+    const daysLeft=(v.expiresAt-now())/86400;
+    if(daysLeft<0||daysLeft>days) continue;
+    const x=X(daysLeft);
+    const renew=v.state==='renew'||v.state==='expired';
+    const sz=5+9*Math.sqrt((v.amount||0)/maxAmt);
+    const d=elh('div',{class:'dot '+(renew?'renew':v.state==='settled'?'settled':'other'),style:`left:${x}px;top:${axisY}px;width:${sz.toFixed(1)}px;height:${sz.toFixed(1)}px`,title:`${mid(v.outpoint,14)} · ${sats(v.amount)} · ${until(v.expiresAt)}`},box);
+    bindTip(d,`<div class="tt">observed vtxo · ${esc(v.state)}</div><div class="tx">${mid(v.outpoint)}</div><div style="margin-top:4px">${sats(v.amount)} · expires in ${until(v.expiresAt)}</div>`,e=>[e.clientX,e.clientY]);
+  }
+  // renew list — capped at 6 + "and N more"
+  const renews=obs.filter(v=>v.state==='renew').sort((a,b)=>a.expiresAt-b.expiresAt);
+  const rl=$('#renewList');
+  if(!renews.length){ rl.innerHTML=`<li style="color:var(--text-3);border-top:0">No observed VTXOs in the exit window.</li>`; }
+  else{
+    rl.innerHTML = renews.slice(0,6).map(v=>`
+      <li><span class="chip alert">renew</span><span class="mono" style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto">${mid(v.outpoint,10)}</span><span class="amt">${satsShort(v.amount)}</span><span class="when">${until(v.expiresAt)}</span></li>`).join('')
+      + (renews.length>6?`<div class="renew-more">… and ${renews.length-6} more in the exit window</div>`:'');
+  }
+  // deep stat
+  const deep=CHAIN[D.featured.deepChainOutpoint];
+  const depth=deep.length-deep.counts.commitment;
+  $('#deepStat').innerHTML=`${depth} <small>off-chain txs to broadcast</small>`;
+}
+
+/* ---------- operators panel ---------- */
+function buildOpPanel(){
+  const box=$('#opPanel');
+  const A=D.operators.arkade,S=D.operators.second;
+  // Arkade VTXO lifetime = batch expiresAt − commitment endedAt, median across batches
+  const lifeSpans=[];
+  for(const c of Object.values(COMMIT)) for(const b of c.batches||[]) if(b.expiresAt&&c.endedAt) lifeSpans.push(b.expiresAt-c.endedAt);
+  lifeSpans.sort((a,b)=>a-b);
+  const arkLifeSec = lifeSpans.length? lifeSpans[Math.floor(lifeSpans.length/2)] : 30*86400;
+  const arkLifeDays = arkLifeSec/86400;
+  // Second: lifetime & exit delta are in BLOCKS — convert at the nominal 600 s/blk,
+  // and note the observed mean rate across the sampled chain (blocks are newest-first)
+  const bl=D.chain.blocks, meanB=bl.length>1?(bl[0].time-bl[bl.length-1].time)/(bl.length-1):600;
+  const NOM=600;
+  const secondLifeSec=S.vtxoLifetimeBlocks*NOM;
+  const secondLifeDays=secondLifeSec/86400;
+  const arkExit=A.unilateralExitDelaySec, secondExit=S.exitDeltaBlocks*NOM;
+  const arkBoard=A.boardingExitDelaySec;
+  const blkNote = Math.round(meanB)!==NOM ? ` · observed ≈${Math.round(meanB)} s/blk` : '';
+  function lifeBar(totalSec,exitSec,label){
+    const W=200;
+    const exitW=Math.min(1,exitSec/totalSec)*W;
+    return `<div class="lifebar" style="width:${W}px">
+      <div class="seg-fill" style="left:0;width:${W-exitW}px"></div>
+      <div class="seg-exit" style="left:${W-exitW}px;width:${exitW}px"></div>
+    </div>
+    <div class="lifebar-lab" style="width:${W}px"><span>0</span><span>${label}</span><span>${durExact(totalSec)}</span></div>`;
+  }
+  box.innerHTML=`
+  <div class="op-block">
+    <div class="op-name"><span class="nm">Arkade</span><span class="ver">${esc(A.version||'')}</span><span class="ep">${esc(A.endpoint.replace('https://',''))}</span></div>
+    ${lifeBar(arkLifeSec,arkExit,'VTXO life ≈'+arkLifeDays.toFixed(1)+' d')}
+    <div class="lifebar-lab" style="justify-content:flex-start;gap:14px;margin-top:2px">
+      <span><i style="display:inline-block;width:8px;height:8px;background:rgba(143,184,255,.3);border-radius:2px"></i> safe window ${dur(0,arkLifeSec-arkExit).replace(' ','')}</span>
+      <span><i style="display:inline-block;width:8px;height:8px;background:var(--alert);border-radius:2px"></i> exit window ${dur(0,arkExit).replace(' ','')}</span>
+    </div>
+    <div class="op-params" style="margin-top:10px">
+      <span class="pk">cadence</span><span class="pv">session ${A.sessionDurationSec}s</span>
+      <span class="pk">VTXO range</span><span class="pv">${sats(A.vtxoMinSat)} – ${satsShort(A.vtxoMaxSat)}</span>
+      <span class="pk">board exit</span><span class="pv">${dur(0,arkBoard)}</span>
+      <span class="pk">exit delay</span><span class="pv">${dur(0,arkExit)}</span>
+      <span class="pk">status</span><span class="pv">${esc(A.status)}</span>
+      <span class="pk">life basis</span><span class="pv">batch exp − ended · n=${lifeSpans.length}</span>
+    </div>
+    <div class="fee-expr" title="${esc(A.fees.offchainInputExpr||'')}">fee · ${esc(feeHuman(A.fees.offchainInputExpr))}</div>
+  </div>
+  <div class="op-block">
+    <div class="op-name"><span class="nm">Second</span><span class="ver">grpc</span><span class="ep">${esc(S.endpoint.replace('https://',''))}</span></div>
+    ${lifeBar(secondLifeSec,secondExit,'VTXO life ≈'+secondLifeDays.toFixed(1)+' d')}
+    <div class="lifebar-lab" style="justify-content:flex-start;gap:14px;margin-top:2px">
+      <span><i style="display:inline-block;width:8px;height:8px;background:rgba(143,184,255,.3);border-radius:2px"></i> safe window ≈${dur(0,secondLifeSec-secondExit).replace(' ','')}</span>
+      <span><i style="display:inline-block;width:8px;height:8px;background:var(--alert);border-radius:2px"></i> exit window ≈${dur(0,secondExit).replace(' ','')}</span>
+    </div>
+    <div class="op-params" style="margin-top:10px">
+      <span class="pk">round</span><span class="pv">every ${dur(0,S.roundIntervalSec)}</span>
+      <span class="pk">VTXO life</span><span class="pv">${S.vtxoLifetimeBlocks} blk ≈ ${secondLifeDays.toFixed(1)} d${blkNote}</span>
+      <span class="pk">exit delta</span><span class="pv">${S.exitDeltaBlocks} blk ≈ ${dur(0,secondExit)}${blkNote}</span>
+      <span class="pk">max exit depth</span><span class="pv">${S.maxVtxoExitDepth}</span>
+      <span class="pk">board conf</span><span class="pv">${S.boardConfirmations} blocks</span>
+      <span class="pk">next round</span><span class="pv" id="nrCd">—</span>
+    </div>
+    <div class="next-round">◈ round ${S.lastRoundEvent?S.lastRoundEvent.roundSeq:'—'} · ${esc(S.lastRoundEvent?S.lastRoundEvent.kind:'—')} · funding <span class="mono">${mid(S.lastRoundEvent?S.lastRoundEvent.fundingTxid:'',12)}</span></div>
+  </div>`;
+  clockEls.push(()=>{ const elx=$('#nrCd'); if(elx){const l=D.operators.second.nextRoundAt-now(); elx.textContent=l>0?inDur(l):'due';}});
+}
+function feeHuman(expr){
+  if(!expr) return 'no off-chain input fee';
+  const m=expr.match(/expiry - now\(\) > ([\d.]+).*amount \* ([\d.]+) : 0\.0/);
+  if(m){
+    const pct=parseFloat(m[2])*100;
+    const pctStr=pct>=1?pct.toFixed(pct>=10?0:1).replace(/\.0$/,'')+'%':pct.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')+'%';
+    return `${pctStr} of input when VTXO has > ${dur(0,+m[1])} left, else free`;
+  }
+  return expr;
+}
+function inDur(s){return durExact(Math.max(0,s));}
+
+/* ---------- latest + activity ---------- */
+let actFilter='all', actLimit=40;
+function buildLatest(){
+  const ul=$('#latestList');
+  ul.innerHTML=D.activity.slice(0,12).map(a=>`
+    <li data-tx="${esc(a.txid)}" data-net="${a.network==='second'?'ext':'in'}">
+      <span class="glyph">${glyphFor(a)}</span>
+      <span class="t">${esc(kindLabel(a.kind))} · ${mid(a.txid,9)}</span>
+      <span class="amt">${a.amount!=null?satsShort(a.amount):''}</span>
+      <span class="when">${ago(a.time)}</span>
+    </li>`).join('');
+  ul.querySelectorAll('li').forEach(li=>li.addEventListener('click',()=>{
+    if(li.dataset.net==='ext') window.open('https://mempool.space/tx/'+li.dataset.tx,'_blank');
+    else location.hash='#/'+(VTX[li.dataset.tx]?'tx':'commitment')+'/'+li.dataset.tx;
+  }));
+}
+function buildActivity(){
+  const f=$('#actFilters');
+  const kinds=[...new Set(D.activity.map(a=>a.kind))];
+  f.innerHTML=`<button class="fchip ${actFilter==='all'?'on':''}" data-f="all">All</button>`+
+    ['arkade','second'].map(n=>`<button class="fchip ${actFilter===n?'on':''}" data-f="${n}">${n==='arkade'?'Arkade':'Second'}</button>`).join('')+
+    kinds.map(k=>`<button class="fchip ${actFilter===k?'on':''}" data-f="${k}">${kindLabel(k)}</button>`).join('');
+  f.addEventListener('click',e=>{const b=e.target.closest('.fchip');if(!b)return;actFilter=b.dataset.f;buildActivity();});
+  buildActivityTable();
+}
+function buildActivityTable(){
+  const tb=$('#actBody');
+  let rows=D.activity;
+  if(actFilter!=='all'){
+    if(actFilter==='arkade'||actFilter==='second') rows=rows.filter(a=>a.network===actFilter);
+    else rows=rows.filter(a=>a.kind===actFilter);
+  }
+  rows=rows.slice(0,actLimit);
+  tb.innerHTML=rows.map(a=>{
+    const anchor = a.commitmentTxid?`<a href="#/commitment/${a.commitmentTxid}" class="mono" style="color:var(--chain);font-size:10.5px">${mid(a.commitmentTxid,7)}</a>`
+      : a.blockHeight?`<span class="mono" style="font-size:10.5px;color:var(--text-3)">blk ${a.blockHeight}</span>`:'<span style="color:var(--text-3)">—</span>';
+    const txlink = a.network==='second'
+      ? `<a class="tx" style="color:var(--virt)" href="https://mempool.space/tx/${a.txid}" target="_blank" rel="noopener">${mid(a.txid,9)} ↗</a>`
+      : `<a class="tx" href="#/${VTX[a.txid]?'tx':'commitment'}/${a.txid}">${mid(a.txid,9)}</a>`;
+    // coloured state pills are for VTXO states only; on-chain rows get muted text
+    const confN = a.state==='confirmed' ? (COMMIT[a.txid]?.onchain?.confirmations ?? null) : null;
+    const stateCell = (a.state==='confirmed'||a.state==='mempool')
+      ? `<span class="mono" style="font-size:10.5px;color:${a.state==='mempool'?'var(--chain)':'var(--text-3)'}">${a.state==='confirmed'?(a.blockHeight?'block '+NF.format(a.blockHeight)+(confN!=null?' · '+confN+' conf':''):'confirmed'):'mempool'}</span>`
+      : chip(a.state);
+    return `<tr data-tx="${a.txid}" data-net="${a.network}">
+      <td style="width:18px">${glyphFor(a)}</td>
+      <td style="font-size:11px;color:var(--text-2)">${esc(kindLabel(a.kind))}</td>
+      <td>${txlink}</td>
+      <td><span class="micro" style="color:${a.network==='arkade'?'var(--virt)':'var(--chain)'}">${a.network==='arkade'?'Arkade':'Second'}</span></td>
+      <td class="amt">${a.amount!=null?satsShort(a.amount):'—'}</td>
+      <td>${stateCell}</td>
+      <td>${anchor}</td>
+      <td class="when">${ago(a.time)}</td>
+    </tr>`;
+  }).join('');
+  $('#showMore').style.display = actLimit<D.activity.length?'block':'none';
+}
+
+/* ---------- provenance ---------- */
+function buildProvenance(){
+  $('#prov').innerHTML=`
+    <span><b style="color:var(--text-2)">Snapshot</b> · ${D.meta.generatedAtIso.slice(0,16).replace('T',' ')} UTC · block ${NF.format(D.chain.tipHeight)}</span>
+    <span>arkade · <a href="${D.operators.arkade.endpoint}" target="_blank" rel="noopener">${esc(D.operators.arkade.endpoint.replace('https://',''))} ↗</a> + indexer</span>
+    <span>second · <a href="${D.operators.second.endpoint}" target="_blank" rel="noopener">${esc(D.operators.second.endpoint.replace('https://',''))} ↗</a> <span title="Second publishes no VTXO index — rows are on-chain txs touching its server address">(no VTXO index)</span></span>
+    <span>24 h aggregates · <a href="https://arkexplorer.blockonomics.co" target="_blank" rel="noopener">third-party archive ↗</a></span>
+    <span>chain · <a href="https://mempool.space" target="_blank" rel="noopener">mempool.space ↗</a></span>
+    <span style="margin-left:auto">frozen clock · tickers advance from load</span>`;
+}
+
+/* ============================================================
+   TX VIEW — flow graph + unroll path + facts
+   ============================================================ */
+function renderTx(id){
+  const t=VTX[id];
+  if(!t){ renderNotFound(id,'transaction'); return; }
+  const app=$('#app');
+  const isCommit = !!COMMIT[id];
+  const chain=CHAIN[Object.keys(CHAIN).find(k=>k.startsWith(id+':'))];
+  app.innerHTML=`
+  <section class="detail">
+    <div>
+      <div class="sec-head"><h2>Virtual transaction</h2><span class="sub mono" style="font-size:11px">${mid(id,14)}</span>${chip(t.state)}</div>
+      <div class="canvas-card detail-canvas"><div class="canvas-head"><span class="micro">flow → unroll</span><span class="hint">inputs → this tx → outputs, then the ancestry spine down to its on-chain anchor</span></div>
+        <svg class="path-svg" id="txSvg" style="min-height:280px"></svg>
+      </div>
+    </div>
+    <aside class="facts" id="facts"></aside>
+  </section>`;
+  buildTxMap(t, chain);
+  buildTxFacts(t);
+}
+function renderVtxo(id){
+  // id = txid:vout
+  const [txid,vout]=id.split(':');
+  const t=VTX[txid];
+  if(!t){ renderNotFound(id,'vtxo'); return; }
+  const voutNum=parseInt(vout,10);
+  const out=t.outputs[voutNum];
+  const chain=CHAIN[id];
+  const app=$('#app');
+  app.innerHTML=`
+  <section class="detail">
+    <div>
+      <div class="sec-head"><h2>VTXO</h2><span class="sub mono" style="font-size:11px">${mid(id,16)}</span>${out&&out.vtxo?chip(out.vtxo.state):''}</div>
+      <div class="canvas-card detail-canvas"><div class="canvas-head"><span class="micro">unroll path</span><span class="hint">every tx from this VTXO back to its commitment · ${chain?chain.length+' entries':''}</span></div>
+        <svg class="path-svg" id="pathSvg"></svg>
+      </div>
+    </div>
+    <aside class="facts" id="facts"></aside>
+  </section>`;
+  if(chain) buildUnroll(chain,t,true);
+  buildVtxoFacts(t,out,id);
+}
+/* Merged tx map: flow graph on top (inputs → tx node → outputs → spent stubs),
+   then the ancestry spine continues down to the on-chain anchor — one coordinate system.
+   Desktop: left→right flow. Mobile (narrow): inputs above, outputs below. */
+function buildTxMap(t, chain){
+  const svg=$('#txSvg'); if(!svg)return;
+  svg.innerHTML='';
+  const inputs=t.inputs||[], outputs=t.outputs||[];
+  const vertical = window.innerWidth<720;
+  const W = vertical?460:1000;
+  const cx=W/2;
+  // spine entries: skip entries[0] when it is this tx itself (flow already shows it)
+  let entries=[];
+  if(chain&&chain.entries) entries=chain.entries.filter((e,i)=>!(i===0&&e.txid===t.txid));
+  const hasSpine=entries.length>0;
+  const rowH=30;
+  // ---------- flow metrics ----------
+  let flowH, ty, inX, outX;
+  if(!vertical){
+    const lanes=Math.max(inputs.length,outputs.length,1);
+    flowH=Math.max(230,64+lanes*56+36);
+    ty=flowH/2-8; inX=W*0.205; outX=W*0.795;
+  }else{
+    // centered column: inputs above tx, outputs below (metro style)
+    const inPitch=46,outPitch=66;
+    ty=50+inputs.length*inPitch+40;
+    flowH=ty+80+Math.max(0,outputs.length-1)*outPitch+56;
+  }
+  const spineY0=flowH+18;
+  const H=spineY0+(hasSpine?entries.length*rowH+80:60)+20;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.setAttribute('height',H);
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  // arrow marker for spent stubs
+  const defs=svgEl('defs',{},svg);
+  const mk=(id,col)=>{const m=svgEl('marker',{id,viewBox:'0 0 8 8',refX:7,refY:4,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'},defs);svgEl('path',{d:'M0 0 L8 4 L0 8 Z',fill:col},m);};
+  mk('arrV','#8FB8FF'); mk('arrG','#F2A93B');
+  // amount-scaled node radius
+  const allAmt=[...inputs.map(i=>i.amount||i.vtxo?.amount||0),...outputs.map(o=>o.amount||0),t.totalIn||0];
+  const maxAmt=Math.max(1,...allAmt);
+  const nodeR=a=>Math.max(8,Math.min(24,8+16*Math.sqrt((a||0)/maxAmt)));
+  const lifeRing=(g,r,frac,alert)=>{
+    if(frac==null)return;
+    const circ=2*Math.PI*(r+2.5);
+    svgEl('circle',{r:r+2.5,fill:'none',stroke:'#1E2532','stroke-width':2},g);
+    svgEl('circle',{r:r+2.5,fill:'none',stroke:alert?'#FF6464':frac<0.25?'#FF6464':'#5ED6AE','stroke-width':2,'stroke-linecap':'round','stroke-dasharray':`${circ*Math.max(.03,frac)} ${circ}`,'transform':'rotate(-90)'},g);
+  };
+  const spentStub=(sx,sy,spentBy)=>{
+    const stubX=Math.min(W-50,sx+58);
+    line(svg,sx,sy,stubX-13,sy,{stroke:'#5E6879',w:1,dash:'2 3','marker-end':'url(#arrV)'});
+    const sg=svgEl('g',{transform:`translate(${stubX} ${sy})`,style:'cursor:pointer'},svg);
+    svgEl('rect',{x:-11,y:-11,width:22,height:22,rx:5,fill:'#10182B',stroke:'#5E6879','stroke-width':1.1,'stroke-dasharray':'3 2'},sg);
+    txt(sg,0,3,'→',{fs:9,fill:'#9AA4B5',anchor:'middle'});
+    txt(sg,0,26,mid(spentBy,6),{fs:7,fill:'#5E6879',anchor:'middle'});
+    bindTip(sg,`<div class="tt">spent by${VTX[spentBy]?'':' (not in snapshot)'}</div><div class="tx">${spentBy}</div>`,e=>[e.clientX,e.clientY]);
+    sg.addEventListener('click',e=>{e.stopPropagation();location.hash='#/tx/'+spentBy;});
+  };
+  // ---------- tx node ----------
+  const txG=svgEl('g',{transform:`translate(${cx} ${ty})`},svg);
+  svgEl('rect',{x:-58,y:-37,width:116,height:74,rx:14,fill:'#10182B',stroke:'#8FB8FF','stroke-width':1.6},txG);
+  txt(txG,0,-16,t.kind,{fs:12,fill:'#E6EAF2',anchor:'middle',weight:600});
+  txt(txG,0,-2,'ark tx',{fs:8.5,fill:'#8FB8FF',anchor:'middle'});
+  txt(txG,0,13,t.state,{fs:9,fill:'#9AA4B5',anchor:'middle'});
+  txt(txG,0,26,mid(t.txid,9),{fs:7.5,fill:'#5E6879',anchor:'middle'});
+  bindTip(txG,`<div class="tt">this transaction</div><div class="tx">${t.txid}</div><div style="margin-top:4px">${sats(t.totalIn)} in · ${sats(t.totalOut)} out</div>`,e=>[e.clientX,e.clientY]);
+  // connector tx → spine
+  if(hasSpine) line(svg,cx,ty+38,cx,spineY0-8,{stroke:'#2A3344',w:1.4});
+  // ---------- inputs / outputs ----------
+  if(!vertical){
+    // per-lane vertical pitch: ~64px nominal, only shrinks if the flow band is tight
+    const pitch=n=>n>1?Math.min(64,(flowH-110)/Math.max(1,n-1)):0;
+    inputs.forEach((inp,i)=>{
+      const iy=ty+(i-(inputs.length-1)/2)*pitch(inputs.length);
+      const amt=inp.amount||inp.vtxo?.amount||0, r=nodeR(amt);
+      const frac=inp.vtxo&&inp.vtxo.expiresAt&&inp.vtxo.createdAt?Math.max(0,Math.min(1,(inp.vtxo.expiresAt-now())/(inp.vtxo.expiresAt-inp.vtxo.createdAt))):null;
+      const g=svgEl('g',{transform:`translate(${inX} ${iy})`,style:'cursor:pointer'},svg);
+      lifeRing(g,r,frac,false);
+      svgEl('circle',{r,fill:'#10182B',stroke:'#8FB8FF','stroke-width':1.3},g);
+      txt(g,0,r+13,satsMini(amt),{fs:8.5,fill:'#9AA4B5',anchor:'middle'});
+      if(inp.via==='checkpoint'||inp.checkpointTxid){svgEl('circle',{cx:r+11,cy:-r-7,r:5.5,fill:'none',stroke:'#6C7BD9','stroke-width':1.4},g);txt(g,r+11,-r+3,'cp',{fs:7,fill:'#6C7BD9',anchor:'middle'});}
+      const portY=ty+Math.max(-30,Math.min(30,(i-(inputs.length-1)/2)*22));
+      curve(svg,inX+r+12,iy,cx-96,iy,cx-64,portY,cx-58,portY,{stroke:'#8FB8FF',w:1.3});
+      const label=inp.via==='batch'?'batch output':inp.via==='checkpoint'?'via checkpoint':'vtxo';
+      bindTip(g,`<div class="tt">input · ${esc(label)}</div><div class="tx">${mid(inp.outpoint||inp.txid||'',18)}</div><div style="margin-top:4px">${sats(amt)}${inp.vtxo?' · '+esc(inp.vtxo.state):''}</div>`,e=>[e.clientX,e.clientY]);
+      g.addEventListener('click',()=>{const op=inp.vtxo?.outpoint||inp.outpoint; if(op)location.hash='#/tx/'+op.split(':')[0];});
+    });
+    outputs.forEach((out,i)=>{
+      const oy=ty+(i-(outputs.length-1)/2)*pitch(outputs.length);
+      const portY=ty+Math.max(-30,Math.min(30,(i-(outputs.length-1)/2)*22));
+      if(out.kind==='anchor'){
+        const g=svgEl('g',{transform:`translate(${outX} ${oy})`},svg);
+        svgEl('rect',{x:-7,y:-7,width:14,height:14,fill:'none',stroke:'#5E6879','stroke-width':1.2,'stroke-dasharray':'2 2'},g);
+        txt(g,0,22,'anchor',{fs:8,fill:'#5E6879',anchor:'middle'});
+        curve(svg,cx+58,portY,outX-30,oy,outX-14,oy,outX-8,oy,{stroke:'#3A4557',w:1.1,dash:'2 3'});
+        bindTip(g,`<div class="tt">anchor output</div>commitment root — not a spendable VTXO`,e=>[e.clientX,e.clientY]);
+        return;
+      }
+      const amt=out.amount||0, r=nodeR(amt);
+      const vv=out.vtxo;
+      const frac=vv&&vv.expiresAt&&vv.createdAt?Math.max(0,Math.min(1,(vv.expiresAt-now())/(vv.expiresAt-vv.createdAt))):null;
+      const alert=vv&&(vv.state==='renew'||vv.state==='expired');
+      const g=svgEl('g',{transform:`translate(${outX} ${oy})`,style:'cursor:pointer'},svg);
+      lifeRing(g,r,frac,alert);
+      svgEl('circle',{r,fill:alert?'#2A1216':'#10182B',stroke:alert?'#FF6464':'#E6EAF2','stroke-width':1.4},g);
+      txt(g,0,r+13,satsMini(amt),{fs:8.5,fill:'#9AA4B5',anchor:'middle'});
+      curve(svg,cx+58,portY,outX-r-18,oy,outX-r-8,oy,outX-r-3,oy,{stroke:'#8FB8FF',w:1.3});
+      bindTip(g,`<div class="tt">output vout ${out.vout} · vtxo</div><div class="tx">${mid(vv?vv.outpoint:'',18)}</div><div style="margin-top:4px">${sats(amt)} · ${vv?esc(vv.state):''} · expires ${vv?until(vv.expiresAt):'—'}</div>`,e=>[e.clientX,e.clientY]);
+      g.addEventListener('click',()=>location.hash='#/vtxo/'+encodeURIComponent(vv?vv.outpoint:t.txid+':'+out.vout));
+      if(vv&&vv.spentByTx) spentStub(outX+r+4,oy,vv.spentByTx);
+    });
+    txt(svg,20,flowH-10,`in ${satsMini(t.totalIn)} · out ${satsMini(t.totalOut)} · ${inputs.length} in · ${outputs.length} out`,{fs:9.5,fill:'#5E6879'});
+    if(hasSpine) line(svg,24,spineY0-15,W-24,spineY0-15,{stroke:'#1E2532',w:1});
+  }else{
+    // ---------- vertical flow: centered metro column ----------
+    const inPitch=46,outPitch=66;
+    inputs.forEach((inp,i)=>{
+      const iy=54+i*inPitch;
+      const amt=inp.amount||inp.vtxo?.amount||0, r=Math.min(nodeR(amt),18);
+      const frac=inp.vtxo&&inp.vtxo.expiresAt&&inp.vtxo.createdAt?Math.max(0,Math.min(1,(inp.vtxo.expiresAt-now())/(inp.vtxo.expiresAt-inp.vtxo.createdAt))):null;
+      const g=svgEl('g',{transform:`translate(${cx} ${iy})`,style:'cursor:pointer'},svg);
+      lifeRing(g,r,frac,false);
+      svgEl('circle',{r,fill:'#10182B',stroke:'#8FB8FF','stroke-width':1.3},g);
+      const lab=(inp.via==='batch'?'batch':inp.via==='checkpoint'?'checkpoint':'vtxo')+' · '+satsMini(amt);
+      txt(g,r+11,4,lab,{fs:10,fill:'#9AA4B5'});
+      const portX=cx+Math.max(-26,Math.min(26,(i-(inputs.length-1)/2)*24));
+      curve(svg,cx,iy+r+4,portX-14,iy+r+30,portX,ty-52,portX,ty-37,{stroke:'#8FB8FF',w:1.3});
+      bindTip(g,`<div class="tt">input · ${esc(inp.via||'vtxo')}</div><div class="tx">${mid(inp.outpoint||inp.txid||'',18)}</div><div style="margin-top:4px">${sats(amt)}${inp.vtxo?' · '+esc(inp.vtxo.state):''}</div>`,e=>[e.clientX,e.clientY]);
+      g.addEventListener('click',()=>{const op=inp.vtxo?.outpoint||inp.outpoint; if(op)location.hash='#/tx/'+op.split(':')[0];});
+    });
+    if(inputs.length) txt(svg,20,26,'inputs',{fs:9.5,fill:'#5E6879'});
+    outputs.forEach((out,j)=>{
+      const oy=ty+80+j*outPitch;
+      const portX=cx+Math.max(-26,Math.min(26,(j-(outputs.length-1)/2)*24));
+      if(out.kind==='anchor'){
+        const g=svgEl('g',{transform:`translate(${cx} ${oy})`},svg);
+        svgEl('rect',{x:-7,y:-7,width:14,height:14,fill:'none',stroke:'#5E6879','stroke-width':1.2,'stroke-dasharray':'2 2'},g);
+        txt(g,0,24,'anchor',{fs:8.5,fill:'#5E6879',anchor:'middle'});
+        curve(svg,portX,ty+37,portX,ty+56,cx-8,oy-20,cx-6,oy-8,{stroke:'#3A4557',w:1.1,dash:'2 3'});
+        bindTip(g,`<div class="tt">anchor output</div>commitment root — not a spendable VTXO`,e=>[e.clientX,e.clientY]);
+        return;
+      }
+      const amt=out.amount||0, r=Math.min(nodeR(amt),18);
+      const vv=out.vtxo;
+      const frac=vv&&vv.expiresAt&&vv.createdAt?Math.max(0,Math.min(1,(vv.expiresAt-now())/(vv.expiresAt-vv.createdAt))):null;
+      const alert=vv&&(vv.state==='renew'||vv.state==='expired');
+      const g=svgEl('g',{transform:`translate(${cx} ${oy})`,style:'cursor:pointer'},svg);
+      lifeRing(g,r,frac,alert);
+      svgEl('circle',{r,fill:alert?'#2A1216':'#10182B',stroke:alert?'#FF6464':'#E6EAF2','stroke-width':1.4},g);
+      txt(g,0,r+16,satsMini(amt)+' sats',{fs:10,fill:'#9AA4B5',anchor:'middle'});
+      curve(svg,portX,ty+37,cx+(portX>cx?14:-14),ty+62,cx,oy-r-8,cx,oy-r-3,{stroke:'#8FB8FF',w:1.3});
+      bindTip(g,`<div class="tt">output vout ${out.vout} · vtxo</div><div class="tx">${mid(vv?vv.outpoint:'',18)}</div><div style="margin-top:4px">${sats(amt)} · ${vv?esc(vv.state):''}</div>`,e=>[e.clientX,e.clientY]);
+      g.addEventListener('click',()=>location.hash='#/vtxo/'+encodeURIComponent(vv?vv.outpoint:t.txid+':'+out.vout));
+      if(vv&&vv.spentByTx){
+        txt(g,0,r+30,'→ '+mid(vv.spentByTx,7)+' spent',{fs:9,fill:'#6B7686',anchor:'middle'});
+        const hit2=svgEl('rect',{x:-70,y:r+22,width:140,height:16,fill:'transparent',style:'cursor:pointer'},g);
+        hit2.addEventListener('click',e=>{e.stopPropagation();location.hash='#/tx/'+vv.spentByTx;});
+        bindTip(hit2,`<div class="tt">spent by${VTX[vv.spentByTx]?'':' (not in snapshot)'}</div><div class="tx">${vv.spentByTx}</div>`,e=>[e.clientX,e.clientY]);
+      }else if(vv){
+        txt(g,0,r+30,'vtxo · '+esc(vv.state),{fs:9,fill:'#5E6879',anchor:'middle'});
+      }
+    });
+    if(outputs.length) txt(svg,20,ty+52,'outputs',{fs:9.5,fill:'#5E6879'});
+    if(hasSpine) line(svg,24,spineY0-15,W-24,spineY0-15,{stroke:'#1E2532',w:1});
+  }
+  // ---------- spine ----------
+  if(hasSpine){
+    const bot=drawSpineEntries(svg,entries,cx,spineY0,{rowH,W,labelFs:vertical?13:10,subFs:vertical?10:8,labelX:vertical?16:18,hitW:vertical?Math.min(300,W-cx-34):undefined});
+    if(bot+24>H){ svg.setAttribute('viewBox',`0 0 ${W} ${bot+24}`); svg.setAttribute('height',bot+24); }
+  }else{
+    txt(svg,cx,spineY0+16,chain?'unroll path elided in this snapshot':'no unroll path in this snapshot',{fs:10,fill:'#5E6879',anchor:'middle'});
+  }
+}
+/* Shared "subway spine" drawer — used by the VTXO unroll view and the merged tx map.
+   Draws entries top→down at x=cx starting at y0; returns the bottom y. */
+function drawSpineEntries(svg, entries, cx, y0, opts={}){
+  const rowH=opts.rowH||30;
+  const W=opts.W||900;
+  const labelX=opts.labelX!=null?opts.labelX:18;
+  const fsL=opts.labelFs||10, fsS=opts.subFs||8;
+  const hitW=opts.hitW||Math.min(380,W-cx-labelX-16);
+  const pathG=opts.group||svgEl('g',{},svg);
+  const spineBot=y0+entries.length*rowH;
+  line(pathG,cx,y0-8,cx,spineBot+8,{stroke:'#2A3344',w:1.4});
+  const typeColor={ark:'#8FB8FF',checkpoint:'#6C7BD9',tree:'#9AA4B5',commitment:'#F2A93B'};
+  let y=y0;
+  for(let i=0;i<entries.length;i++){
+    const e=entries[i];
+    if(e.gap){
+      const g=svgEl('g',{class:'gap-cap',style:'cursor:pointer'},pathG);
+      const w=Math.min(220,W-40),h=22;
+      svgEl('rect',{x:cx-w/2,y:y-h/2,width:w,height:h,rx:6,class:'cap-box'},g);
+      txt(g,cx,y+3,`… ${e.gap} hops compressed`,{fs:9.5,fill:'#9AA4B5',anchor:'middle'});
+      bindTip(g,`<div class="tt">compressed segment</div>${e.gap} chain entries elided by the indexer.`,ev=>[ev.clientX,ev.clientY]);
+      line(pathG,cx,y+11,cx,y+rowH-11,{stroke:'#2A3344',w:1.2,dash:'2 3'});
+      y+=rowH; continue;
+    }
+    const ty=e.type;
+    const col=typeColor[ty]||'#9AA4B5';
+    const g=svgEl('g',{transform:`translate(${cx} ${y})`,style:'cursor:pointer'},pathG);
+    if(ty==='ark'){
+      svgEl('rect',{x:-8,y:-5,width:16,height:10,rx:5,fill:'#10182B',stroke:col,'stroke-width':1.3},g);
+    } else if(ty==='checkpoint'){
+      svgEl('circle',{r:6,fill:'none',stroke:col,'stroke-width':1.4},g);
+      svgEl('circle',{r:2,fill:col},g);
+    } else if(ty==='tree'){
+      svgEl('path',{d:'M-7 0 L0 -6 L7 0 L0 6 Z',fill:'none',stroke:col,'stroke-width':1.3},g);
+    } else if(ty==='commitment'){
+      diamond(g,0,0,7,{stroke:col,fill:'#1A150C'});
+    }
+    // checkpoints/trees are never indexed — only ark/commitment rows can be "missing"
+    const miss = (ty==='ark'&&!VTX[e.txid]) || (ty==='commitment'&&!COMMIT[e.txid]);
+    const hasData = !miss;
+    txt(g,labelX,3,mid(e.txid,10),{fs:fsL,fill:hasData?'#E6EAF2':'#9AA4B5'});
+    txt(g,labelX,14,ty+(miss?' · not in snapshot':''),{fs:fsS,fill:'#5E6879'});
+    if(ty==='commitment'&&COMMIT[e.txid]){
+      const c=COMMIT[e.txid];
+      txt(g,labelX,24,`block ${c.onchain.blockHeight} · ${ago(c.endedAt)}`,{fs:fsS,fill:'#5E6879'});
+    }
+    const hit=svgEl('rect',{x:-16,y:-13,width:hitW,height:rowH-2,fill:'transparent'},g);
+    hit.style.cursor='pointer';
+    g.addEventListener('click',()=>{
+      if(ty==='commitment'&&COMMIT[e.txid]) location.hash='#/commitment/'+e.txid;
+      else if(ty==='ark'&&VTX[e.txid]) location.hash='#/tx/'+e.txid;
+      else if(ty==='tree'&&COMMIT[e.txid]) location.hash='#/commitment/'+e.txid;
+      else window.open('https://mempool.space/tx/'+e.txid,'_blank');
+    });
+    bindTip(g,`<div class="tt">${ty}</div><div class="tx">${e.txid}</div>${hasData?'':'<div style="margin-top:4px;color:var(--text-3)">not in this snapshot</div>'}`,ev=>[ev.clientX,ev.clientY]);
+    y+=rowH;
+  }
+  // anchor block tile below the last commitment
+  const lastCommit=entries.filter(e=>e.type==='commitment').pop();
+  if(lastCommit&&COMMIT[lastCommit.txid]){
+    const c=COMMIT[lastCommit.txid];
+    const by=y+8;
+    line(pathG,cx,y-4,cx,by-9,{stroke:'#F2A93B',w:1.2});
+    const g=svgEl('g',{transform:`translate(${cx} ${by})`,style:'cursor:pointer'},pathG);
+    svgEl('rect',{x:-7,y:-7,width:14,height:14,fill:'#161C28',stroke:'#F2A93B','stroke-width':1.3},g);
+    txt(g,0,22,'block '+c.onchain.blockHeight,{fs:9,fill:'#F2A93B',anchor:'middle'});
+    g.addEventListener('click',()=>location.hash='#/commitment/'+lastCommit.txid);
+    bindTip(g,`<div class="tt">anchor block</div>block ${c.onchain.blockHeight} · ${ago(c.onchain.blockTime||c.endedAt)}`,ev=>[ev.clientX,ev.clientY]);
+    return by+30;
+  }
+  return y+14;
+}
+function buildUnroll(chain,t,focusVtxo=false){
+  const svg=$('#pathSvg'); if(!svg)return;
+  const entries=chain.entries||[];
+  const W=900;
+  const rowH=30, topPad=56;
+  svg.setAttribute('viewBox',`0 0 ${W} ${topPad+entries.length*rowH+140}`);
+  svg.setAttribute('height',topPad+entries.length*rowH+140);
+  const cx=W/2;
+  const depth=chain.length-chain.counts.commitment;
+  txt(svg,W/2,18,`exit depth ${depth}`, {fs:15,fill:'#E6EAF2',anchor:'middle',weight:600});
+  txt(svg,W/2,34,`${chain.counts.ark} ark · ${chain.counts.checkpoint} checkpoint · ${chain.counts.tree} tree · ${chain.counts.commitment} commitment${chain.truncated?' · compressed':''}`,{fs:9,fill:'#5E6879',anchor:'middle'});
+  const bot=drawSpineEntries(svg,entries,cx,topPad,{rowH,W});
+  const H=Math.max(topPad+entries.length*rowH+90,bot+30);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.setAttribute('height',H);
+}
+function buildTxFacts(t){
+  const f=$('#facts');
+  const chain=CHAIN[Object.keys(CHAIN).find(k=>k.startsWith(t.txid+':'))];
+  const depth=chain?chain.length-chain.counts.commitment:null;
+  let h=`<h3>Transaction</h3>
+  <div class="fact-hero"><div class="big">${satsShort(t.totalOut||t.totalIn)}</div><div class="lbl">total output</div></div>
+  <div class="fact-row"><span class="k">state</span><span class="v">${chip(t.state)}</span></div>
+  <div class="fact-row"><span class="k">kind</span><span class="v">${esc(t.kind)}</span></div>
+  <div class="fact-row"><span class="k">created</span><span class="v">${dthhmm(t.createdAt)} <span style="color:var(--text-3)">(${ago(t.createdAt)})</span></span></div>
+  <div class="fact-row"><span class="k">expires</span><span class="v" style="color:${t.expiresAt&&t.expiresAt-now()<7*86400?'var(--alert)':'inherit'}">${t.expiresAt?dthhmm(t.expiresAt)+' ('+until(t.expiresAt)+')':'—'}</span></div>
+  <div class="fact-row"><span class="k">exit depth</span><span class="v">${depth!=null?depth+' <span style="color:var(--text-3)">(second cap '+D.operators.second.maxVtxoExitDepth+')</span>':'—'}</span></div>
+  <div class="fact-row"><span class="k">inputs</span><span class="v">${t.inputs.length}</span></div>
+  <div class="fact-row"><span class="k">outputs</span><span class="v">${t.outputs.length}</span></div>
+  <div class="fact-row"><span class="k">commitments</span><span class="v">${(t.commitmentTxids||[]).length}</span></div>`;
+  if(t.commitmentTxids&&t.commitmentTxids.length){
+    h+=`<div class="d-sec"><h5>Anchored by</h5><ul class="mini-list">`+t.commitmentTxids.map(cid=>{
+      const c=COMMIT[cid];
+      return `<li><a href="#/commitment/${cid}" class="mono" style="color:var(--chain)">${mid(cid,10)}</a><span class="mono" style="color:var(--text-3)">${c?'blk '+c.onchain.blockHeight+' · '+ago(c.endedAt):''}</span></li>`;
+    }).join('')+`</ul></div>`;
+  }
+  h+=`<div class="d-sec"><h5>Identifiers</h5>
+    <div class="fact-row"><span class="k">txid</span><span class="v">${mid(t.txid,14)}<button class="copybtn" data-copy="${t.txid}" aria-label="Copy txid" title="Copy">${iconCopy}</button></span></div>
+    ${t.psbt?`<details class="raw"><summary>PSBT (base64)</summary><pre>${esc(t.psbt)}</pre></details>`:''}
+  </div>
+  <div class="d-sec"><h5>Amounts</h5>
+    <div class="fact-row"><span class="k">total in</span><span class="v">${sats(t.totalIn)}</span></div>
+    <div class="fact-row"><span class="k">total out</span><span class="v">${sats(t.totalOut)}</span></div>
+  </div>
+  <div class="d-actions">${watchBtnHTML('tx',t.txid,t.kind)}<a href="https://mempool.space/tx/${t.txid}" target="_blank" rel="noopener">mempool.space ↗</a></div>`;
+  f.innerHTML=h;
+  f.querySelectorAll('.copybtn').forEach(b=>b.addEventListener('click',async()=>{await copyBtn(b.dataset.copy);b.innerHTML='✓';setTimeout(()=>b.innerHTML=iconCopy,1200);}));
+  f.querySelector('[data-watch]')?.addEventListener('click',e=>{const[k,kind,id]=e.currentTarget.dataset.watch.split(/:(.+)/);toggleWatch(kind,id,t.kind);e.currentTarget.outerHTML=watchBtnHTML('tx',t.txid,t.kind);f.querySelector('[data-watch]')?.addEventListener('click',arguments.callee);});
+}
+function buildVtxoFacts(t,out,id){
+  const f=$('#facts');
+  const v=out&&out.vtxo;
+  const chain=CHAIN[id];
+  const depth=chain?chain.length-chain.counts.commitment:null;
+  let h=`<h3>VTXO</h3>
+  <div class="fact-hero"><div class="big">${v?satsShort(v.amount):'—'}</div><div class="lbl">amount</div></div>
+  <div class="fact-row"><span class="k">state</span><span class="v">${v?chip(v.state):'—'}</span></div>
+  <div class="fact-row"><span class="k">outpoint</span><span class="v">${mid(id,16)}<button class="copybtn" data-copy="${id}" aria-label="Copy" title="Copy">${iconCopy}</button></span></div>
+  <div class="fact-row"><span class="k">created</span><span class="v">${v?dthhmm(v.createdAt):'—'}</span></div>
+  <div class="fact-row"><span class="k">expires</span><span class="v" style="color:${v&&v.expiresAt-now()<7*86400?'var(--alert)':'inherit'}">${v?dthhmm(v.expiresAt)+' ('+until(v.expiresAt)+')':'—'}</span></div>
+  <div class="fact-row"><span class="k">exit depth</span><span class="v">${depth!=null?depth:'—'}</span></div>
+  <div class="fact-row"><span class="k">spent by</span><span class="v">${v&&v.spentByTx?`<a href="#/tx/${v.spentByTx}" style="color:var(--virt)">${mid(v.spentByTx,10)}</a>`:'unspent'}</span></div>`;
+  if(v&&v.commitmentTxid){
+    const c=COMMIT[v.commitmentTxid];
+    h+=`<div class="d-sec"><h5>Anchor</h5><div class="fact-row"><span class="k">commitment</span><span class="v"><a href="#/commitment/${v.commitmentTxid}" style="color:var(--chain)">${mid(v.commitmentTxid,12)}</a></span></div>
+    ${c?`<div class="fact-row"><span class="k">block</span><span class="v">${c.onchain.blockHeight} · ${ago(c.onchain.blockTime||c.endedAt)}</span></div>`:''}</div>`;
+  }
+  h+=`<div class="d-sec"><h5>Chain composition</h5>
+    <div class="fact-row"><span class="k">length</span><span class="v">${chain?chain.length:'—'}</span></div>
+    ${chain?`<div class="fact-row"><span class="k">ark/cp/tree/cmt</span><span class="v">${chain.counts.ark} / ${chain.counts.checkpoint} / ${chain.counts.tree} / ${chain.counts.commitment}</span></div>`:''}
+    ${chain&&chain.truncated?`<div class="fact-row"><span class="k">truncated</span><span class="v">yes (indexer compressed)</span></div>`:''}
+  </div>
+  <div class="d-actions">${watchBtnHTML('vtxo',id,v?satsShort(v.amount):'')}</div>`;
+  f.innerHTML=h;
+  f.querySelectorAll('.copybtn').forEach(b=>b.addEventListener('click',async()=>{await copyBtn(b.dataset.copy);b.innerHTML='✓';setTimeout(()=>b.innerHTML=iconCopy,1200);}));
+  f.querySelector('[data-watch]')?.addEventListener('click',e=>{const parts=e.currentTarget.dataset.watch.split(/:(.+)/);toggleWatch(parts[1],parts[2],id);e.currentTarget.outerHTML=watchBtnHTML('vtxo',id);});
+}
+
+/* ============================================================
+   COMMITMENT VIEW
+   ============================================================ */
+function renderCommitment(id){
+  const c=COMMIT[id];
+  if(!c){ renderNotFound(id,'commitment'); return; }
+  const app=$('#app');
+  app.innerHTML=`
+  <section class="commit-wrap">
+    <div>
+      <div class="sec-head"><h2>Commitment transaction</h2><span class="sub mono" style="font-size:11px">${mid(id,14)}</span>${chip(c.onchain.confirmed?'confirmed':'mempool')}</div>
+      <div class="canvas-card detail-canvas"><div class="canvas-head"><span class="micro">anchor</span><span class="hint">◆ on its block · neighbouring blocks greyed</span></div>
+        <svg class="path-svg" id="blockSvg" viewBox="0 0 900 220" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="canvas-card" style="margin-top:14px"><div class="canvas-head"><span class="micro">batch → tree</span><span class="hint">batch outputs and their merkle trees · leaf txids link to virtual txs</span></div>
+        <svg class="path-svg" id="treeSvg" viewBox="0 0 900 300" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="canvas-card" style="margin-top:14px"><div class="canvas-head"><span class="micro">on-chain io</span><span class="hint">inputs and outputs of the commitment tx itself</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0" id="ioWrap">
+          <div style="padding:14px;border-right:1px solid var(--line)"><div class="micro" style="margin-bottom:8px;color:var(--text-3)">inputs · ${c.onchain.inputCount}</div><ul class="ticklist" id="inList"></ul></div>
+          <div style="padding:14px"><div class="micro" style="margin-bottom:8px;color:var(--text-3)">outputs · ${c.onchain.outputCount}</div><ul class="ticklist" id="outList"></ul></div>
+        </div>
+      </div>
+    </div>
+    <aside class="facts" id="facts"></aside>
+  </section>`;
+  buildBlockAnchor(c);
+  buildTree(c);
+  buildIO(c);
+  buildCommitFacts(c);
+}
+function buildBlockAnchor(c){
+  const svg=$('#blockSvg');svg.innerHTML='';
+  const W=900,H=170,cy=92;
+  const h=c.onchain.blockHeight;
+  // show blocks h-3..h+3
+  const range=[];for(let i=-3;i<=3;i++)range.push(h+i);
+  const bw=80,gap=20;
+  const totalW=range.length*bw+(range.length-1)*gap;
+  let x0=(W-totalW)/2;
+  const tiles={};
+  range.forEach((hh,i)=>{
+    const x=x0+i*(bw+gap)+bw/2;
+    const known=blockByHeight.has(hh);
+    const b=blockByHeight.get(hh);
+    const isTarget=hh===h;
+    const g=svgEl('g',{transform:`translate(${x} ${cy})`,style:isTarget?'cursor:pointer':'cursor:default',opacity:known?1:.45},svg);
+    svgEl('rect',{x:-bw/2+4,y:-26,width:bw-8,height:52,rx:6,fill:isTarget?'#1A150C':'#121722',stroke:isTarget?'#F2A93B':'#2A3344','stroke-width':isTarget?1.6:1},g);
+    txt(g,0,-10,String(hh),{fs:isTarget?12:10,fill:isTarget?'#F2A93B':'#9AA4B5',anchor:'middle',weight:isTarget?600:400});
+    if(b) txt(g,0,2,hhmm(b.time),{fs:8.5,fill:'#5E6879',anchor:'middle'});
+    else txt(g,0,2,'—',{fs:8.5,fill:'#5E6879',anchor:'middle'});
+    if(b) txt(g,0,14,b.txCount?NF.format(b.txCount)+' tx':'',{fs:8,fill:'#5E6879',anchor:'middle'});
+    if(isTarget){
+      // diamond above
+      const dg=svgEl('g',{transform:'translate(0 -56)'},g);
+      diamond(dg,0,0,9,{stroke:'#F2A93B',fill:'#1A150C'});
+      txt(dg,16,3,'commitment',{fs:8.5,fill:'#F2A93B',anchor:'start'});
+      // stem
+      line(g,0,-47,0,-27,{stroke:'#F2A93B',w:1.4});
+      g.addEventListener('click',()=>location.hash='#/commitment/'+c.txid);
+      bindTip(g,`<div class="tt">block ${hh}</div><div class="tx">${mid(c.txid)}</div><div style="margin-top:4px">${b?hhmm(b.time)+' · '+NF.format(b.txCount)+' tx':''} · ${c.onchain.confirmations} conf</div>`,e=>[e.clientX,e.clientY]);
+    }
+    tiles[hh]=g;
+  });
+  // time axis hint
+  txt(svg,W/2,H-8,'neighbouring blocks greyed · diamond = commitment anchor',{fs:9,fill:'#5E6879',anchor:'middle'});
+}
+function buildTree(c){
+  const svg=$('#treeSvg');svg.innerHTML='';
+  const W=900;
+  const batches=c.batches||[];
+  const trees=c.trees||{};
+  // columns: aux (connectors/forfeits) | batch | tree root | leaves
+  const ax=70, bx=210, tx=430, lx=680;
+  const rowH=64;
+  let y=44;
+  const edge='#3A4557';
+  // aux nodes (connectors + forfeits) drawn once at left, linked to first batch row
+  const auxItems=[];
+  for(let i=0;i<c.connectorCount;i++)auxItems.push({kind:'connector',i});
+  for(const f of c.forfeitTxids||[])auxItems.push({kind:'forfeit',txid:f});
+  // compute total height
+  let totalH=60;
+  for(const b of batches){
+    const leaves=trees[String(b.vout)]||trees[b.vout]||[];
+    totalH+=Math.max(rowH, 30+leaves.length*34);
+  }
+  if(auxItems.length) totalH=Math.max(totalH, auxItems.length*24+50);
+  const H=Math.max(240,totalH+30);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.setAttribute('height',H);
+  // draw aux column
+  if(auxItems.length){
+    txt(svg,ax,20,'commit aux',{fs:8,fill:'#5E6879',anchor:'middle'});
+    auxItems.forEach((a,i)=>{
+      const ay=50+i*24;
+      const g=svgEl('g',{transform:`translate(${ax} ${ay})`,style:a.kind==='forfeit'?'cursor:pointer':'default'},svg);
+      if(a.kind==='connector'){
+        svgEl('circle',{r:5,fill:'none',stroke:'#6C7BD9','stroke-width':1.3},g);
+        svgEl('circle',{r:1.6,fill:'#6C7BD9'},g);
+        txt(g,12,3,'connector',{fs:8.5,fill:'#9AA4B5'});
+      }else{
+        svgEl('path',{d:'M-4 -4 L4 4 M4 -4 L-4 4',stroke:'#FF6464','stroke-width':1.5},g);
+        txt(g,12,3,'forfeit '+mid(a.txid,6),{fs:8.5,fill:'#FF6464'});
+        g.addEventListener('click',()=>window.open('https://mempool.space/tx/'+a.txid,'_blank'));
+        bindTip(g,`<div class="tt">forfeit tx</div><div class="tx">${a.txid}</div><div style="margin-top:4px">operator claim path if a VTXO expires in the exit window</div>`,e=>[e.clientX,e.clientY]);
+      }
+      // link to first batch row center
+      const firstBatchY=y+ (batches.length? Math.min(rowH,30+(trees[String(batches[0].vout)]||trees[batches[0].vout]||[]).length*34)/2 :0);
+      line(svg,ax+18,ay,bx-14,firstBatchY,{stroke:edge,w:.8,dash:'2 3',o:.6});
+    });
+  }
+  // batches
+  for(const b of batches){
+    const vout=b.vout;
+    const leaves=trees[String(vout)]||trees[vout]||[];
+    const cy=y+ (leaves.length? (leaves.length*34)/2 : rowH/2);
+    // batch node
+    const g=svgEl('g',{transform:`translate(${bx} ${cy})`},svg);
+    svgEl('rect',{x:-8,y:-8,width:16,height:16,rx:2,fill:'#10182B',stroke:'#F2A93B','stroke-width':1.4},g);
+    txt(g,20,-2,'batch vout '+vout,{fs:10.5,fill:'#E6EAF2'});
+    txt(g,20,10,sats(b.amount)+' · '+b.vtxoCount+' vtxo'+(b.vtxoCount===1?'':'s')+(b.swept?' · swept':''),{fs:8.5,fill:b.swept?'#FF6464':'#5E6879'});
+    txt(g,20,21,'expires '+(b.expiresAt?until(b.expiresAt):'—'),{fs:8,fill:'#5E6879'});
+    bindTip(g,`<div class="tt">batch output vout ${vout}</div><div style="margin-top:4px">${sats(b.amount)} · ${b.vtxoCount} VTXOs${b.swept?' · swept':''}</div>`,e=>[e.clientX,e.clientY]);
+    if(leaves.length){
+      // tree root
+      const rootY=cy;
+      const tg=svgEl('g',{transform:`translate(${tx} ${rootY})`},svg);
+      svgEl('path',{d:'M-9 -8 L0 -15 L9 -8 L0 -1 Z',fill:'#10182B',stroke:'#9AA4B5','stroke-width':1.3},tg);
+      // labels below the node so leaf connectors never strike through them
+      txt(tg,14,11,'tree root',{fs:8.5,fill:'#9AA4B5'});
+      txt(tg,14,21,leaves.length===1?'single leaf':leaves.length+' leaves',{fs:8,fill:'#5E6879'});
+      line(svg,bx+10,cy,tx-12,cy,{stroke:edge,w:1.2});
+      // leaves fan out vertically around root
+      const spread=Math.min(120,(leaves.length-1)*34);
+      leaves.forEach((leaf,li)=>{
+        const ly=rootY-spread/2+li*(leaves.length>1?spread/(leaves.length-1):0);
+        // connector root->leaf
+        line(svg,tx+11,ly-6,lx-14,ly,{stroke:edge,w:1});
+        // leaf vtxo circle
+        const lg=svgEl('g',{transform:`translate(${lx} ${ly})`,style:'cursor:pointer'},svg);
+        vtxoCircle(lg,0,0,8,{ring:null,label:''});
+        txt(lg,0,22,mid(leaf.txid,9),{fs:9,fill:'#E6EAF2',anchor:'middle'});
+        const vt=VTX[leaf.txid];
+        txt(lg,0,33,vt?vt.kind+' · '+vt.state:'vtxo tx',{fs:8,fill:'#5E6879',anchor:'middle'});
+        bindTip(lg,`<div class="tt">tree leaf · vtxo tx</div><div class="tx">${leaf.txid}</div>${vt?'<div style="margin-top:4px">'+esc(vt.kind)+' · '+chip(vt.state)+'</div>':''}`,e=>[e.clientX,e.clientY]);
+        lg.addEventListener('click',()=>{ if(VTX[leaf.txid]) location.hash='#/tx/'+leaf.txid; else window.open('https://mempool.space/tx/'+leaf.txid,'_blank'); });
+      });
+    } else {
+      txt(svg,tx,cy,'no tree data',{fs:9,fill:'#5E6879',anchor:'middle'});
+      line(svg,bx+10,cy,tx-12,cy,{stroke:edge,w:1.2});
+    }
+    y+=Math.max(rowH,30+leaves.length*34)+18;
+  }
+  if(!batches.length) txt(svg,W/2,H/2,'no batch outputs',{fs:11,fill:'#5E6879',anchor:'middle'});
+  txt(svg,W/2,H-8,'batch → tree root → leaf VTXO txs · leaf txids link to virtual txs',{fs:8.5,fill:'#5E6879',anchor:'middle'});
+}
+function buildIO(c){
+  const ins=c.onchain.inputs||[],outs=c.onchain.outputs||[];
+  $('#inList').innerHTML=ins.map(i=>`<li><span class="mono" style="word-break:break-all">${mid(i.txid,10)}:${i.vout}</span><span class="amt">${sats(i.amount)}</span></li>`).join('')||'<li style="color:var(--text-3)">none</li>';
+  $('#outList').innerHTML=outs.map(o=>`<li><span class="mono">vout ${o.vout} · ${esc(o.type||'')}</span><span class="amt">${sats(o.amount)}</span></li>`).join('')||'<li style="color:var(--text-3)">none</li>';
+}
+function buildCommitFacts(c){
+  const f=$('#facts');
+  const oc=c.onchain;
+  const durS=(c.endedAt-c.startedAt);
+  let h=`<h3>Commitment</h3>
+  <div class="fact-hero"><div class="big">${satsShort(c.totalOutputAmount||oc.inputs.reduce((s,i)=>s+i.amount,0))}</div><div class="lbl">batch output value</div></div>
+  <div class="fact-row"><span class="k">state</span><span class="v">${chip(oc.confirmed?'confirmed':'mempool')} · ${oc.confirmations} conf</span></div>
+  <div class="fact-row"><span class="k">block</span><span class="v">${oc.blockHeight} · ${dthhmm(oc.blockTime||c.endedAt)}</span></div>
+  <div class="fact-row"><span class="k">session</span><span class="v">${durExact(durS)} (${dthhmm(c.startedAt)} → ${dthhmm(c.endedAt).slice(6)})</span></div>
+  <div class="fact-row"><span class="k">vtxos in</span><span class="v">${c.totalInputVtxos}</span></div>
+  <div class="fact-row"><span class="k">batches</span><span class="v">${c.batches.length}</span></div>
+  <div class="fact-row"><span class="k">connectors</span><span class="v">${c.connectorCount}</span></div>
+  <div class="fact-row"><span class="k">forfeits</span><span class="v">${c.forfeitCount}</span></div>
+  <div class="fact-row"><span class="k">fee</span><span class="v">${sats(oc.fee)} · ${oc.vsize} vB · ${oc.feeRate} sat/vB</span></div>
+  <div class="fact-row"><span class="k">weight/size</span><span class="v">${oc.weight} WU · ${oc.size} B</span></div>
+  <div class="d-sec"><h5>Identifiers</h5>
+    <div class="fact-row"><span class="k">txid</span><span class="v">${mid(c.txid,14)}<button class="copybtn" data-copy="${c.txid}" aria-label="Copy" title="Copy">${iconCopy}</button></span></div>
+    <div class="fact-row"><span class="k">block hash</span><span class="v">${mid(oc.blockHash||'',14)}<button class="copybtn" data-copy="${oc.blockHash||''}" aria-label="Copy" title="Copy">${iconCopy}</button></span></div>
+  </div>
+  <div class="d-actions"><a href="https://mempool.space/tx/${c.txid}" target="_blank" rel="noopener">mempool.space ↗</a></div>`;
+  f.innerHTML=h;
+  f.querySelectorAll('.copybtn').forEach(b=>b.addEventListener('click',async()=>{await copyBtn(b.dataset.copy);b.innerHTML='✓';setTimeout(()=>b.innerHTML=iconCopy,1200);}));
+}
+
+/* ============================================================
+   ADDRESS VIEW — constellation
+   ============================================================ */
+function renderAddress(id){
+  let a=ADDR[id];
+  let partial=false;
+  if(!a){
+    // synthesize partial from virtualTxs inputs/outputs
+    const hits=[];
+    for(const t of Object.values(VTX)){
+      for(const i of t.inputs) if(i.address===id) hits.push({t,out:i.vtxo,outpoint:i.outpoint});
+      for(const o of t.outputs) if(o.address===id&&o.vtxo) hits.push({t,out:o.vtxo,outpoint:o.vtxo.outpoint});
+    }
+    if(!hits.length){ renderNotFound(id,'address'); return; }
+    partial=true;
+    a={address:id,totalVtxos:new Set(hits.map(h=>h.outpoint)).size,listedVtxos:hits.length,vtxos:hits.map(h=>({...h.out,spentByTx:h.out.spentByTx})),summary:null};
+  }
+  // partial synth may still see the same outpoint twice (input + output views) — dedupe only that case
+  if(partial&&a&&a.vtxos){
+    const seen=new Set();
+    a={...a,vtxos:a.vtxos.filter(v=>{const k=v.outpoint;if(seen.has(k))return false;seen.add(k);return true;})};
+  }
+  const app=$('#app');
+  const sum=a.summary;
+  const nearest=sum?sum.nearestExpiry:null;
+  app.innerHTML=`
+  <section class="addr-wrap">
+    <div>
+      <div class="sec-head"><h2>Address</h2><span class="sub mono" style="font-size:11px">${mid(id,20)}</span>${partial?'<span class="chip">partial</span>':''}</div>
+      <div class="canvas-card detail-canvas"><div class="canvas-head"><span class="micro">constellation</span><span class="hint">VTXOs clustered by commitment ◆ · ring = lifetime left · coral = exit window · faint = spent</span></div>
+        <svg class="const-svg" id="constSvg" viewBox="0 0 800 560" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="canvas-card" style="margin-top:14px"><div class="canvas-head"><span class="micro">vtxos</span><span class="hint">sorted by urgency · ${a.vtxos.length} of ${NF.format(a.totalVtxos)} listed${partial?' · synthesized from snapshot':''}</span></div>
+        <div class="table-wrap" style="border:0;border-radius:0"><table class="vtxo-table"><thead><tr><th>Outpoint</th><th>Amount</th><th>State</th><th>Expires</th><th>Commitment</th></tr></thead><tbody id="vtxoBody"></tbody></table></div>
+      </div>
+    </div>
+    <aside class="facts" id="facts"></aside>
+  </section>`;
+  buildConstellation(a);
+  buildVtxoTable(a);
+  buildAddrFacts(a,partial);
+}
+function buildConstellation(a){
+  const svg=$('#constSvg');svg.innerHTML='';
+  const W=800,H=560;
+  const vtxos=a.vtxos||[];
+  const clusters=new Map();
+  for(const v of vtxos){
+    const key=v.commitmentTxid||'none';
+    if(!clusters.has(key))clusters.set(key,[]);
+    clusters.get(key).push(v);
+  }
+  const spentStates=new Set(['spent','swept','refreshed','expired']);
+  // clusters needing action (renew/expired inside) sort first, then by live count
+  const urgencyOf=vs=>vs.some(v=>v.state==='renew'||v.state==='expired')?0:1;
+  const cl=[...clusters.entries()].sort((x,y)=>{
+    const d=urgencyOf(x[1])-urgencyOf(y[1]); if(d)return d;
+    const lx=x[1].filter(v=>!spentStates.has(v.state)).length, ly=y[1].filter(v=>!spentStates.has(v.state)).length;
+    return ly-lx;
+  });
+  const n=cl.length;
+  const cols=n<=3?n: n<=6?3:4;
+  const rows=Math.ceil(n/cols);
+  const cw=W/cols, ch=(H-64)/rows;
+  const edge='#232B3B';
+  cl.forEach(([cid,vs],idx)=>{
+    const col=idx%cols,row=Math.floor(idx/cols);
+    const cx=cw*col+cw/2;
+    const cellTop=56+ch*row;
+    const cellBot=cellTop+ch;
+    const dead=vs.every(v=>spentStates.has(v.state));
+    // anchor diamond centered above each cluster + one compact label line
+    const c=cid!=='none'?COMMIT[cid]:null;
+    const lblY=cellTop+22;
+    if(cid!=='none'){
+      const dg=diamond(svg,cx,cellTop+9,4.5,{stroke:'#F2A93B',fill:'#1A150C',w:1});
+      dg.style.cursor='pointer';
+      dg.addEventListener('click',()=>location.hash='#/commitment/'+cid);
+      bindTip(dg,`<div class="tt">commitment cluster</div><div class="tx">${cid}</div><div style="margin-top:4px">${vs.length} VTXOs</div>`,e=>[e.clientX,e.clientY]);
+      txt(svg,cx,lblY,`${mid(cid,6)}${c&&c.onchain.blockHeight?' · blk '+c.onchain.blockHeight:''} · ×${vs.length}${dead?' · history':''}`,{fs:8,fill:'#9AA4B5',anchor:'middle'});
+    }else{
+      txt(svg,cx,lblY,`unanchored · ×${vs.length}${dead?' · history':''}`,{fs:8,fill:'#5E6879',anchor:'middle'});
+    }
+    // cluster sits below the label line with consistent spacing
+    const availBot=cellBot-8, availTop=lblY+12;
+    const cy=availTop+(availBot-availTop)/2;
+    const maxR=Math.min(cw*0.44,(availBot-availTop)*0.52,Math.min(cw,ch)*0.36);
+    const baseR=Math.max(26,Math.min(maxR,22+Math.sqrt(vs.length)*6));
+    const golden=2.39996;
+    const smallN=vs.length<=4;
+    // live rings pack the center, dead/spent rings dim on the rim
+    vs.sort((p,q)=>(spentStates.has(p.state)?1:0)-(spentStates.has(q.state)?1:0)||(p.expiresAt||0)-(q.expiresAt||0));
+    // ring radius tiers keep dense clusters legible inside the fixed cell
+    const cr=vs.length>18?4.5:vs.length>8?5.5:7;
+    vs.forEach((v,i)=>{
+      const t=i+0.5;
+      let x,y;
+      if(vs.length===1){ x=cx; y=cy; }
+      else if(smallN){
+        // tiny clusters: even angular spacing on a compact ring
+        const ang=-Math.PI/2+i*(Math.PI*2/vs.length), rr=baseR*0.5;
+        x=cx+Math.cos(ang)*rr; y=cy+Math.sin(ang)*rr*0.85;
+      }else{
+        // phyllotaxis disk — uniform density, no overlaps
+        const ang=i*golden-Math.PI/2, rr=baseR*Math.sqrt(t/vs.length)*0.9;
+        x=cx+Math.cos(ang)*rr; y=cy+Math.sin(ang)*rr;
+      }
+      const isDead=spentStates.has(v.state);
+      const frac=v.expiresAt&&v.createdAt?Math.max(0,Math.min(1,(v.expiresAt-now())/(v.expiresAt-v.createdAt||1))):null;
+      const alert=v.state==='renew'||v.state==='expired';
+      const g=svgEl('g',{transform:`translate(${x} ${y})`,style:'cursor:pointer',opacity:isDead?0.4:1},svg);
+      if(frac!=null&&!isDead){
+        const circ=2*Math.PI*(cr+2);
+        svgEl('circle',{r:cr+2,fill:'none',stroke:'#1E2532','stroke-width':1.6},g);
+        svgEl('circle',{r:cr+2,fill:'none',stroke:alert?'#FF6464':'#5ED6AE','stroke-width':1.6,'stroke-linecap':'round','stroke-dasharray':`${circ*Math.max(0.03,frac)} ${circ}`,'transform':'rotate(-90)'},g);
+      }
+      svgEl('circle',{r:cr,fill:isDead?'#0E1118':'#10182B',stroke:alert?'#FF6464':isDead?'#2A3344':'#E6EAF2','stroke-width':1.2,'stroke-dasharray':isDead?'2 2':'0'},g);
+      if(alert&&!isDead)svgEl('circle',{r:cr+3.5,fill:'none',stroke:'#FF6464','stroke-width':1},g);
+      if(cid!=='none')line(svg,cx,cy-8,x,y,{stroke:edge,w:.5,o:.4});
+      bindTip(g,`<div class="tt">vtxo · ${esc(v.state)}</div><div class="tx">${mid(v.outpoint,16)}</div><div style="margin-top:4px">${sats(v.amount)} · expires ${v.expiresAt?until(v.expiresAt):'—'}</div>`,e=>[e.clientX,e.clientY]);
+      g.addEventListener('click',()=>location.hash='#/vtxo/'+encodeURIComponent(v.outpoint));
+    });
+  });
+  txt(svg,W/2,H-10,'clusters = commitment anchors · ring arc = lifetime remaining · coral = exit window · dashed/faint = spent',{fs:9.5,fill:'#6B7686',anchor:'middle'});
+}
+function vs_count(vs){return vs.length;}
+function buildVtxoTable(a){
+  const tb=$('#vtxoBody');
+  const urgency=v=>{
+    if(v.state==='renew')return 0; if(v.state==='expired')return 1;
+    if(v.state==='preconfirmed')return 2; if(v.state==='settled')return 3;
+    if(v.state==='refreshed')return 4; return 5;
+  };
+  const sorted=[...(a.vtxos||[])].sort((x,y)=>urgency(x)-urgency(y)||(x.expiresAt||1e15)-(y.expiresAt||1e15));
+  tb.innerHTML=sorted.slice(0,120).map(v=>{
+    const cid=v.commitmentTxid;
+    return `<tr data-op="${esc(v.outpoint)}">
+      <td style="word-break:break-all">${mid(v.outpoint,12)}</td>
+      <td>${sats(v.amount)}</td>
+      <td>${chip(v.state)}</td>
+      <td style="color:${v.expiresAt&&v.expiresAt-now()<7*86400?'var(--alert)':'var(--text-2)'}">${v.expiresAt?dthhmm(v.expiresAt)+' · '+until(v.expiresAt):'—'}</td>
+      <td>${cid?`<a href="#/commitment/${cid}" class="mono" style="color:var(--chain);font-size:10px">${mid(cid,7)}</a>`:'—'}</td>
+    </tr>`;
+  }).join('');
+  tb.querySelectorAll('tr').forEach(tr=>tr.addEventListener('click',()=>location.hash='#/vtxo/'+encodeURIComponent(tr.dataset.op)));
+}
+function buildAddrFacts(a,partial){
+  const f=$('#facts');
+  const s=a.summary;
+  const nearest=s?s.nearestExpiry:null;
+  let h=`<h3>Address</h3>
+  <div class="fact-hero"><div class="big">${s?satsShort(s.spendable+s.renew+(s.expired||0)):'—'}</div><div class="lbl">unspent</div></div>
+  <div class="fact-row"><span class="k">total vtxos</span><span class="v">${NF.format(a.totalVtxos)}${a.vtxos.length<a.totalVtxos?' <span style="color:var(--text-3)">('+a.vtxos.length+' listed)</span>':''}</span></div>
+  ${s?`
+  <div class="fact-row"><span class="k">healthy</span><span class="v">${sats(s.spendable)}</span></div>
+  <div class="fact-row"><span class="k">in exit window</span><span class="v" style="color:${s.renew?'var(--alert)':'inherit'}">${s.renew?sats(s.renew)+' · '+s.counts.renew+' vtxo'+(s.counts.renew===1?'':'s'):s.counts.renew+' vtxos'}</span></div>
+  <div class="fact-row"><span class="k">expired</span><span class="v">${s.expired?sats(s.expired):'0'}</span></div>
+  <div class="fact-row"><span class="k">received</span><span class="v">${sats(s.received)}</span></div>
+  `:''}
+  ${nearest?`<div class="fact-row"><span class="k">nearest expiry</span><span class="v" style="color:${nearest-now()<7*86400?'var(--alert)':'inherit'}">${dthhmm(nearest)} · ${until(nearest)}</span></div>`:''}
+  ${partial?'<div class="hint" style="margin-top:8px;font-size:11px;color:var(--text-3)">Partial view — synthesized from transactions in this snapshot; the operator index was not queried for this address.</div>':''}
+  ${s&&s.renew?`<div class="needs-card"><div class="ttl">⚠ needs action</div><div class="txt">${s.counts.renew} VTXO${s.counts.renew===1?'':'s'} inside the exit window — renew before expiry or they can be swept.</div><div class="when">nearest expiry ${until(nearest)}</div></div>`:''}
+  <div class="d-sec"><h5>Script</h5><div class="fact-row"><span class="k">script</span><span class="v" style="font-size:10px">${esc(a.script||'')}</span></div></div>
+  <div class="d-actions">${watchBtnHTML('address',a.address,a.address.slice(0,12))}<button class="watchbtn" id="copyAddr" style="border-style:dashed">copy address</button></div>`;
+  f.innerHTML=h;
+  f.querySelector('#copyAddr')?.addEventListener('click',async()=>{await copyBtn(a.address);f.querySelector('#copyAddr').textContent='copied ✓';setTimeout(()=>f.querySelector('#copyAddr').textContent='copy address',1200);});
+  f.querySelector('[data-watch]')?.addEventListener('click',e=>{const parts=e.currentTarget.dataset.watch.split(/:(.+)/);toggleWatch(parts[1],parts[2],a.address.slice(0,12));e.currentTarget.outerHTML=watchBtnHTML('address',a.address);});
+}
+
+/* ============================================================
+   NOT FOUND
+   ============================================================ */
+function renderNotFound(id,what){
+  $('#app').innerHTML=`<div class="notfound">
+    <h1>Not in this snapshot</h1>
+    <p>The ${esc(what)} <span class="mono">${esc(mid(id,20))}</span> isn't in the captured data pack. It may be older than the window, belong to an unobserved lane, or be mistyped.</p>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <a class="tbtn" href="https://mempool.space/tx/${esc(id)}" target="_blank" rel="noopener">mempool.space ↗</a>
+      <a class="tbtn" href="#/">Back to overview</a>
+    </div>
+    <div style="margin-top:18px"><input id="nfSearch" placeholder="try another txid or address" style="width:100%;max-width:380px;height:36px;padding:0 12px;background:var(--panel);border:1px solid var(--line-2);border-radius:7px;font-family:var(--mono);font-size:12px" autofocus></div>
+  </div>`;
+  $('#nfSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter'){doSearch(e.target.value);}});
+}
+
+/* ============================================================
+   SEARCH / OMNIBOX
+   ============================================================ */
+const searchInput=$('#searchInput'),suggest=$('#suggest');
+let sugSel=-1,sugItems=[];
+function detectType(q){
+  q=q.trim();
+  if(/^[0-9a-fA-F]{64}$/.test(q)) return {type:'txid',q};
+  if(/^[0-9a-fA-F]{64}:[0-9]+$/.test(q)) return {type:'vtxo',q};
+  if(/^ark1[a-z0-9]+$/.test(q)) return {type:'address',q};
+  if(/^[0-9a-fA-F]{20,}$/.test(q)&&q.length<64) return {type:'script',q};
+  if(/^[0-9]{4,7}$/.test(q)) return {type:'block',q:+q};
+  return {type:'text',q};
+}
+function doSearch(q){
+  q=(q||'').trim(); if(!q)return;
+  const d=detectType(q);
+  if(d.type==='txid'){
+    if(VTX[d.q]) location.hash='#/tx/'+d.q;
+    else if(COMMIT[d.q]) location.hash='#/commitment/'+d.q;
+    else location.hash='#/tx/'+d.q; // will render not-found with mempool link
+  } else if(d.type==='vtxo'){
+    location.hash='#/vtxo/'+d.q;
+  } else if(d.type==='address'){
+    location.hash='#/address/'+encodeURIComponent(d.q);
+  } else if(d.type==='block'){
+    const b=blockByHeight.get(d.q)||D.chain.blocks.find(x=>Math.abs(x.height-d.q)<3);
+    if(b) location.hash='#/commitment/'+(Object.values(COMMIT).find(c=>c.onchain.blockHeight===b.height)?.txid||'')||'#/';
+    else location.hash='#/';
+  } else {
+    // try partial match suggestions
+    const hits=suggestItems(q).slice(0,1);
+    if(hits.length) navigateHit(hits[0]); else suggest.innerHTML='';
+  }
+  suggest.innerHTML='';searchInput.blur();
+}
+function navigateHit(h){
+  if(h.kind==='tx')location.hash='#/tx/'+h.id;
+  else if(h.kind==='commit')location.hash='#/commitment/'+h.id;
+  else if(h.kind==='addr')location.hash='#/address/'+encodeURIComponent(h.id);
+  else if(h.kind==='vtxo')location.hash='#/vtxo/'+h.id;
+  else if(h.kind==='block'){const c=Object.values(COMMIT).find(x=>x.onchain.blockHeight===h.id);location.hash=c?'#/commitment/'+c.txid:'#/';}
+}
+function suggestItems(q){
+  q=q.toLowerCase();const out=[];
+  if(q.length<2)return out;
+  for(const id of Object.keys(VTX)) if(id.toLowerCase().includes(q)) out.push({kind:'tx',id,label:VTX[id].kind+' · '+VTX[id].state});
+  for(const id of Object.keys(COMMIT)) if(id.toLowerCase().includes(q)) out.push({kind:'commit',id,label:'commitment · blk '+COMMIT[id].onchain.blockHeight});
+  for(const id of Object.keys(ADDR)) if(id.toLowerCase().includes(q)) out.push({kind:'addr',id,label:'address · '+ADDR[id].totalVtxos+' vtxos'});
+  for(const id of Object.keys(CHAIN)) if(id.toLowerCase().includes(q)) out.push({kind:'vtxo',id,label:'vtxo · depth '+(CHAIN[id].length-CHAIN[id].counts.commitment)});
+  for(const b of D.chain.blocks) if(String(b.height).includes(q)) out.push({kind:'block',id:b.height,label:'block · '+hhmm(b.time)});
+  return out.slice(0,9);
+}
+function renderSuggest(){
+  const q=searchInput.value.trim();
+  sugItems=suggestItems(q);sugSel=-1;
+  if(!q||detectType(q).type!=='text'&&q.length>=4&&!['txid','vtxo','address','block','script'].includes(detectType(q).type)){suggest.innerHTML='';return;}
+  if(!sugItems.length){suggest.innerHTML='';return;}
+  suggest.innerHTML=sugItems.map((s,i)=>`<button class="sug" role="option" data-i="${i}"><span class="k">${s.kind}</span><span class="v">${esc(s.id)}</span><span style="color:var(--text-3);font-size:10.5px;margin-left:auto">${esc(s.label)}</span></button>`).join('');
+  $$('.sug',suggest).forEach(b=>{
+    b.addEventListener('click',()=>navigateHit(sugItems[+b.dataset.i]));
+    b.addEventListener('pointerenter',()=>{sugSel=+b.dataset.i;$$('.sug',suggest).forEach(x=>x.classList.toggle('sel',+x.dataset.i===sugSel));});
+  });
+}
+searchInput.addEventListener('input',renderSuggest);
+searchInput.addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'){e.preventDefault();sugSel=Math.min(sugSel+1,sugItems.length-1);$$('.sug',suggest).forEach((x,i)=>x.classList.toggle('sel',i===sugSel));}
+  else if(e.key==='ArrowUp'){e.preventDefault();sugSel=Math.max(sugSel-1,0);$$('.sug',suggest).forEach((x,i)=>x.classList.toggle('sel',i===sugSel));}
+  else if(e.key==='Enter'){e.preventDefault();if(sugSel>=0&&sugItems[sugSel])navigateHit(sugItems[sugSel]);else doSearch(searchInput.value);}
+  else if(e.key==='Escape'){suggest.innerHTML='';}
+});
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('.search-wrap'))suggest.innerHTML='';});
+addEventListener('keydown',e=>{if(e.key==='/'&&document.activeElement!==searchInput&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){e.preventDefault();searchInput.focus();}});
+
+/* close jargon popovers on outside click */
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('.jarg'))$$('.pop.open').forEach(x=>x.classList.remove('open'));});
+
+/* inspector close button delegation */
+inspector.addEventListener('click',e=>{if(e.target.classList.contains('d-x')||e.target.id==='dClose')closeDrawer();});
+
+/* openInspector with close btn helper */
+const _openInspector=openInspector;
+openInspector=function(html){_openInspector(`<button class="d-x" id="dClose" aria-label="Close inspector" style="position:absolute;top:14px;right:14px">✕</button>`+html);};
+
+/* atlas node click → inspector for non-routable? Actually nodes route directly. Keep drawer for blocks without commitment. */
+
+/* boot */
+route();
+</script>
+</body>
+</html>
