@@ -4,51 +4,49 @@
 [data-theme="midnight"] {
     color-scheme: dark;
 
-    --background: 220 29% 6%; /* #0b0e14 */
-    --foreground: 220 32% 93%; /* #e6eaf2 */
+    --background: 222 20% 8%;
+    --foreground: 220 20% 94%;
 
-    --card: 221 31% 10%; /* #121722 panel */
-    --card-foreground: 220 32% 93%;
-    --popover: 221 31% 10%;
-    --popover-foreground: 220 32% 93%;
+    --card: 222 18% 12%;
+    --card-foreground: 220 20% 94%;
+    --popover: 222 18% 12%;
+    --popover-foreground: 220 20% 94%;
 
-    --primary: 218 100% 78%; /* #8fb8ff ice */
-    --primary-foreground: 220 29% 6%;
+    --primary: 215 90% 78%;
+    --primary-foreground: 222 20% 8%;
 
-    --secondary: 220 29% 12%; /* #161c28 panel-2 */
-    --secondary-foreground: 220 32% 93%;
+    --secondary: 222 16% 16%;
+    --secondary-foreground: 220 20% 94%;
 
-    --muted: 220 29% 12%;
-    --muted-foreground: 218 15% 66%; /* #9aa4b5 */
+    --muted: 222 16% 16%;
+    --muted-foreground: 216 14% 76%;
 
-    --accent: 216 36% 14%; /* #16202f selected */
-    --accent-foreground: 218 100% 78%;
+    --accent: 218 28% 20%;
+    --accent-foreground: 215 90% 78%;
 
-    --destructive: 0 100% 70%; /* #ff6464 coral */
-    --destructive-foreground: 220 29% 6%;
+    --destructive: 0 100% 78%;
+    --destructive-foreground: 222 20% 8%;
 
-    --border: 219 25% 16%; /* #1e2532 */
-    --input: 219 24% 22%; /* #2a3344 */
-    --ring: 218 100% 78%;
+    --border: 222 16% 26%;
+    --input: 216 12% 54%;
+    --ring: 215 90% 78%;
 
     --radius: 0.5rem;
 
-    --surface-elevated: 220 29% 12%;
-    --surface-sunken: 220 29% 8%; /* #0f131b */
+    --surface-elevated: 222 16% 16%;
+    --surface-sunken: 222 20% 10%;
 
-    --success: 160 59% 60%; /* #5ed6ae mint */
-    --warning: 45 90% 62%;
+    --success: 160 55% 70%;
+    --warning: 42 90% 70%;
 
-    /* In-flight exit step: must read distinct from success, warning and
-       destructive at a glance. */
-    --exit-flight: 218 100% 78%;
+    --exit-flight: 215 90% 78%;
 
-    /* Atlas layers */
-    --chain: 36 88% 59%; /* #f2a93b */
-    --virt: 218 100% 78%; /* #8fb8ff */
-    --cp: 232 59% 64%; /* #6c7bd9 */
-    --faint: 219 13% 54%; /* #7a8599, AA on background and panel */
-    --line-strong: 219 24% 22%;
-    --canvas: 220 29% 8%;
-    --grid: 220 29% 12%;
+    /* Layer accents are reserved for meaningful data, not general body text. */
+    --chain: 38 90% 70%;
+    --virt: 215 90% 78%;
+    --cp: 230 75% 78%;
+    --faint: 216 12% 70%;
+    --line-strong: 216 12% 54%;
+    --canvas: 222 20% 10%;
+    --grid: 222 16% 20%;
 }

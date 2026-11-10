@@ -3,9 +3,9 @@
 @import "./themes/midnight.css";
 
 @layer base {
-    /* Atlas type: Instrument Sans for UI, Martian Mono for ids, amounts and
-       micro-labels. Both SIL OFL 1.1, bundled through Vite so a sub-path
-       deploy (VITE_BASE_PATH) resolves them. */
+    /* Atlas type: Instrument Sans for UI and supporting labels, Martian Mono
+       for identifiers and amounts. Both SIL OFL 1.1, bundled through Vite so
+       sub-path deployments (VITE_BASE_PATH) resolve them. */
     @font-face {
         font-family: "Instrument Sans";
         src: url("./assets/fonts/instrument-sans-var.woff2") format("woff2");
@@ -34,8 +34,8 @@
             system-ui,
             -apple-system,
             sans-serif;
-        font-size: 14px;
-        line-height: 1.45;
+        font-size: 16px;
+        line-height: 1.6;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
@@ -115,23 +115,8 @@
     --color-exit-line: hsl(var(--border));
     --color-exit-ink: hsl(var(--foreground));
     --color-exit-ink-dim: hsl(var(--muted-foreground));
-    /* Blended toward the background so the faintest tier stays a step below
-       ink-dim in both themes, instead of collapsing into it.
-
-       color-mix() needs Chrome 111+ / Firefox 113+ / Safari 16.2+. A custom
-       property still parses on older browsers — it holds an arbitrary token
-       stream — so this fails at *use* time instead, as invalid-at-computed-
-       value-time. That resolves differently per property: `color` falls back to
-       the inherited value, so faint text renders more prominent than intended;
-       `background-color` falls back to its initial `transparent`, so the
-       pending/skipped step dot disappears. Both are cosmetic and the adjacent
-       text label still names the state, which is why this is tolerable here —
-       but it is the reason nothing load-bearing may depend on color-mix(). */
-    --color-exit-ink-faint: color-mix(
-        in oklab,
-        hsl(var(--muted-foreground)) 70%,
-        hsl(var(--background))
-    );
+    /* Supporting text must retain AA contrast, including inside nested panels. */
+    --color-exit-ink-faint: hsl(var(--faint));
     --color-exit-signal: hsl(var(--primary));
     --color-exit-signal-ink: hsl(var(--primary-foreground));
     --color-exit-ok: hsl(var(--success));
@@ -154,20 +139,19 @@
         sans-serif;
 }
 
-/* Martian Mono is wide; every mono run (ids, amounts, exit-ui's MONO) uses the
-   87.5% width so dense rows keep their measure. */
+/* Keep identifiers at their natural width; compression hurts small-text readability. */
 @utility font-mono {
     font-family: "Martian Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-stretch: 87.5%;
+    font-stretch: 100%;
 }
 
-/* Uppercase mono micro-label used for section heads, legends and table heads. */
+/* Supporting labels use the UI face; monospace is reserved for data. */
 @utility micro {
-    font-family: "Martian Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-stretch: 87.5%;
-    font-size: 10px;
-    line-height: 1.4;
-    letter-spacing: 0.06em;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
 }
 

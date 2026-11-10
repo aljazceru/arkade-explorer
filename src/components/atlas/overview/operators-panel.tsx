@@ -78,13 +78,8 @@ function Stat({
 }) {
     return (
         <div className={cn("min-w-0", className)} title={title}>
-            <dt className="text-[11px] text-faint">{label}</dt>
-            <dd
-                className={cn(
-                    "mt-0.5 break-words text-[12px] text-foreground",
-                    mono && "font-mono",
-                )}
-            >
+            <dt className="text-xs text-faint">{label}</dt>
+            <dd className={cn("mt-0.5 break-words text-sm text-foreground", mono && "font-mono")}>
                 {value}
             </dd>
         </div>
@@ -305,7 +300,7 @@ function LifeBar({
                     style={{ width: `${exitPct}%` }}
                 />
             </div>
-            <div className="mt-1 flex justify-between font-mono text-[10px] text-faint">
+            <div className="mt-1 flex justify-between font-mono text-xs text-faint">
                 <span>0</span>
                 <span>{label}</span>
                 <span>{humanDuration(totalSec)}</span>
@@ -421,7 +416,7 @@ function ArkadeBlock({
         <div className="min-w-0">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 <span className="text-sm font-semibold text-foreground">Arkade</span>
-                <span className="font-mono text-[10.5px] text-faint">{version}</span>
+                <span className="font-mono text-xs text-faint">{version}</span>
                 <span className="ml-auto">
                     <SourcePill
                         mode={liveError ? "unavailable" : mode}
@@ -429,7 +424,7 @@ function ArkadeBlock({
                     />
                 </span>
             </div>
-            <p className="mt-0.5 truncate font-mono text-[10.5px] text-faint">
+            <p className="mt-0.5 truncate font-mono text-xs text-faint">
                 {ARK_URL.replace(/^https?:\/\//, "").replace(/\/$/, "")} · {network}
             </p>
 
@@ -443,14 +438,12 @@ function ArkadeBlock({
                         />
                         <LegendSwatch tone="alert" label={`exit delay ${humanDuration(exitSec)}`} />
                     </div>
-                    <p className="mt-1 text-[10px] text-faint">
+                    <p className="mt-1 text-xs text-faint">
                         {snapshotAgeLabel(snapshot?.fetched_at)}
                     </p>
                 </div>
             ) : (
-                <p className="mt-3 text-[11px] text-faint">
-                    Batch lifetime or exit delay unavailable.
-                </p>
+                <p className="mt-3 text-xs text-faint">Batch lifetime or exit delay unavailable.</p>
             )}
 
             <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
@@ -478,7 +471,7 @@ function ArkadeBlock({
                 <Stat label="life basis" value={lifeLabel} />
             </dl>
             <p
-                className="mt-2 truncate text-[11px] text-faint"
+                className="mt-2 truncate text-xs text-faint"
                 title={
                     typeof feesObj === "object" && feesObj !== null
                         ? JSON.stringify(feesObj)
@@ -487,7 +480,7 @@ function ArkadeBlock({
             >
                 fee · {feeHuman(offchainInputExpr)}
             </p>
-            <p className="mt-2 text-[10.5px] text-faint">
+            <p className="mt-2 text-xs text-faint">
                 {sourceText}
                 {hasError && <span className="text-alert"> — check connection</span>}
             </p>
@@ -582,7 +575,7 @@ function SecondBlock({
         <div className="min-w-0 border-t border-border pt-4">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 <span className="text-sm font-semibold text-foreground">Second</span>
-                <span className="font-mono text-[10.5px] text-faint">grpc</span>
+                <span className="font-mono text-xs text-faint">grpc</span>
                 <span className="ml-auto">
                     <SourcePill
                         mode={liveError ? "unavailable" : mode}
@@ -590,7 +583,7 @@ function SecondBlock({
                     />
                 </span>
             </div>
-            <p className="mt-0.5 truncate font-mono text-[10.5px] text-faint">
+            <p className="mt-0.5 truncate font-mono text-xs text-faint">
                 ark.second.tech · {network}
             </p>
 
@@ -610,7 +603,7 @@ function SecondBlock({
                     </div>
                 </div>
             ) : (
-                <p className="mt-3 text-[11px] text-faint">
+                <p className="mt-3 text-xs text-faint">
                     Lifetime parameters {mode === "loading" ? "loading…" : "unavailable"}.
                 </p>
             )}
@@ -670,11 +663,11 @@ function SecondBlock({
                 />
             </dl>
             <NextRoundInline nextRoundAt={liveNextRoundAt} />
-            <p className="mt-2 text-[10.5px] text-faint">
+            <p className="mt-2 text-xs text-faint">
                 {sourceText}
                 {hasError && <span className="text-alert"> — check connection</span>}
             </p>
-            {meanNoteText && <p className="mt-1 text-[10px] text-faint/80">{meanNoteText}</p>}
+            {meanNoteText && <p className="mt-1 text-xs text-faint">{meanNoteText}</p>}
         </div>
     );
 }
@@ -686,7 +679,7 @@ function NextRoundInline({ nextRoundAt }: { nextRoundAt: number | null }) {
     const h = Math.floor(left / 3600);
     const m = Math.floor((left % 3600) / 60);
     return (
-        <p className="mt-2 rounded-md border border-border bg-secondary/50 px-2.5 py-1.5 text-[11px] text-muted-foreground">
+        <p className="mt-2 rounded-md border border-border bg-secondary/50 px-3 py-2 text-xs text-muted-foreground">
             {left <= 0
                 ? "Reported round time passed · awaiting update"
                 : `Server-announced round · in ≈${h}h ${m}m`}
@@ -734,6 +727,7 @@ export function OperatorsPanel({
         <Panel
             title="Operators"
             subtitle="Lifetime vs. exit delay — not a safe-exit guarantee"
+            className="min-w-0"
             actions={
                 <Link
                     to="/observe"

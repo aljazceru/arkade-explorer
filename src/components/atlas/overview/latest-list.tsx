@@ -28,7 +28,7 @@ export function LatestList({
         .slice(0, 12);
 
     return (
-        <Panel title="Latest" subtitle="Newest activity across both lanes">
+        <Panel title="Latest" subtitle="Newest activity across both lanes" className="self-start">
             <ul className="divide-y divide-border">
                 {latest.length === 0 && (
                     <li className="px-4 py-6 text-center text-xs text-faint">No activity yet.</li>
@@ -79,9 +79,9 @@ export function LatestList({
                                     )}
                                 </span>
                                 <span className="min-w-0 flex-1">
-                                    <span className="block truncate text-[12.5px] text-foreground">
+                                    <span className="block truncate text-sm text-foreground">
                                         {record.typeLabel} ·{" "}
-                                        <span className="font-mono text-[11px] text-faint">
+                                        <span className="font-mono text-xs text-faint">
                                             {middleTruncate(record.txid, 9)}
                                         </span>
                                     </span>
@@ -96,12 +96,12 @@ export function LatestList({
                                         {record.network === "arkade" ? "Arkade" : "Second"}
                                     </span>
                                 </span>
-                                <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                                <span className="shrink-0 font-mono text-xs text-muted-foreground">
                                     {record.amountSat !== null
                                         ? formatSats(record.amountSat).replace(/ sats$/, "")
                                         : "—"}
                                 </span>
-                                <span className="w-14 shrink-0 text-right font-mono text-[10px] text-faint">
+                                <span className="w-16 shrink-0 text-right font-mono text-xs text-faint">
                                     {timeSec !== null ? formatRelativeTime(timeSec * 1000) : "—"}
                                 </span>
                             </button>

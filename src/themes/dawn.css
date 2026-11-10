@@ -3,49 +3,49 @@
 [data-theme="dawn"] {
     color-scheme: light;
 
-    --background: 220 43% 97%; /* #f5f7fb */
-    --foreground: 223 39% 9%; /* #0e1320 */
+    --background: 220 20% 97%;
+    --foreground: 222 28% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 223 39% 9%;
+    --card-foreground: 222 28% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 223 39% 9%;
+    --popover-foreground: 222 28% 12%;
 
-    --primary: 224 68% 52%; /* #2f5bd8 */
+    --primary: 222 65% 42%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 218 40% 96%; /* #f1f4f9 */
-    --secondary-foreground: 223 39% 9%;
+    --secondary: 220 20% 94%;
+    --secondary-foreground: 222 28% 12%;
 
-    --muted: 218 40% 96%;
-    --muted-foreground: 218 17% 35%; /* #4a5568 */
+    --muted: 220 20% 94%;
+    --muted-foreground: 218 18% 40%;
 
-    --accent: 221 70% 95%;
-    --accent-foreground: 224 68% 52%;
+    --accent: 216 45% 91%;
+    --accent-foreground: 222 65% 42%;
 
-    --destructive: 1 65% 50%; /* #d2302c */
+    --destructive: 0 65% 40%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 218 30% 89%; /* #dce2ec */
-    --input: 217 24% 81%; /* #c3ccda */
-    --ring: 224 68% 52%;
+    --border: 218 20% 82%;
+    --input: 218 14% 48%;
+    --ring: 222 65% 42%;
 
     --radius: 0.5rem;
 
     /* Elevation is expressed against the page, so elevated == card here. */
     --surface-elevated: 0 0% 100%;
-    --surface-sunken: 216 42% 95%;
+    --surface-sunken: 220 20% 94%;
 
-    --success: 160 75% 29%; /* #12805c */
-    --warning: 41 100% 30%;
+    --success: 160 70% 25%;
+    --warning: 35 85% 28%;
 
-    --exit-flight: 224 68% 52%;
+    --exit-flight: 222 65% 42%;
 
-    --chain: 36 100% 33%; /* #a86400 */
-    --virt: 224 68% 52%;
-    --cp: 235 43% 51%;
-    --faint: 218 12% 48%;
-    --line-strong: 217 24% 81%;
-    --canvas: 216 42% 95%;
-    --grid: 218 30% 89%;
+    --chain: 32 78% 30%;
+    --virt: 222 65% 42%;
+    --cp: 235 50% 44%;
+    --faint: 218 14% 42%;
+    --line-strong: 218 14% 48%;
+    --canvas: 220 20% 94%;
+    --grid: 218 20% 86%;
 }

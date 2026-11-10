@@ -481,8 +481,11 @@ export function ArkLayerCanvas({
         const w = Math.max(1, Math.min(gap - 1, 10));
         const opacity = dimFor(rels, 1);
         const isLast = index === layout.rail.length - 1;
-        // ≥64 px on screen ≈ 110 viewBox units at the 1240-wide layout.
-        const labelW = windowSec <= 6 * 3600 ? 115 : windowSec <= 24 * 3600 ? 140 : 115;
+        // Minimum horizontal distance between shown labels, in viewBox units.
+        // Heights use 12px text at the minimum 1240px canvas width; a
+        // 160-unit pitch keeps neighbouring labels from touching; the wider
+        // 24h window steps ~10 min/block (≈150 units) and needs a touch more.
+        const labelW = windowSec <= 6 * 3600 ? 160 : windowSec <= 24 * 3600 ? 190 : 160;
         const labelX = item.x;
         const lastLabelX = railLabelX.current;
         const showLabel =
@@ -576,7 +579,7 @@ export function ArkLayerCanvas({
                     />
                 )}
                 {showLabel && (
-                    <text x={0} y={17} textAnchor="middle" className="fill-faint" fontSize={7.2}>
+                    <text x={0} y={18} textAnchor="middle" className="fill-faint" fontSize={12}>
                         {item.height.toLocaleString("en-US")}
                     </text>
                 )}
@@ -611,9 +614,9 @@ export function ArkLayerCanvas({
                     y={y}
                     textAnchor="middle"
                     className="fill-faint"
-                    fontSize={7}
+                    fontSize={12}
                     stroke="var(--canvas)"
-                    strokeWidth={3.5}
+                    strokeWidth={4}
                     paintOrder="stroke"
                 >
                     {stub.text}
@@ -632,7 +635,7 @@ export function ArkLayerCanvas({
             title={
                 <span className="micro text-faint">
                     The Ark layer
-                    <span className="ml-3 font-sans text-[11px] normal-case tracking-normal text-faint/80">
+                    <span className="ml-3 font-sans text-xs normal-case tracking-normal text-faint">
                         time (UTC) → · commitments anchor to Bitcoin blocks below
                     </span>
                 </span>
@@ -656,7 +659,7 @@ export function ArkLayerCanvas({
             }
         >
             {coverageNote && (
-                <p className="border-b border-border/60 px-4 py-1.5 text-[11px] leading-snug text-warning">
+                <p className="border-b border-border/60 px-4 py-2 text-xs leading-relaxed text-warning">
                     {coverageNote}
                 </p>
             )}
@@ -668,7 +671,7 @@ export function ArkLayerCanvas({
                             preserveAspectRatio="xMidYMid meet"
                             role="img"
                             aria-label="Ark activity map: virtual transactions, batch commitments and Second server transactions on a shared time axis"
-                            className="block h-auto w-full min-w-[720px] cursor-grab select-none active:cursor-grabbing"
+                            className="block h-auto w-full min-w-[1240px] cursor-grab select-none active:cursor-grabbing"
                             onPointerDown={onPointerDown}
                             onPointerMove={onPointerMove}
                             onPointerUp={onPointerUp}
@@ -721,7 +724,7 @@ export function ArkLayerCanvas({
                                             y={10}
                                             textAnchor="middle"
                                             className="fill-faint"
-                                            fontSize={8.5}
+                                            fontSize={12}
                                         >
                                             {windowLabel(tick.time)}
                                         </text>
@@ -738,7 +741,7 @@ export function ArkLayerCanvas({
                                     x={layout.plotLeft + 8}
                                     y={layout.laneArkY + 72}
                                     className="fill-faint"
-                                    fontSize={9}
+                                    fontSize={12}
                                 >
                                     Hourly density unavailable: archive timestamps have no timezone
                                 </text>
@@ -750,7 +753,7 @@ export function ArkLayerCanvas({
                                 x={layout.plotLeft + 6}
                                 y={layout.railY + 30}
                                 className="fill-faint"
-                                fontSize={8}
+                                fontSize={12}
                             >
                                 block height →
                             </text>
@@ -804,7 +807,7 @@ export function ArkLayerCanvas({
                                         y={14}
                                         textAnchor="middle"
                                         className="fill-chain"
-                                        fontSize={7}
+                                        fontSize={12}
                                     >
                                         next
                                     </text>
@@ -830,7 +833,7 @@ export function ArkLayerCanvas({
                                     top: `calc(${(tag.y / layout.height) * 100}% - 9px)`,
                                 }}
                             >
-                                <div className="whitespace-nowrap rounded-sm border border-border/60 bg-canvas/85 px-1.5 py-[3px] text-[10px] font-semibold leading-none tracking-wide backdrop-blur-[1px] md:text-[9px]">
+                                <div className="whitespace-nowrap rounded-sm border border-border/60 bg-canvas/85 px-1.5 py-[3px] text-xs font-semibold leading-none tracking-wide backdrop-blur-[1px]">
                                     <span className={tag.cls}>{tag.label}</span>
                                     {tag.sub && (
                                         <span className="ml-1 hidden font-normal text-faint md:inline">
@@ -844,7 +847,7 @@ export function ArkLayerCanvas({
                 </div>
 
                 {/* minimap + coverage meta — counts are window samples, not network totals */}
-                <div className="flex items-end justify-between gap-3 border-t border-border px-4 py-2">
+                <div className="flex flex-col gap-2 border-t border-border px-4 py-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
                     <span className="micro text-faint">
                         {fmtDay(layout.tStart)} → {fmtDay(layout.tEnd)} · {layout.counts.rail}{" "}
                         sampled blocks · {layout.counts.arkEvents}{" "}
@@ -852,7 +855,10 @@ export function ArkLayerCanvas({
                         {layout.counts.secondTxs}{" "}
                         {layout.counts.secondTxs === 1 ? "Second tx" : "Second txs"} in window
                     </span>
-                    <div className="h-[34px] w-[150px] shrink-0" aria-hidden="true">
+                    <div
+                        className="h-[34px] w-full shrink-0 sm:h-[34px] sm:w-[150px]"
+                        aria-hidden="true"
+                    >
                         <svg
                             viewBox="0 0 100 34"
                             preserveAspectRatio="none"
@@ -902,13 +908,13 @@ export function ArkLayerCanvas({
                         {tooltip.lines.map((line, i) => (
                             <p
                                 key={i}
-                                className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground"
+                                className="mt-0.5 truncate font-mono text-xs text-muted-foreground"
                             >
                                 {line}
                             </p>
                         ))}
                         {tooltip.txid && (
-                            <p className="mt-1 font-mono text-[10px] text-faint">
+                            <p className="mt-1 font-mono text-xs text-faint">
                                 {middleTruncate(tooltip.txid, 12)}
                                 {tooltip.href ? " ↗" : ""}
                             </p>

@@ -261,6 +261,7 @@ export function ExitOutlook({
         <Panel
             title="Exit outlook"
             subtitle="Observed unspent VTXOs by expiry · exit window shaded"
+            className="self-start"
         >
             <div className="px-4 pb-4 pt-3">
                 {/* 31-day ruler: one fixed-geometry SVG (viewBox 320×96).
@@ -323,7 +324,7 @@ export function ExitOutlook({
                                             <text
                                                 x={X(0) + 4}
                                                 y={24}
-                                                fontSize={10}
+                                                fontSize={12}
                                                 fill="hsl(var(--destructive))"
                                                 textAnchor="start"
                                             >
@@ -368,7 +369,7 @@ export function ExitOutlook({
                                             <text
                                                 x={X(d)}
                                                 y={80}
-                                                fontSize={10}
+                                                fontSize={12}
                                                 textAnchor="middle"
                                                 className="fill-faint"
                                             >
@@ -383,7 +384,7 @@ export function ExitOutlook({
                                             x={160}
                                             y={44}
                                             textAnchor="middle"
-                                            fontSize={11}
+                                            fontSize={12}
                                             className="fill-faint"
                                         >
                                             nothing to plot
@@ -420,7 +421,7 @@ export function ExitOutlook({
                             </div>
 
                             {/* caption + legend below the SVG */}
-                            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[11px] text-faint">
+                            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-faint">
                                 <span>days until expiry →</span>
                                 {arkExitDays !== null && arkExitDays > 0 && (
                                     <span
@@ -467,14 +468,14 @@ export function ExitOutlook({
                                 <button
                                     type="button"
                                     onClick={() => onInspect(record.id)}
-                                    className="min-w-0 flex-1 truncate text-left font-mono text-[11px] text-foreground hover:text-virt"
+                                    className="min-w-0 flex-1 truncate text-left font-mono text-xs text-foreground hover:text-virt"
                                 >
                                     {record.txid.slice(0, 10)}…{record.txid.slice(-6)}
                                 </button>
-                                <span className="font-mono text-[11px] text-muted-foreground">
+                                <span className="font-mono text-xs text-muted-foreground">
                                     {satsShort(record.amountSat)}
                                 </span>
-                                <span className="font-mono text-[10px] text-faint">
+                                <span className="font-mono text-xs text-faint">
                                     {record.expiresAtSeconds !== null
                                         ? until(record.expiresAtSeconds, nowSec)
                                         : record.leftSeconds !== null
@@ -485,14 +486,14 @@ export function ExitOutlook({
                         ))
                     )}
                     {renews.length > 6 && (
-                        <li className="pt-1 text-[11px] text-faint">
+                        <li className="pt-1 text-xs text-faint">
                             … and {renews.length - 6} more in the exit window
                         </li>
                     )}
                 </ul>
 
                 {/* folded Your-coins stats */}
-                <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border pt-3 sm:grid-cols-4">
+                <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-3">
                     {statCards.map((card) => (
                         <div key={card.label} className="min-w-0">
                             <MicroLabel>{card.label}</MicroLabel>
@@ -504,7 +505,7 @@ export function ExitOutlook({
                             >
                                 {card.value}
                             </p>
-                            <p className="truncate text-[10px] text-faint">{card.detail}</p>
+                            <p className="truncate text-xs text-faint">{card.detail}</p>
                         </div>
                     ))}
                 </div>

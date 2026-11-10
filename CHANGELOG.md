@@ -6,6 +6,15 @@ All notable changes to Arkade Explorer will be documented in this file.
 
 ### Fixed
 
+- Improve Atlas readability with larger supporting labels, natural-width numeric text, and
+  clearer panel headings. Rebalance ink/day surfaces and semantic accents; all 70 text/surface
+  token combinations per theme exceed WCAG AA's 4.5:1 normal-text threshold. Input, focus, and
+  strong-line tokens exceed 3:1 against the five checked control surfaces. These contrast checks
+  are not a claim of full WCAG conformance.
+  Desktop/mobile browser checks in both themes found no failing visible-text combinations.
+  The overview uses at least 12px supporting text, a horizontally scrollable chart that preserves
+  label size, a wider Operators column, and two-column exit summaries without stretched panels.
+
 - Refine the Atlas diamond-and-rail favicon for small sizes, with matching SVG, 64px PNG,
   and multi-resolution ICO assets.
 

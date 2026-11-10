@@ -51,7 +51,7 @@ function networkTag(record: OverviewRecord) {
 function stateCell(record: OverviewRecord) {
     if (record.status === "confirmed") {
         return (
-            <span className="font-mono text-[10.5px] text-faint">
+            <span className="font-mono text-xs text-faint">
                 {record.blockHeight !== null
                     ? `block ${record.blockHeight.toLocaleString("en-US")}`
                     : "confirmed"}
@@ -59,7 +59,7 @@ function stateCell(record: OverviewRecord) {
         );
     }
     if (record.status === "observed" && record.kind === "onchain") {
-        return <span className="font-mono text-[10.5px] text-faint">observed</span>;
+        return <span className="font-mono text-xs text-faint">observed</span>;
     }
     // Live operator-stream rows are not a problem state: show a neutral "Live"
     // tag only for safe statuses. urgent/expired/unknown/spent always surface
@@ -335,8 +335,7 @@ export function ActivityTable({
                                 : "border-line-strong text-muted-foreground hover:bg-secondary hover:text-foreground",
                         )}
                     >
-                        Needs review{" "}
-                        <span className="font-mono text-[10.5px]">{counts.review}</span>
+                        Needs review <span className="font-mono text-xs">{counts.review}</span>
                     </button>
                     <label className="relative min-w-[12rem] flex-1 xl:flex-none">
                         <span className="sr-only">

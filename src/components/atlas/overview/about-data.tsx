@@ -78,7 +78,7 @@ function NextRound({ nextRoundAt }: { nextRoundAt: number | null }) {
                       : `in ~${hours}h ${minutes}m`}
             </p>
             {valid !== null && secondsUntil !== null && (
-                <p className="mt-0.5 text-[11px] text-faint">
+                <p className="mt-0.5 text-xs text-faint">
                     server-announced start · rounds can be delayed or skipped
                 </p>
             )}
